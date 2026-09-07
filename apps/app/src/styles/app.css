@@ -176,6 +176,12 @@
   .tabbar {
     display: flex;
   }
+  .toasts {
+    right: 12px;
+    left: 12px;
+    bottom: calc(76px + env(safe-area-inset-bottom));
+    max-width: none;
+  }
 }
 /* Cards ------------------------------------------------------------------- */
 .card {
