@@ -2,6 +2,7 @@
 name = "lan-send-core"
 description = "Core library of lan-send: LocalSend v2.2 compatible discovery and transfer plus private extensions (clipboard sync, media). No GUI dependencies."
 version.workspace = true
+authors.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

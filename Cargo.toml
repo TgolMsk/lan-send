@@ -4,6 +4,7 @@ members = ["crates/core", "crates/cli"]
 
 [workspace.package]
 version = "0.1.0"
+authors = ["MrWang (TgolMsk)"]
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/TgolMsk/lan-send"

@@ -23,6 +23,16 @@ tests/interop/  与官方 LocalSend 的互操作测试
 
 详见 [`docs/adr/0001-repository-layout-and-targets.md`](docs/adr/0001-repository-layout-and-targets.md)。
 
+## 下载安装
+
+从 [Releases](https://github.com/TgolMsk/lan-send/releases) 下载：
+
+- macOS：`lan-send-<版本>-macos-universal.pkg`（Apple Silicon 与 Intel 通用，安装到 `/usr/local/bin`）
+- Windows：`lan-send-<版本>-windows-x86_64.msi`（安装到 Program Files 并加入 PATH）
+- 免安装：对应平台的 `.zip` / `.tar.gz`，校验和在 `SHA256SUMS.txt`
+
+安装包由 GitHub Actions 构建（`.github/workflows/release.yml`），打标签、签名与公证的配置见 [`docs/release.md`](docs/release.md)。
+
 ## 构建与使用
 
 ```bash
@@ -44,7 +54,7 @@ lan-send devices --favorite "Nice Orange"   # 已知设备、收藏、--unpair �
 lan-send identity                      # 本机别名、指纹、配置目录
 ```
 
-Windows 与 macOS 的 CLI 产物由 GitHub Actions 构建（见 `.github/workflows/ci.yml`，每次推送到 `main` 都会产出 artifact；打 `v*` 标签发布到 Releases）。
+每次推送到 `main`，CI（`.github/workflows/ci.yml`）都会产出 Windows 与 macOS 的开发版 CLI artifact。
 
 ## 文档
 

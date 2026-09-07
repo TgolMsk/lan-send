@@ -14,6 +14,7 @@
 - `crates/cli`：二进制名 `lan-send`，macOS/Windows。
 - `apps/app`：Tauri 2，一个工程覆盖三端，平台差异用 `tauri.{macos,windows,ios}.conf.json` 与 `src-tauri/src/platform/`。
 - `docs/adr`：每个模块先写 ADR 再写代码，不超过一页，用 `0000-template.md`。
+- `docs/release.md`：打 `v*` 标签发布安装包（macOS `.pkg`、Windows `.msi`）的流程与签名 secrets；WiX 定义在 `crates/cli/wix/main.wxs`。
 - 新增顶层目录先补 ADR。
 
 ## 硬性规则（摘要，全文见简报）

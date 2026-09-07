@@ -1,7 +1,9 @@
 [package]
 name = "lan-send-cli"
 description = "Command-line client of lan-send (macOS, Windows). Used for interoperability testing and headless use."
+homepage = "https://github.com/TgolMsk/lan-send"
 version.workspace = true
+authors.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

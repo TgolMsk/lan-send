@@ -1,8 +1,23 @@
 name: Release
 
+# Builds installable packages of the CLI and publishes them as a GitHub
+# Release when a `v*` tag is pushed (or on demand for a dry run).
+#
+#   macOS    lan-send-<ver>-macos-universal.pkg  (+ .tar.gz), signed and
+#            notarized when the MACOS_* secrets are configured (docs/release.md)
+#   Windows  lan-send-<ver>-windows-x86_64.msi   (+ .zip, + arm64 .zip)
+#   Linux    lan-send-<ver>-linux-{x86_64,aarch64}.tar.gz
+#   SHA256SUMS.txt
+
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Create a GitHub Release (otherwise only build artifacts)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -11,25 +26,154 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  cli:
-    name: CLI (${{ matrix.name }})
+  version:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      tag: ${{ steps.v.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: v
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            tag="${GITHUB_REF#refs/tags/}"
+          else
+            tag="v$(grep -m1 '^version' Cargo.toml | sed -E 's/.*"([^"]+)".*/\1/')-dev.${GITHUB_SHA::7}"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+          echo "version $tag"
+
+  macos:
+    name: macOS package
+    needs: version
+    runs-on: macos-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+      MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+      MACOS_INSTALLER_CERTIFICATE_P12: ${{ secrets.MACOS_INSTALLER_CERTIFICATE_P12 }}
+      MACOS_INSTALLER_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_INSTALLER_CERTIFICATE_PASSWORD }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+      - name: Build both architectures
+        run: |
+          cargo build --release -p lan-send-cli --target aarch64-apple-darwin
+          cargo build --release -p lan-send-cli --target x86_64-apple-darwin
+      - name: Universal binary
+        run: |
+          mkdir -p dist/root/usr/local/bin
+          lipo -create -output dist/root/usr/local/bin/lan-send \
+            target/aarch64-apple-darwin/release/lan-send \
+            target/x86_64-apple-darwin/release/lan-send
+          lipo -info dist/root/usr/local/bin/lan-send
+      - name: Import signing certificates
+        if: env.MACOS_CERTIFICATE_P12 != ''
+        run: |
+          KEYCHAIN=$RUNNER_TEMP/signing.keychain-db
+          security create-keychain -p actions "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p actions "$KEYCHAIN"
+          echo "$MACOS_CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/app.p12"
+          security import "$RUNNER_TEMP/app.p12" -P "$MACOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          if [ -n "$MACOS_INSTALLER_CERTIFICATE_P12" ]; then
+            echo "$MACOS_INSTALLER_CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/installer.p12"
+            security import "$RUNNER_TEMP/installer.p12" -P "$MACOS_INSTALLER_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          fi
+          security list-keychain -d user -s "$KEYCHAIN" login.keychain
+          security set-key-partition-list -S apple-tool:,apple: -s -k actions "$KEYCHAIN"
+          echo "APP_IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN" | grep 'Developer ID Application' | head -1 | sed -E 's/.*"(.*)".*/\1/')" >> "$GITHUB_ENV"
+          echo "INSTALLER_IDENTITY=$(security find-identity -v "$KEYCHAIN" | grep 'Developer ID Installer' | head -1 | sed -E 's/.*"(.*)".*/\1/')" >> "$GITHUB_ENV"
+      - name: Sign the binary
+        if: env.APP_IDENTITY != ''
+        run: codesign --force --options runtime --timestamp --sign "$APP_IDENTITY" dist/root/usr/local/bin/lan-send
+      - name: Package (.pkg and .tar.gz)
+        run: |
+          PKG="dist/lan-send-${VERSION}-macos-universal.pkg"
+          if [ -n "${INSTALLER_IDENTITY:-}" ]; then
+            pkgbuild --root dist/root --identifier dev.lan-send.cli --version "${VERSION%%-*}" --install-location / --sign "$INSTALLER_IDENTITY" --timestamp "$PKG"
+          else
+            pkgbuild --root dist/root --identifier dev.lan-send.cli --version "${VERSION%%-*}" --install-location / "$PKG"
+          fi
+          tar -C dist/root/usr/local/bin -czf "dist/lan-send-${VERSION}-macos-universal.tar.gz" lan-send
+          ls -la dist
+      - name: Notarize
+        if: env.INSTALLER_IDENTITY != '' && env.APPLE_ID != ''
+        run: |
+          PKG="dist/lan-send-${VERSION}-macos-universal.pkg"
+          xcrun notarytool submit "$PKG" --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" --wait
+          xcrun stapler staple "$PKG"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: macos
+          path: |
+            dist/*.pkg
+            dist/*.tar.gz
+          if-no-files-found: error
+
+  windows:
+    name: Windows package
+    needs: version
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc, aarch64-pc-windows-msvc
+      - uses: Swatinem/rust-cache@v2
+      - name: Build
+        run: |
+          cargo build --release -p lan-send-cli --target x86_64-pc-windows-msvc
+          cargo build --release -p lan-send-cli --target aarch64-pc-windows-msvc
+      - name: Install cargo-wix
+        run: cargo install cargo-wix --locked
+      - name: MSI (x86_64)
+        shell: bash
+        run: |
+          mkdir -p dist
+          cargo wix --package lan-send-cli --no-build --nocapture \
+            --install-version "${VERSION%%-*}" \
+            --target x86_64-pc-windows-msvc \
+            --output "dist/lan-send-${VERSION}-windows-x86_64.msi"
+      - name: Zips
+        shell: bash
+        run: |
+          (cd target/x86_64-pc-windows-msvc/release && 7z a "../../../dist/lan-send-${VERSION}-windows-x86_64.zip" lan-send.exe)
+          (cd target/aarch64-pc-windows-msvc/release && 7z a "../../../dist/lan-send-${VERSION}-windows-arm64.zip" lan-send.exe)
+          ls -la dist
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows
+          path: dist/*
+          if-no-files-found: error
+
+  linux:
+    name: Linux archive (${{ matrix.arch }})
+    needs: version
     strategy:
       fail-fast: false
       matrix:
         include:
-          - name: windows-x86_64
-            os: windows-latest
-            target: x86_64-pc-windows-msvc
-            bin: lan-send.exe
-          - name: macos-arm64
-            os: macos-latest
-            target: aarch64-apple-darwin
-            bin: lan-send
-          - name: macos-x86_64
-            os: macos-latest
-            target: x86_64-apple-darwin
-            bin: lan-send
-    runs-on: ${{ matrix.os }}
+          - arch: x86_64
+            runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+    runs-on: ${{ matrix.runner }}
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
@@ -38,12 +182,48 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Build
         run: cargo build --release -p lan-send-cli --target ${{ matrix.target }}
-      - name: Package
-        shell: bash
+      - name: Archive
         run: |
           mkdir -p dist
-          cp "target/${{ matrix.target }}/release/${{ matrix.bin }}" "dist/lan-send-${{ github.ref_name }}-${{ matrix.name }}${{ matrix.bin == 'lan-send.exe' && '.exe' || '' }}"
+          tar -C target/${{ matrix.target }}/release -czf "dist/lan-send-${VERSION}-linux-${{ matrix.arch }}.tar.gz" lan-send
+      - uses: actions/upload-artifact@v7
+        with:
+          name: linux-${{ matrix.arch }}
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  publish:
+    name: Publish release
+    needs: [version, macos, windows, linux]
+    if: startsWith(github.ref, 'refs/tags/v') || inputs.publish
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      TAG: ${{ needs.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v7
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Checksums and release notes
+        shell: bash
+        run: |
+          cd dist && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt && cd ..
+          python3 - <<'PY'
+          import os, re
+          version = os.environ["VERSION"]
+          text = open("CHANGELOG.md", encoding="utf-8").read()
+          match = re.search(r"^## \[?" + re.escape(version) + r"\]?[^\n]*\n(.*?)(?=^## |\Z)", text, re.S | re.M)
+          body = match.group(1).strip() if match else "See CHANGELOG.md."
+          body += "\n\n---\n安装：macOS 双击 `.pkg`（未签名版本需在“系统设置 › 隐私与安全性”允许），Windows 运行 `.msi`（会把 `lan-send` 加入 PATH），或解压压缩包后把 `lan-send` 放到 PATH 里。校验和见 `SHA256SUMS.txt`。"
+          open("release-notes.md", "w", encoding="utf-8").write(body)
+          PY
+          cat release-notes.md
       - uses: softprops/action-gh-release@v3
         with:
+          tag_name: ${{ env.TAG }}
+          name: lan-send ${{ env.VERSION }}
+          body_path: release-notes.md
+          prerelease: ${{ contains(env.VERSION, '-') || startsWith(env.VERSION, '0.') }}
           files: dist/*
-          generate_release_notes: true
