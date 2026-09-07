@@ -20,7 +20,7 @@ iOS：配置了下面的 App Store Connect API Key secrets 后，`ios-testflight
 ## 步骤
 
 ```bash
-# 1. CHANGELOG.md 把 Unreleased 改成版本号和日期；Cargo.toml 的 version 保持一致
+# 1. CHANGELOG.md 把 Unreleased 改成版本号和日期；Cargo.toml、apps/app/package.json、apps/app/src-tauri/tauri.conf.json 的 version 保持一致（CI 打包时会按标签覆盖应用版本号）
 # 2. 提交后打标签并推送
 git tag v0.1.0
 git push origin v0.1.0

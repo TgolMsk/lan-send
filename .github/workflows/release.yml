@@ -215,7 +215,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Build the app (.app + .dmg)
         working-directory: apps/app
-        run: pnpm tauri build --target universal-apple-darwin --bundles app,dmg
+        run: pnpm tauri build --target universal-apple-darwin --bundles app,dmg --config "{\"version\":\"${VERSION%%-*}\"}"
       - name: Collect
         run: |
           mkdir -p dist
@@ -251,7 +251,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Build the app (.msi + NSIS .exe)
         working-directory: apps/app
-        run: pnpm tauri build --bundles msi,nsis
+        shell: bash
+        run: pnpm tauri build --bundles msi,nsis --config "{\"version\":\"${VERSION%%-*}\"}"
       - name: Collect
         shell: bash
         run: |
@@ -337,7 +338,7 @@ jobs:
         shell: bash
         run: |
           cargo tauri ios build --ci --export-method app-store-connect \
-            --config "{\"bundle\":{\"iOS\":{\"developmentTeam\":\"${APPLE_TEAM_ID}\"}}}"
+            --config "{\"version\":\"${VERSION%%-*}\",\"bundle\":{\"iOS\":{\"developmentTeam\":\"${APPLE_TEAM_ID}\"}}}"
           ls -la src-tauri/gen/apple/build/arm64/
       - name: Upload to TestFlight
         if: steps.gate.outputs.ready == 'true'
