@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-07
+
+首个带界面的版本：macOS 与 Windows 桌面应用（Tauri 2），iOS 通过 TestFlight 分发；命令行工具改名 `lan-send-cli-*` 继续随发布提供。
+
 ### Added
 - 发布流程：桌面应用包（macOS 通用 `.dmg` / `.app.zip`，Windows NSIS `-setup.exe` 与 `.msi`）与 iOS TestFlight 上传（配置 App Store Connect API Key secrets 后自动签名、打 `.ipa`、`altool` 上传；构建号取 GitHub 运行序号）；命令行产物改名 `lan-send-cli-*`。iOS 工程补上本地网络权限说明、Files 共享、出口合规声明；无 Downloads 目录的平台（iOS）默认把文件收到“文稿”。
 - 里程碑 6：正式界面（`apps/app/src`）——按 `docs/ui-style-reference.md` 的金融风格实现：深色对角渐变底、半透明卡片与白色重点卡片、薄荷绿单一强调色、单色速度曲线；桌面侧栏布局，窄屏（iOS）自动切到底部标签栏；设备（在线/收藏/配对、发送、配对、重命名、忘记、按地址发送、拖放发送）、传输（进行中的大数字进度卡、速度与剩余时间、逐文件进度、取消/移除/在文件夹中显示）、剪贴板（同步开关、立即推送、历史与重新复制）、历史、设置（常规/网络/剪贴板/应用）；接收请求、PIN、同名冲突、配对（双向）、发送弹窗与提示条；中英文界面，深/浅色主题。浏览器假数据层可脱离 Tauri 预览。
@@ -31,5 +35,6 @@
 - 文档：开发简报、LocalSend v2.2 接口核对清单、协议差异与扩展、三端平台约束、UI 视觉参考、ADR-0001 仓库布局。
 - CI：macOS / Windows / Linux 格式与 clippy 与测试，iOS 交叉检查，Windows 与 macOS CLI 产物，cargo-deny 许可证检查，标签发布。
 
-[Unreleased]: https://github.com/TgolMsk/lan-send/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/TgolMsk/lan-send/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/TgolMsk/lan-send/releases/tag/v0.2.0
 [0.1.0]: https://github.com/TgolMsk/lan-send/releases/tag/v0.1.0
