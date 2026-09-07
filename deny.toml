@@ -16,6 +16,12 @@ allow = [
     "Unicode-DFS-2016",
     "CC0-1.0",
     "OpenSSL",
+    # Weak, file-level copyleft: modifying those files would have to be shared,
+    # nothing about our MIT code changes. Only `option-ext` (via `directories`).
+    "MPL-2.0",
+    # Permissive data license of the Mozilla root store shipped by rustls'
+    # `webpki-root-certs`; never used for verification here (peers are pinned).
+    "CDLA-Permissive-2.0",
 ]
 # Anything not listed above (GPL, AGPL, LGPL, MPL, SSPL, ...) fails the check and
 # must be discussed before it is added.

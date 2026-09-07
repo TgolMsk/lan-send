@@ -13,9 +13,36 @@ name = "lan_send_core"
 [dependencies]
 thiserror.workspace = true
 tokio.workspace = true
+tokio-util.workspace = true
 tracing.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+bytes.workspace = true
+futures-util.workspace = true
+uuid.workspace = true
+sha2.workspace = true
+parking_lot.workspace = true
+# identity / TLS
+rsa = { version = "0.9", features = ["sha2"] }
+rcgen = { version = "0.14", default-features = false, features = ["crypto", "pem", "ring"] }
+x509-parser = { version = "0.18", features = ["verify"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "tls12", "std"] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
+# HTTP
+reqwest = { version = "0.13", default-features = false, features = ["rustls-no-provider", "json", "query", "stream", "charset"] }
+axum = "0.8"
+hyper = { version = "1", features = ["server", "http1"] }
+hyper-util = { version = "0.1", features = ["server", "server-auto", "tokio", "service"] }
+tower = { version = "0.5", features = ["util"] }
+# discovery
+socket2 = { version = "0.6", features = ["all"] }
+if-addrs = "0.15"
+# misc
+time = { version = "0.3", features = ["formatting", "parsing"] }
+directories = "6"
+
+[dev-dependencies]
+tempfile = "3"
 
 [lints]
 workspace = true

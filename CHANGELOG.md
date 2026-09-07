@@ -5,6 +5,9 @@
 ## [Unreleased]
 
 ### Added
+- 里程碑 1：`lan-send-core` 的 `protocol`（v2.2 DTO、`x-lanext` 扩展字段、指纹）、`transport`（RSA-2048 自签名身份、强制/可选客户端证书的 rustls 策略、reqwest 客户端、axum 上传 API 服务端、流式落盘与 SHA-256/字节数校验、文件名净化）、`discovery`（每接口一个组播 socket、公告脉冲、HTTP register 回应、已知地址探测、/24 子网扫描回退）、`store`（应用目录、私钥文件权限）。
+- CLI：`lan-send discover / send / receive / identity`，PIN 交互、进度条、`--auto-accept`、`--config-dir`、`--client-certs`。
+- 互操作测试 `tests/interop/run.py`：与官方 `localsend-cli` 1.18.2 双向收发（pexpect 驱动官方 TUI），CI 在 Linux 与 macOS 上运行。
 - 仓库骨架：Cargo 工作区、`lan-send-core` 与 `lan-send-cli` 空壳、命令行参数定义。
 - 文档：开发简报、LocalSend v2.2 接口核对清单、协议差异与扩展、三端平台约束、UI 视觉参考、ADR-0001 仓库布局。
 - CI：macOS / Windows / Linux 格式与 clippy 与测试，iOS 交叉检查，Windows 与 macOS CLI 产物，cargo-deny 许可证检查，标签发布。

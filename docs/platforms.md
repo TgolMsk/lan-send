@@ -6,6 +6,7 @@
 
 - 组播：非沙盒分发不需要额外权限；沙盒/App Store 分发需要 `com.apple.developer.networking.multicast` 权利。macOS 15+ 首次访问局域网会弹"本地网络"授权，需在 `Info.plist` 写 `NSLocalNetworkUsageDescription`。
 - 组播 socket：每个接口地址各绑一个 socket，`SO_REUSEADDR + SO_REUSEPORT`，绑定 `0.0.0.0`，`IP_MULTICAST_IF` 指定接口，loopback 开启（同机多实例互见）。
+- 组播发送偶发 `No route to host (os error 65)`：macOS 15+ 的"本地网络"授权尚未生效、或 VPN/代理的 TUN 网卡（如 198.18.0.1）刚接管路由时会出现，几秒后自行恢复；发现模块把它当作普通失败记录并靠子网扫描兜底，不要当成 bug 反复重试。
 - 剪贴板：`NSPasteboard` 无变更通知，只能轮询 `changeCount`（200–500 ms）。图片优先取 PNG，其次 TIFF 转 PNG。
 - 托盘、全局快捷键、Dock 图标：桌面专属，放在 `apps/app/src-tauri/src/platform/macos.rs`。
 

@@ -23,3 +23,6 @@ Thumbs.db
 .env.*
 /tests/interop/.cache/
 *.log
+
+# Python virtualenv of the interop tests
+/tests/interop/.venv/

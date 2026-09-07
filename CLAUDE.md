@@ -36,10 +36,14 @@ cargo run -p lan-send-cli -- --help
 ```
 
 本机的 Rust 由 rustup 安装在 `~/.cargo/bin`，未写入 PATH；在命令前 `source ~/.cargo/env`。
+若 Xcode 已安装但许可证未接受，链接会失败，可临时 `export DEVELOPER_DIR=/Library/Developer/CommandLineTools`。
+
+互操作测试：`python3 -m venv tests/interop/.venv && tests/interop/.venv/bin/pip install pexpect`，
+然后 `tests/interop/.venv/bin/python tests/interop/run.py`（自动下载官方 CLI 到 `tests/interop/.cache`）。
 
 ## 里程碑状态
 
-1. `core::protocol` + `discovery` + `transport`，CLI 与官方 LocalSend 互传单文件 —— **进行中**（决策见接口清单第 11 节）。
+1. `core::protocol` + `discovery` + `transport`，CLI 与官方 LocalSend 互传单文件 —— **完成**（2026-09-07，双向互测通过；IPv6、文件夹、断点续传留给里程碑 2）。
 2. 多文件、文件夹、校验、断点续传、历史。
 3. 剪贴板同步。
 4. 媒体层。

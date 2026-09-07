@@ -82,3 +82,24 @@ jobs:
           name: lan-send-macos-arm64
           path: target/release/lan-send
           if-no-files-found: error
+
+  interop:
+    name: Interop with official LocalSend (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build CLI
+        run: cargo build -p lan-send-cli
+      - name: Install pexpect
+        run: python3 -m pip install pexpect
+      - name: Run interop tests
+        run: python3 tests/interop/run.py --ours target/debug/lan-send

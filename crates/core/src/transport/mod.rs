@@ -1,7 +1,18 @@
-//! HTTPS transport: self-signed device identity (RSA-2048, fingerprint =
-//! uppercase-hex SHA-256 of the DER certificate), the axum server that
-//! implements the upload API, and the reqwest (rustls) client with client
-//! certificate and fingerprint pinning.
+//! HTTPS transport: device identity, TLS policy, the HTTP client and the
+//! server implementing the LocalSend upload API.
 //!
-//! Implemented in milestone 1 (single file) and 2 (multi-file, folders,
-//! checksum, resume).
+//! See ADR-0002 (identity) and ADR-0004 (transport).
+
+pub mod client;
+pub mod filename;
+pub mod identity;
+pub mod server;
+pub mod tls;
+
+pub use client::{Client, ClientError, PrepareUploadOutcome, Registered, Target};
+pub use identity::{CertError, Identity, IdentityError};
+pub use server::{
+    Peer, ServerConfig, ServerError, ServerEvent, ServerHandle, SessionEndReason, UploadDecision,
+    UploadTarget,
+};
+pub use tls::{ClientCertPolicy, TlsError};

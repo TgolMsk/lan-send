@@ -1,12 +1,12 @@
-//! `lan-send` command-line interface.
-//!
-//! The full command surface from the brief is declared here so it is stable
-//! from day one. Commands whose milestone has not landed fail with a clear
-//! message instead of silently doing nothing.
+//! `lan-send` command-line interface (ADR-0005).
 
+mod app;
+mod commands;
+mod ui;
+
+use clap::{Args, Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
-
-use clap::{Parser, Subcommand};
+use std::time::Duration;
 
 #[derive(Parser)]
 #[command(
@@ -15,28 +15,88 @@ use clap::{Parser, Subcommand};
     about = "LocalSend-compatible LAN file and clipboard transfer"
 )]
 struct Cli {
+    #[command(flatten)]
+    globals: Globals,
+
     #[command(subcommand)]
     command: Command,
+}
+
+/// Options shared by every command.
+#[derive(Args, Clone, Debug)]
+pub struct Globals {
+    /// Name shown to other devices [default: the host name]
+    #[arg(long, global = true, env = "LAN_SEND_ALIAS")]
+    pub alias: Option<String>,
+
+    /// Port of the HTTPS server [default: 53317]
+    #[arg(long, global = true, env = "LAN_SEND_PORT")]
+    pub port: Option<u16>,
+
+    /// Directory holding the identity and settings [default: platform config dir]
+    #[arg(long, global = true, env = "LAN_SEND_CONFIG_DIR", value_name = "DIR")]
+    pub config_dir: Option<PathBuf>,
+
+    /// Whether peers must present a client certificate (official 1.18+ does)
+    #[arg(long, global = true, value_enum, default_value_t = ClientCerts::Required)]
+    pub client_certs: ClientCerts,
+
+    /// Log verbosity: -v info, -vv debug, -vvv trace (or RUST_LOG)
+    #[arg(short, long, global = true, action = clap::ArgAction::Count)]
+    pub verbose: u8,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
+pub enum ClientCerts {
+    Required,
+    Optional,
 }
 
 #[derive(Subcommand)]
 enum Command {
     /// List devices on the local network
-    Discover,
-    /// Send files or folders to a device (alias, fingerprint prefix or IP)
+    Discover {
+        /// How long to listen for answers
+        #[arg(long, default_value_t = 4.0, value_name = "SECONDS")]
+        timeout: f64,
+    },
+    /// Send files to a device (alias, fingerprint prefix or IP[:port])
     Send {
         /// Destination device
         device: String,
-        /// Files or folders to send
+        /// Files to send
         #[arg(required = true)]
         paths: Vec<PathBuf>,
+        /// PIN of the receiver (asked interactively when required)
+        #[arg(long)]
+        pin: Option<String>,
+        /// How long to wait for the device to appear
+        #[arg(long, default_value_t = 10.0, value_name = "SECONDS")]
+        timeout: f64,
+        /// Files uploaded at the same time
+        #[arg(long, default_value_t = 3)]
+        parallel: usize,
+        /// Skip computing SHA-256 checksums
+        #[arg(long)]
+        no_checksum: bool,
     },
     /// Receive files in the foreground
     Receive {
-        /// Directory to save received files into (default: Downloads)
+        /// Directory to save received files into [default: Downloads]
         #[arg(long)]
         dir: Option<PathBuf>,
+        /// Require senders to know this PIN
+        #[arg(long)]
+        pin: Option<String>,
+        /// Accept every request without asking
+        #[arg(long)]
+        auto_accept: bool,
+        /// Skip verifying sender-provided checksums
+        #[arg(long)]
+        no_verify: bool,
     },
+    /// Show this device's identity (alias, fingerprint, config dir)
+    Identity,
     /// Clipboard synchronisation with a paired device
     Clip {
         #[command(subcommand)]
@@ -65,20 +125,57 @@ enum ClipCommand {
 }
 
 fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt()
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-        .init();
-
     let cli = Cli::parse();
+    app::init_logging(cli.globals.verbose);
+    let runtime = tokio::runtime::Runtime::new()?;
+    runtime.block_on(run(cli))
+}
+
+async fn run(cli: Cli) -> anyhow::Result<()> {
+    let app = app::App::load(&cli.globals)?;
     match cli.command {
-        Command::Discover => not_yet("discover", 1),
-        Command::Send { device, paths } => {
-            not_yet(&format!("send {device} ({} path(s))", paths.len()), 1)
+        Command::Discover { timeout } => {
+            commands::discover::run(app, Duration::from_secs_f64(timeout)).await
         }
-        Command::Receive { dir } => not_yet(
-            &format!("receive --dir {}", dir.unwrap_or_default().display()),
-            1,
-        ),
+        Command::Send {
+            device,
+            paths,
+            pin,
+            timeout,
+            parallel,
+            no_checksum,
+        } => {
+            commands::send::run(
+                app,
+                commands::send::SendOptions {
+                    device,
+                    paths,
+                    pin,
+                    timeout: Duration::from_secs_f64(timeout),
+                    parallel: parallel.max(1),
+                    checksum: !no_checksum,
+                },
+            )
+            .await
+        }
+        Command::Receive {
+            dir,
+            pin,
+            auto_accept,
+            no_verify,
+        } => {
+            commands::receive::run(
+                app,
+                commands::receive::ReceiveOptions {
+                    dir,
+                    pin,
+                    auto_accept,
+                    verify_checksums: !no_verify,
+                },
+            )
+            .await
+        }
+        Command::Identity => commands::identity::run(&app),
         Command::Clip { command } => match command {
             ClipCommand::Watch { device } => not_yet(&format!("clip watch {device}"), 3),
             ClipCommand::Push { device } => not_yet(&format!("clip push {device}"), 3),

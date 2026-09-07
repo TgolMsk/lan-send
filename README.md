@@ -3,7 +3,7 @@
 局域网文件与剪贴板互传工具，兼容 [LocalSend](https://localsend.org) 协议 v2.2，可与官方客户端互相发现、互相收发。
 Rust 核心库 + Tauri 2 应用，目标平台 **macOS / Windows / iOS**。MIT 许可证。
 
-> 状态：仓库刚初始化，核心功能尚未实现。进度见 `CHANGELOG.md` 与 `CLAUDE.md` 的里程碑状态。
+> 状态：里程碑 1 完成——命令行工具已能与官方 LocalSend 1.18 互相发现并互传单个文件（双向互操作测试通过）。进度见 `CHANGELOG.md` 与 `CLAUDE.md`。
 
 ## 特性（规划）
 
@@ -23,11 +23,18 @@ tests/interop/  与官方 LocalSend 的互操作测试
 
 详见 [`docs/adr/0001-repository-layout-and-targets.md`](docs/adr/0001-repository-layout-and-targets.md)。
 
-## 构建
+## 构建与使用
 
 ```bash
 cargo build --workspace
 cargo run -p lan-send-cli -- --help
+```
+
+```bash
+lan-send discover                      # 列出局域网里的 LocalSend 设备
+lan-send receive --dir ~/Downloads      # 前台接收，逐个请求确认（--auto-accept 免确认，--pin 123456 要求 PIN）
+lan-send send "Nice Orange" a.jpg b.pdf # 按别名、指纹前缀或 IP 发送文件
+lan-send identity                      # 本机别名、指纹、配置目录
 ```
 
 Windows 与 macOS 的 CLI 产物由 GitHub Actions 构建（见 `.github/workflows/ci.yml`，每次推送到 `main` 都会产出 artifact；打 `v*` 标签发布到 Releases）。

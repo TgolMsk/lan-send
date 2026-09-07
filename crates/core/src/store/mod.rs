@@ -1,4 +1,8 @@
-//! Persistence: settings (JSON), transfer history and device trust (SQLite via
-//! rusqlite, schema versioned with automatic migrations), caches.
-//!
-//! Implemented in milestone 2.
+//! Persistence: application directories, secret files, and (from milestone 2)
+//! settings, transfer history and device trust in SQLite.
+
+mod paths;
+mod secure_file;
+
+pub use paths::{AppPaths, StoreError};
+pub(crate) use secure_file::write_private;

@@ -15,11 +15,17 @@ rust-version = "1.85"
 anyhow = "1"
 thiserror = "2"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "net", "fs", "io-util", "time", "signal"] }
+tokio-util = { version = "0.7", features = ["io", "rt"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-clap = { version = "4", features = ["derive"] }
+clap = { version = "4", features = ["derive", "env"] }
+bytes = "1"
+futures-util = "0.3"
+uuid = { version = "1", features = ["v4"] }
+sha2 = "0.10"
+parking_lot = "0.12"
 
 # Repository-wide lints (each crate opts in with `[lints] workspace = true`).
 # `unwrap_used` enforces the "no unwrap outside tests" rule from the brief;
@@ -31,3 +37,11 @@ unsafe_code = "deny"
 unwrap_used = "deny"
 expect_used = "warn"
 panic = "warn"
+
+# RSA key generation is bignum-heavy and ~10x slower unoptimized; keep the
+# crypto crates optimized in dev so tests and first runs stay fast.
+[profile.dev.package.rsa]
+opt-level = 2
+
+[profile.dev.package.num-bigint-dig]
+opt-level = 2
