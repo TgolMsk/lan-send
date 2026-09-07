@@ -4,7 +4,9 @@ use anyhow::{Context, bail};
 use futures_util::StreamExt;
 use indicatif::MultiProgress;
 use lan_send_core::discovery::{Device, Discovery};
-use lan_send_core::protocol::{DEFAULT_PORT, FEATURE_RESUME, PrepareUploadRequest, ProtocolType};
+use lan_send_core::protocol::{
+    DEFAULT_PORT, FEATURE_RESUME, Fingerprint, PrepareUploadRequest, ProtocolType,
+};
 use lan_send_core::store::{Direction, TransferRecord, TransferStatus, unix_now};
 use lan_send_core::transfer::{CollectOptions, OutgoingFile, collect};
 use lan_send_core::transport::{
@@ -62,6 +64,23 @@ pub async fn run(app: App, options: SendOptions) -> anyhow::Result<()> {
     result
 }
 
+/// What a transfer needs besides the files.
+pub struct TransferOptions {
+    pub pin: Option<String>,
+    pub parallel: usize,
+    pub checksum: bool,
+    /// `x-lanext.intent` of the request, e.g. the clipboard intent.
+    pub intent: Option<String>,
+}
+
+#[derive(Debug, Default)]
+pub struct TransferOutcome {
+    pub sent: usize,
+    pub failed: usize,
+    pub not_accepted: usize,
+    pub cancelled: bool,
+}
+
 async fn send(
     app: &App,
     discovery: &Discovery,
@@ -87,7 +106,49 @@ async fn send(
         target.host,
         target.port
     );
+    let outcome = transfer(
+        app,
+        discovery,
+        &device.alias,
+        &device.fingerprint,
+        &target,
+        files,
+        TransferOptions {
+            pin: options.pin.clone(),
+            parallel: options.parallel,
+            checksum: options.checksum,
+            intent: None,
+        },
+        Some(events_rx),
+    )
+    .await?;
+    if outcome.cancelled {
+        bail!("transfer cancelled by the receiver");
+    }
+    if outcome.failed > 0 {
+        bail!(
+            "{} of {} file(s) failed",
+            outcome.failed,
+            outcome.sent + outcome.failed
+        );
+    }
+    Ok(())
+}
 
+/// Sends `files` to a device whose address is known: prepare-upload (with
+/// the PIN dance), parallel uploads with resume, history entries. With
+/// `events_rx` the receiver's cancel requests are honoured.
+#[allow(clippy::too_many_arguments)]
+pub async fn transfer(
+    app: &App,
+    discovery: &Discovery,
+    peer_alias: &str,
+    peer_fingerprint: &Fingerprint,
+    target: &Target,
+    files: Vec<OutgoingFile>,
+    options: TransferOptions,
+    events_rx: Option<mpsc::Receiver<ServerEvent>>,
+) -> anyhow::Result<TransferOutcome> {
     let mut checksums: HashMap<String, String> = HashMap::new();
     if options.checksum {
         let bar = indicatif::ProgressBar::new(files.len() as u64)
@@ -103,9 +164,13 @@ async fn send(
         bar.finish_and_clear();
     }
 
-    let client = Client::new(&app.identity, Some(device.fingerprint.clone()), None)?;
+    let client = Client::new(&app.identity, Some(peer_fingerprint.clone()), None)?;
+    let mut info = app.device_info(app.port);
+    if let (Some(ext), Some(intent)) = (info.ext.as_mut(), &options.intent) {
+        ext.intent = Some(intent.clone());
+    }
     let request = PrepareUploadRequest {
-        info: app.device_info(app.port),
+        info,
         files: files
             .iter()
             .map(|file| {
@@ -116,18 +181,24 @@ async fn send(
             })
             .collect(),
     };
+    let peer_supports_resume = discovery
+        .device_by_fingerprint(peer_fingerprint)
+        .is_some_and(|device| device.supports(FEATURE_RESUME));
 
     let started_at = unix_now();
     let mut pin = options.pin.clone();
     let response = loop {
         match client
-            .prepare_upload(&target, &request, pin.as_deref())
+            .prepare_upload(target, &request, pin.as_deref())
             .await
         {
             Ok(PrepareUploadOutcome::Accepted(response)) => break response,
             Ok(PrepareUploadOutcome::NothingToTransfer) => {
                 println!("The receiver accepted nothing.");
-                return Ok(());
+                return Ok(TransferOutcome {
+                    not_accepted: files.len(),
+                    ..Default::default()
+                });
             }
             Err(ClientError::Status {
                 status: 401,
@@ -153,7 +224,7 @@ async fn send(
 
     let session_id = response.session_id.clone();
     let resume_token: Option<Arc<str>> = match (&response.resume_token, app.settings.resume) {
-        (Some(token), true) if device.supports(FEATURE_RESUME) => Some(Arc::from(token.as_str())),
+        (Some(token), true) if peer_supports_resume => Some(Arc::from(token.as_str())),
         _ => None,
     };
     let resumed: Vec<&str> = files
@@ -169,18 +240,22 @@ async fn send(
         .partition(|file| response.files.contains_key(&file.id));
     for file in &skipped {
         app.record_transfer(&transfer_record(
-            app,
             &session_id,
-            &device,
+            peer_alias,
+            peer_fingerprint,
             file,
             TransferStatus::Skipped,
             None,
             started_at,
         ));
     }
+    let mut outcome = TransferOutcome {
+        not_accepted: skipped.len(),
+        ..Default::default()
+    };
     if accepted.is_empty() {
         println!("The receiver accepted no files.");
-        return Ok(());
+        return Ok(outcome);
     }
     if !skipped.is_empty() {
         eprintln!("{} file(s) were not accepted.", skipped.len());
@@ -188,7 +263,7 @@ async fn send(
 
     // The receiver may cancel the session through our own server.
     let cancel = CancellationToken::new();
-    let watcher = {
+    let watcher = events_rx.map(|mut events_rx| {
         let cancel = cancel.clone();
         let discovery = discovery.clone();
         let session_id = session_id.clone();
@@ -216,15 +291,18 @@ async fn send(
                     ServerEvent::PrepareUpload { decision, .. } => {
                         let _ = decision.send(lan_send_core::transport::UploadDecision::Decline);
                     }
+                    ServerEvent::PairRequest { decision, .. } => {
+                        let _ = decision.send(false);
+                    }
                     _ => {}
                 }
             }
         })
-    };
+    });
 
     let progress = MultiProgress::new();
     let client = Arc::new(client);
-    let target = Arc::new(target);
+    let target = Arc::new(target.clone());
     let session = Arc::new(session_id.clone());
     let results: Vec<(&OutgoingFile, Result<(), String>)> = futures_util::stream::iter(accepted)
         .map(|file| {
@@ -250,15 +328,17 @@ async fn send(
                 (file, result)
             }
         })
-        .buffer_unordered(options.parallel)
+        .buffer_unordered(options.parallel.max(1))
         .collect()
         .await;
-    watcher.abort();
+    if let Some(watcher) = watcher {
+        watcher.abort();
+    }
 
-    let mut failures = 0;
     for (file, result) in &results {
         let (status, error) = match result {
             Ok(()) => {
+                outcome.sent += 1;
                 println!("Sent {}", file.name);
                 (TransferStatus::Finished, None)
             }
@@ -267,53 +347,51 @@ async fn send(
                 (TransferStatus::Cancelled, Some(err.clone()))
             }
             Err(err) => {
-                failures += 1;
+                outcome.failed += 1;
                 println!("Failed {}: {err}", file.name);
                 (TransferStatus::Failed, Some(err.clone()))
             }
         };
         app.record_transfer(&transfer_record(
-            app,
             &session_id,
-            &device,
+            peer_alias,
+            peer_fingerprint,
             file,
             status,
             error,
             started_at,
         ));
     }
-    // Remember the device at the address that actually worked.
-    let mut known = lan_send_core::store::KnownDevice::from(&device);
-    known.host = Some(target.host.clone());
-    known.port = Some(target.port);
-    let _ = app.db.upsert_device(&known);
+    outcome.cancelled = cancel.is_cancelled();
 
-    if cancel.is_cancelled() {
-        bail!("transfer cancelled by the receiver");
+    // Remember the device at the address that actually worked.
+    if let Ok(Some(mut known)) = app.db.device(peer_fingerprint.as_str()) {
+        known.host = Some(target.host.clone());
+        known.port = Some(target.port);
+        let _ = app.db.upsert_device(&known);
     }
-    if failures > 0 {
+
+    if outcome.failed > 0 && !outcome.cancelled {
         let _ = client.cancel(&target, Some(&session_id)).await;
-        bail!("{failures} of {} file(s) failed", results.len());
     }
-    Ok(())
+    Ok(outcome)
 }
 
 fn transfer_record(
-    app: &App,
     session_id: &str,
-    device: &Device,
+    peer_alias: &str,
+    peer_fingerprint: &Fingerprint,
     file: &OutgoingFile,
     status: TransferStatus,
     error: Option<String>,
     started_at: i64,
 ) -> TransferRecord {
-    let _ = app;
     TransferRecord {
         id: uuid::Uuid::new_v4().to_string(),
         session_id: session_id.to_string(),
         direction: Direction::Send,
-        peer_fingerprint: device.fingerprint.to_string(),
-        peer_alias: device.alias.clone(),
+        peer_fingerprint: peer_fingerprint.to_string(),
+        peer_alias: peer_alias.to_string(),
         file_name: file.name.clone(),
         path: Some(file.path.clone()),
         size: file.size,

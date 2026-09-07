@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Added
+- 里程碑 3（第三部分）：剪贴板文件列表同步——复制文件时转为带 `x-lanext.intent = "clipboard"` 的普通传输，已配对的接收方自动接受并把收到的文件写入自己的剪贴板；`receive` 与 `clip watch` 共用同一套接收逻辑；`send` 的传输流程抽成可复用的 `transfer`。
 - 里程碑 3（第二部分）：剪贴板同步——`ClipboardItem` 模型，`POST /api/ext/v1/clipboard`（JSON / multipart，仅限已配对设备，大小上限），同步引擎（回环防止环形缓冲、超限提示、并行推送），macOS `NSPasteboard` 后端（`changeCount` 轮询，PNG 优先、TIFF 转 PNG，文件 URL），Windows `clipboard-win` 后端（事件监听、PNG 优先、CF_DIB 转 PNG、CF_HDROP），敏感文本启发式，剪贴板历史（默认 50 条，图片存缓存目录），CLI `clip watch / push / history`。
 - 里程碑 3（第一部分）：设备配对——`POST /api/ext/v1/pair` / `unpair`，双方各自显示由指纹派生的 6 位校验码并确认；服务端维护已配对指纹集合供私有端点鉴权；CLI `pair <device>`、`receive` 处理配对请求、`devices --unpair`，设备列表标记 P。
 - 里程碑 2（第三部分）：IPv6——每个有 IPv6 的接口按索引加入 `ff12::fd3a:e420` 组播组，HTTP 服务同时监听 `[::]`（v6-only），链路本地地址带 scope 回拨（自定义 DNS 解析器编码 `fe80::1%3`），命令行目标支持 `[fe80::1%en1]:53317`；设置 `ipv6` 可关闭。

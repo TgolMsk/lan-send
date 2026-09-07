@@ -1,17 +1,20 @@
 //! `lan-send clip watch / push / history` (ADR-0011).
 
 use crate::app::App;
+use crate::commands::incoming::{Incoming, IncomingOptions};
+use crate::commands::send::{TransferOptions, TransferOutcome, transfer};
 use crate::ui;
 use anyhow::{Context, bail};
 use bytes::Bytes;
 use lan_send_core::clipboard::{
-    ClipboardItem, ClipboardPayload, ClipboardSync, ImageFormat, SyncConfig, SyncEvent,
+    ClipboardItem, ClipboardPayload, ClipboardSync, ImageFormat, PeerTarget, SyncConfig, SyncEvent,
     platform_backend,
 };
-use lan_send_core::discovery::DiscoveryEvent;
-use lan_send_core::protocol::Fingerprint;
+use lan_send_core::discovery::{Discovery, DiscoveryEvent};
+use lan_send_core::protocol::{Fingerprint, INTENT_CLIPBOARD};
 use lan_send_core::store::ClipboardRecord;
-use lan_send_core::transport::{Client, ServerEvent};
+use lan_send_core::transfer::{CollectOptions, Destination, collect};
+use lan_send_core::transport::{Client, ServerEvent, SessionEndReason};
 use std::path::PathBuf;
 use std::time::Duration;
 use tokio::sync::mpsc;
@@ -23,6 +26,15 @@ pub async fn watch(app: App, devices: Vec<String>) -> anyhow::Result<()> {
     if peers.is_empty() {
         bail!("no paired devices; run `lan-send pair <device>` first");
     }
+    let root = app
+        .settings
+        .receive_dir
+        .clone()
+        .or_else(|| app.paths.download_dir.clone())
+        .context("no download directory known for clipboard files")?;
+    let destination = Destination::new(&root, app.settings.organize, app.settings.on_conflict)
+        .with_context(|| format!("cannot use {}", root.display()))?;
+    app.expire_partials();
 
     let (server_tx, mut server_rx) = mpsc::channel(256);
     let server = app
@@ -58,6 +70,15 @@ pub async fn watch(app: App, devices: Vec<String>) -> anyhow::Result<()> {
             .join(", ")
     );
     eprintln!("Press Ctrl+C to stop.");
+    let mut incoming = Incoming::new(
+        &app,
+        destination,
+        IncomingOptions {
+            auto_accept: false,
+            accept_pairing: false,
+            accept_clipboard_files: true,
+        },
+    );
 
     let ctrl_c = tokio::signal::ctrl_c();
     tokio::pin!(ctrl_c);
@@ -71,11 +92,7 @@ pub async fn watch(app: App, devices: Vec<String>) -> anyhow::Result<()> {
                 let Some(event) = event else { break };
                 match event {
                     ServerEvent::ClipboardReceived { peer, item, sensitive } => {
-                        let from = peer
-                            .cert_fingerprint
-                            .as_ref()
-                            .and_then(|fingerprint| sync.peers().into_iter().find(|p| &p.fingerprint == fingerprint))
-                            .map(|p| p.alias)
+                        let from = peer_alias(&sync, peer.cert_fingerprint.as_ref())
                             .unwrap_or_else(|| peer.addr.to_string());
                         let description = item.payload.describe();
                         match sync.apply_remote(item.clone()).await {
@@ -90,18 +107,52 @@ pub async fn watch(app: App, devices: Vec<String>) -> anyhow::Result<()> {
                             Err(err) => println!("Could not apply the clipboard from {from}: {err}"),
                         }
                     }
-                    ServerEvent::PairRequest { peer, alias, code, decision } => {
-                        app.answer_pair_request(&server, false, &peer, &alias, &code, decision).await;
-                        if let Ok(peers) = app.clipboard_peers(&devices) {
+                    other => {
+                        let was_pairing = matches!(other, ServerEvent::PairRequest { .. });
+                        if let Some(session) = incoming.handle(&server, &discovery, other).await
+                            && session.intent.as_deref() == Some(INTENT_CLIPBOARD)
+                            && session.reason == SessionEndReason::Finished
+                            && !session.received.is_empty()
+                        {
+                            println!(
+                                "{} shared {} clipboard file(s){}.",
+                                session.peer_alias,
+                                session.received.len(),
+                                if session.failed > 0 { format!(", {} failed", session.failed) } else { String::new() }
+                            );
+                            app.apply_clipboard_files(
+                                &session.received,
+                                &session.peer_fingerprint,
+                                Some(&sync),
+                            );
+                        }
+                        if was_pairing && let Ok(peers) = app.clipboard_peers(&devices) {
                             sync.set_peers(peers);
                         }
                     }
-                    other => app.handle_background_event(&discovery, other),
                 }
             }
             event = sync_rx.recv() => {
                 let Some(event) = event else { break };
                 match event {
+                    SyncEvent::FilesCopied(item) => {
+                        let ClipboardPayload::Files { paths } = &item.payload else { continue };
+                        println!(
+                            "{} copied here: {} file(s); sending as a transfer",
+                            ui::format_time(item.created_at / 1000),
+                            paths.len()
+                        );
+                        app.record_clipboard(&item, false);
+                        for peer in sync.peers() {
+                            match send_clipboard_files(&app, &discovery, &peer, paths).await {
+                                Ok(outcome) => println!(
+                                    "  -> {}: {} sent, {} failed, {} not accepted",
+                                    peer.alias, outcome.sent, outcome.failed, outcome.not_accepted
+                                ),
+                                Err(err) => println!("  -> {}: {err}", peer.alias),
+                            }
+                        }
+                    }
                     SyncEvent::LocalChange(item) => {
                         let stored = app.record_clipboard(&item, false);
                         println!(
@@ -112,11 +163,7 @@ pub async fn watch(app: App, devices: Vec<String>) -> anyhow::Result<()> {
                         );
                     }
                     SyncEvent::Pushed { peer, result, .. } => {
-                        let alias = sync
-                            .peers()
-                            .into_iter()
-                            .find(|p| p.fingerprint == peer)
-                            .map(|p| p.alias)
+                        let alias = peer_alias(&sync, Some(&peer))
                             .unwrap_or_else(|| peer.short().to_string());
                         match result {
                             Ok(()) => println!("  -> {alias}: ok"),
@@ -151,6 +198,14 @@ pub async fn watch(app: App, devices: Vec<String>) -> anyhow::Result<()> {
     Ok(())
 }
 
+fn peer_alias(sync: &ClipboardSync, fingerprint: Option<&Fingerprint>) -> Option<String> {
+    let fingerprint = fingerprint?;
+    sync.peers()
+        .into_iter()
+        .find(|peer| &peer.fingerprint == fingerprint)
+        .map(|peer| peer.alias)
+}
+
 /// Sends the current clipboard once to one paired device.
 pub async fn push(app: App, device: String) -> anyhow::Result<()> {
     let backend = platform_backend().context("the clipboard is not supported on this platform")?;
@@ -164,10 +219,25 @@ pub async fn push(app: App, device: String) -> anyhow::Result<()> {
     let Some(payload) = payload else {
         bail!("the clipboard is empty");
     };
-    if let ClipboardPayload::Files { .. } = payload {
-        bail!(
-            "file lists are sent with `lan-send send` (clipboard file sync arrives later in milestone 3)"
+    if let ClipboardPayload::Files { paths } = &payload {
+        let (events_tx, _events_rx) = mpsc::channel(8);
+        let server = app.start_server(None, true, events_tx).await?;
+        let discovery = app.start_discovery(server.port());
+        let result = send_clipboard_files(&app, &discovery, &peer, paths).await;
+        server.stop().await;
+        discovery.stop().await;
+        let outcome = result?;
+        let item = ClipboardItem::new(app.identity.fingerprint().clone(), payload.clone());
+        app.record_clipboard(&item, false);
+        println!(
+            "Pushed {} file(s) to {}: {} sent, {} failed, {} not accepted",
+            paths.len(),
+            peer.alias,
+            outcome.sent,
+            outcome.failed,
+            outcome.not_accepted
         );
+        return Ok(());
     }
     let item = ClipboardItem::new(app.identity.fingerprint().clone(), payload);
     let client = Client::new(
@@ -187,6 +257,42 @@ pub async fn push(app: App, device: String) -> anyhow::Result<()> {
         if stored { "" } else { " (not kept in history)" }
     );
     Ok(())
+}
+
+/// Sends copied files to one peer as a transfer carrying the clipboard
+/// intent, so the peer puts them onto its clipboard when done.
+async fn send_clipboard_files(
+    app: &App,
+    discovery: &Discovery,
+    peer: &PeerTarget,
+    paths: &[PathBuf],
+) -> anyhow::Result<TransferOutcome> {
+    let outgoing = collect(
+        paths,
+        &CollectOptions {
+            skip_hidden: app.settings.skip_hidden_files,
+        },
+    )?;
+    let target = discovery
+        .device_by_fingerprint(&peer.fingerprint)
+        .map(|device| device.target())
+        .unwrap_or_else(|| peer.target.clone());
+    transfer(
+        app,
+        discovery,
+        &peer.alias,
+        &peer.fingerprint,
+        &target,
+        outgoing.files,
+        TransferOptions {
+            pin: None,
+            parallel: app.settings.parallel_uploads,
+            checksum: app.settings.create_checksums,
+            intent: Some(INTENT_CLIPBOARD.to_string()),
+        },
+        None,
+    )
+    .await
 }
 
 /// Lists, restores, deletes or clears the clipboard history.
@@ -258,7 +364,22 @@ pub fn history(
                 record.image_format.clone().unwrap_or_default(),
                 ui::format_bytes(record.size)
             ),
-            _ => format!("{} file(s)", record.file_paths.len()),
+            _ => format!(
+                "{} file(s): {}",
+                record.file_paths.len(),
+                record
+                    .file_paths
+                    .iter()
+                    .take(3)
+                    .map(|path| {
+                        std::path::Path::new(path)
+                            .file_name()
+                            .map(|name| name.to_string_lossy().into_owned())
+                            .unwrap_or_else(|| path.clone())
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
         };
         println!(
             "{:<8} {:<16} {:<10} {:<6} {content}",

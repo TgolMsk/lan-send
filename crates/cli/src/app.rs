@@ -17,6 +17,7 @@ use lan_send_core::transport::{
     UploadDecision, server,
 };
 use std::collections::HashSet;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc;
@@ -291,6 +292,40 @@ impl App {
             Err(err) => tracing::warn!("could not prune the clipboard history: {err}"),
         }
         true
+    }
+
+    /// Puts received clipboard files onto the local clipboard and records
+    /// them; `sync` (when a watcher runs) is told so it does not push them
+    /// back.
+    pub fn apply_clipboard_files(
+        &self,
+        paths: &[PathBuf],
+        origin: &str,
+        sync: Option<&lan_send_core::clipboard::ClipboardSync>,
+    ) {
+        use lan_send_core::clipboard::{ClipboardPayload, backend::with_retry, platform_backend};
+
+        let Some(backend) = platform_backend() else {
+            println!(
+                "Received {} clipboard file(s); no clipboard on this platform.",
+                paths.len()
+            );
+            return;
+        };
+        let payload = ClipboardPayload::Files {
+            paths: paths.to_vec(),
+        };
+        let item = ClipboardItem::new(Fingerprint::parse(origin), payload.clone());
+        if let Some(sync) = sync {
+            sync.remember(item.content_hash);
+        }
+        match with_retry(|| backend.write(&payload)) {
+            Ok(()) => {
+                self.record_clipboard(&item, false);
+                println!("Clipboard now holds {} received file(s).", paths.len());
+            }
+            Err(err) => println!("Received the files but could not set the clipboard: {err}"),
+        }
     }
 
     /// Removes partial uploads older than the resume window, files included.

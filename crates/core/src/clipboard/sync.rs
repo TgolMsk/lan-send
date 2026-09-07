@@ -61,6 +61,10 @@ impl SyncConfig {
 pub enum SyncEvent {
     /// The local clipboard changed and the item is being pushed.
     LocalChange(ClipboardItem),
+    /// The local clipboard holds files. They are not pushed through the
+    /// clipboard endpoint: the application sends them as a file transfer
+    /// with the clipboard intent (ADR-0011).
+    FilesCopied(ClipboardItem),
     /// A push to one peer finished.
     Pushed {
         item_id: String,
@@ -161,6 +165,12 @@ impl ClipboardSync {
         let item = ClipboardItem::new(self.inner.origin.clone(), payload);
         self.inner.push(item.clone()).await;
         Ok(Some(item))
+    }
+
+    /// Marks content as written by us, so the watcher ignores it when it
+    /// shows up on the local clipboard.
+    pub fn remember(&self, hash: [u8; 32]) {
+        self.inner.recent.lock().remember(hash);
     }
 
     /// Writes a remote item to the local clipboard, remembering its hash so
@@ -278,6 +288,10 @@ async fn watch_loop(inner: Arc<Inner>, poll_interval: Duration, cancel: Cancella
             continue;
         }
         let item = ClipboardItem::new(inner.origin.clone(), payload);
+        if matches!(item.payload, ClipboardPayload::Files { .. }) {
+            let _ = inner.events.send(SyncEvent::FilesCopied(item)).await;
+            continue;
+        }
         inner.push(item).await;
     }
 }

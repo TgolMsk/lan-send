@@ -3,6 +3,7 @@ pub mod devices;
 pub mod discover;
 pub mod history;
 pub mod identity;
+pub mod incoming;
 pub mod pair;
 pub mod receive;
 pub mod send;
