@@ -1,0 +1,23 @@
+[package]
+name = "lan-send-cli"
+description = "Command-line client of lan-send (macOS, Windows). Used for interoperability testing and headless use."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "lan-send"
+path = "src/main.rs"
+
+[dependencies]
+lan-send-core = { path = "../core" }
+anyhow.workspace = true
+clap.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[lints]
+workspace = true

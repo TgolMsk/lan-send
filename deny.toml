@@ -1,0 +1,33 @@
+# cargo-deny configuration: enforces the "every dependency must be MIT-compatible"
+# rule from the brief. Run locally with `cargo deny check`; CI runs it on every push.
+[graph]
+all-features = true
+
+[licenses]
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "CC0-1.0",
+    "OpenSSL",
+]
+# Anything not listed above (GPL, AGPL, LGPL, MPL, SSPL, ...) fails the check and
+# must be discussed before it is added.
+confidence-threshold = 0.9
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+
+[advisories]
+yanked = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

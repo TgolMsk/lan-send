@@ -1,0 +1,25 @@
+# Rust
+/target/
+**/*.rs.bk
+
+# Node / frontend (apps/app)
+node_modules/
+/apps/app/dist/
+/apps/app/src-tauri/target/
+/apps/app/src-tauri/gen/apple/build/
+/apps/app/src-tauri/gen/apple/DerivedData/
+/apps/app/src-tauri/gen/apple/*.xcodeproj/xcuserdata/
+/apps/app/src-tauri/gen/apple/*.xcodeproj/project.xcworkspace/xcuserdata/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Local secrets and scratch
+.env
+.env.*
+/tests/interop/.cache/
+*.log

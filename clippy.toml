@@ -1,0 +1,3 @@
+# `unwrap()` / `expect()` stay legal inside #[cfg(test)] code.
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
