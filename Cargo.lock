@@ -1015,6 +1015,7 @@ dependencies = [
  "tokio-util",
  "tower",
  "tracing",
+ "tracing-subscriber",
  "uuid",
  "walkdir",
  "x509-parser",

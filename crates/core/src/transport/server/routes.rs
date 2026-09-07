@@ -1,19 +1,23 @@
-//! The HTTP routes of the v2 upload API.
+//! The HTTP routes of the v2 upload API plus the resume extension.
 
-use super::save::{self, SaveOutcome, Timestamps};
-use super::state::{AppState, FileStatus, PinCheck, Session, SessionFile};
+use super::save::{self, SaveOptions, SaveOutcome, Timestamps};
+use super::state::{AppState, FileStatus, PinCheck, Session, SessionFile, UploadRefusal};
 use super::{Peer, ServerEvent, SessionEndReason, UploadDecision, UploadTarget};
 use crate::protocol::{
-    DeviceInfo, ErrorResponse, PeerInfo, PrepareUploadRequest, PrepareUploadResponse,
+    DeviceInfo, ErrorResponse, FEATURE_RESUME, PeerInfo, PrepareUploadRequest,
+    PrepareUploadResponse, RESUME_OFFSET_HEADER, RESUME_PATH, RESUME_TOKEN_HEADER,
+    ResumeOffsetResponse,
 };
 use axum::Router;
 use axum::body::Bytes;
 use axum::extract::{DefaultBodyLimit, Extension, Query, Request, State};
-use axum::http::StatusCode;
+use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Json, Response};
 use axum::routing::{get, post};
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Instant;
 use tokio::sync::oneshot;
 use uuid::Uuid;
 
@@ -35,6 +39,7 @@ pub(super) fn router(state: Arc<AppState>) -> Router {
             post(upload).layer(DefaultBodyLimit::disable()),
         )
         .route("/api/localsend/v2/cancel", post(cancel))
+        .route(RESUME_PATH, get(resume_offset))
         .fallback(not_found)
         .layer(DefaultBodyLimit::max(MAX_JSON_BODY))
         .with_state(state)
@@ -44,6 +49,7 @@ pub(super) fn router(state: Arc<AppState>) -> Router {
 struct ApiError {
     status: StatusCode,
     message: String,
+    headers: Vec<(&'static str, String)>,
 }
 
 impl ApiError {
@@ -51,6 +57,7 @@ impl ApiError {
         Self {
             status,
             message: message.into(),
+            headers: Vec::new(),
         }
     }
 
@@ -61,17 +68,32 @@ impl ApiError {
     fn internal() -> Self {
         Self::new(StatusCode::INTERNAL_SERVER_ERROR, "Internal server error")
     }
+
+    fn invalid_token() -> Self {
+        Self::new(StatusCode::FORBIDDEN, "Invalid token or IP address")
+    }
+
+    fn with_header(mut self, name: &'static str, value: String) -> Self {
+        self.headers.push((name, value));
+        self
+    }
 }
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
-        (
+        let mut response = (
             self.status,
             Json(ErrorResponse {
                 message: self.message,
             }),
         )
-            .into_response()
+            .into_response();
+        for (name, value) in self.headers {
+            if let Ok(value) = value.parse() {
+                response.headers_mut().insert(name, value);
+            }
+        }
+        response
     }
 }
 
@@ -139,6 +161,11 @@ async fn prepare_upload(
     if request.files.is_empty() {
         return Err(ApiError::bad_request("No files provided"));
     }
+    let sender_resumes = request
+        .info
+        .ext
+        .as_ref()
+        .is_some_and(|ext| ext.supports(FEATURE_RESUME));
 
     let session_id = Uuid::new_v4().to_string();
     let Some(cancelled) = state.claim_pending(&session_id, peer.addr) else {
@@ -170,12 +197,13 @@ async fn prepare_upload(
         }
     };
 
-    let accepted = match decision {
+    let (accepted, offsets) = match decision {
         UploadDecision::Decline => {
             pending.clear();
             return Err(ApiError::new(StatusCode::FORBIDDEN, "Rejected"));
         }
-        UploadDecision::Accept(ids) => ids,
+        UploadDecision::Accept(ids) => (ids, HashMap::new()),
+        UploadDecision::AcceptWithResume { files, offsets } => (files, offsets),
     };
 
     let files: HashMap<String, SessionFile> = request
@@ -188,6 +216,7 @@ async fn prepare_upload(
                 token: Uuid::new_v4().to_string(),
                 status: FileStatus::Pending,
                 attempts: 0,
+                path: None,
             };
             (id, file)
         })
@@ -202,20 +231,30 @@ async fn prepare_upload(
         .iter()
         .map(|(id, file)| (id.clone(), file.token.clone()))
         .collect();
+    let resume_token = sender_resumes.then(random_token);
+    let resume_offsets: HashMap<String, u64> = offsets
+        .into_iter()
+        .filter(|(id, offset)| *offset > 0 && files.contains_key(id))
+        .collect();
     state.activate(Session {
         session_id: session_id.clone(),
         peer: peer.addr,
         files,
+        resume_token: resume_token.clone(),
+        last_activity: Instant::now(),
     });
     pending.disarm();
     tracing::info!(
-        "upload session {session_id} started with {} file(s)",
-        tokens.len()
+        "upload session {session_id} started with {} file(s){}",
+        tokens.len(),
+        if sender_resumes { ", resumable" } else { "" }
     );
 
     Ok(Json(PrepareUploadResponse {
         session_id,
         files: tokens,
+        resume_token,
+        resume_offsets: (sender_resumes && !resume_offsets.is_empty()).then_some(resume_offsets),
     })
     .into_response())
 }
@@ -224,6 +263,7 @@ async fn upload(
     State(state): State<Arc<AppState>>,
     Extension(peer): Extension<Peer>,
     Query(query): Params,
+    headers: HeaderMap,
     request: Request,
 ) -> Result<Response, ApiError> {
     let (Some(session_id), Some(file_id), Some(token)) = (
@@ -233,36 +273,65 @@ async fn upload(
     ) else {
         return Err(ApiError::bad_request("Missing parameters"));
     };
+    let resume_token = header_string(&headers, RESUME_TOKEN_HEADER);
+    let resume_from = parse_range(&headers)?;
+    if resume_from.is_some() && resume_token.is_none() {
+        return Err(ApiError::new(
+            StatusCode::FORBIDDEN,
+            "Resume token required",
+        ));
+    }
 
-    let file = state
-        .begin_upload(&session_id, &file_id, &token, peer.addr)
-        .ok_or_else(|| ApiError::new(StatusCode::FORBIDDEN, "Invalid token or IP address"))?;
-    // Marks the file as failed if this request ends mid-transfer.
+    let start = state
+        .begin_upload(
+            &session_id,
+            &file_id,
+            &token,
+            peer.addr,
+            resume_token.as_deref(),
+        )
+        .map_err(|refusal| match refusal {
+            UploadRefusal::Invalid => ApiError::invalid_token(),
+            UploadRefusal::InProgress => {
+                ApiError::new(StatusCode::CONFLICT, "File upload in progress")
+            }
+        })?;
+    let file = start.file;
+    // Marks the file as interrupted if this request ends mid-transfer.
     let mut guard = UploadGuard::new(state.clone(), session_id.clone(), file_id.clone());
 
-    let (target_tx, target_rx) = oneshot::channel();
-    let event = ServerEvent::FileUpload {
-        session_id: session_id.clone(),
-        file_id: file_id.clone(),
-        file: file.clone(),
-        target: target_tx,
-    };
-    if state.events.send(event).await.is_err() {
-        guard.finish(&SaveOutcome::Failed("no application listening".into()));
-        return Err(ApiError::internal());
-    }
-    let path = match target_rx.await {
-        Ok(UploadTarget::Path(path)) => path,
-        Ok(UploadTarget::Reject(reason)) => {
-            tracing::warn!("file {file_id} rejected by the application: {reason}");
-            guard.finish(&SaveOutcome::Failed(reason));
-            return Err(ApiError::internal());
+    // The path of an earlier attempt is reused so its part file is found;
+    // otherwise the application decides.
+    let path = match start.path {
+        Some(path) => path,
+        None => {
+            let (target_tx, target_rx) = oneshot::channel();
+            let event = ServerEvent::FileUpload {
+                session_id: session_id.clone(),
+                file_id: file_id.clone(),
+                file: file.clone(),
+                target: target_tx,
+            };
+            if state.events.send(event).await.is_err() {
+                guard.finish(&SaveOutcome::Failed("no application listening".into()));
+                return Err(ApiError::internal());
+            }
+            match target_rx.await {
+                Ok(UploadTarget::Path(path)) => path,
+                Ok(UploadTarget::Reject(reason)) => {
+                    tracing::warn!("file {file_id} rejected by the application: {reason}");
+                    guard.finish(&SaveOutcome::Failed(reason));
+                    return Err(ApiError::internal());
+                }
+                Err(_) => {
+                    guard.finish(&SaveOutcome::Failed("no save target".into()));
+                    return Err(ApiError::internal());
+                }
+            }
         }
-        Err(_) => {
-            guard.finish(&SaveOutcome::Failed("no save target".into()));
-            return Err(ApiError::internal());
-        }
     };
+    state.set_file_path(&session_id, &file_id, path.clone());
+    guard.path = Some(path.clone());
 
     let expected_sha256 = match state.verify_checksums {
         true => file.sha256.clone(),
@@ -278,14 +347,19 @@ async fn upload(
         .unwrap_or_default();
 
     let events = state.events.clone();
-    let mut last_reported = 0u64;
+    let mut last_reported = resume_from.unwrap_or(0);
     let (progress_session, progress_file) = (session_id.clone(), file_id.clone());
     let outcome = save::save_body(
         request.into_body(),
         &path,
-        file.size,
-        expected_sha256.as_deref(),
-        timestamps,
+        SaveOptions {
+            expected_size: file.size,
+            expected_sha256: expected_sha256.as_deref(),
+            timestamps,
+            resume_from,
+            keep_partial: start.resumable,
+            idle_timeout: state.upload_idle_timeout,
+        },
         |received| {
             if received == file.size || received - last_reported >= PROGRESS_STEP {
                 last_reported = received;
@@ -299,6 +373,10 @@ async fn upload(
     )
     .await;
 
+    let received = match &outcome {
+        SaveOutcome::Success => file.size,
+        other => other.received().unwrap_or(0),
+    };
     let _ = state
         .events
         .send(ServerEvent::FileUploadResult {
@@ -306,6 +384,7 @@ async fn upload(
             file_id: file_id.clone(),
             path,
             outcome: outcome.clone(),
+            received,
         })
         .await;
     guard.finish(&outcome);
@@ -316,10 +395,42 @@ async fn upload(
             StatusCode::UNPROCESSABLE_ENTITY,
             "Checksum mismatch",
         )),
-        SaveOutcome::Failed(message) => {
-            Err(ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, message))
+        SaveOutcome::OffsetMismatch { expected } => Err(ApiError::new(
+            StatusCode::RANGE_NOT_SATISFIABLE,
+            format!("Expected upload offset {expected}"),
+        )
+        .with_header(RESUME_OFFSET_HEADER, expected.to_string())),
+        SaveOutcome::Interrupted { reason, .. } | SaveOutcome::Failed(reason) => {
+            Err(ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, reason))
         }
     }
+}
+
+/// Resume extension: how many bytes of a pending file the receiver holds.
+async fn resume_offset(
+    State(state): State<Arc<AppState>>,
+    Extension(peer): Extension<Peer>,
+    Query(query): Params,
+    headers: HeaderMap,
+) -> Result<Json<ResumeOffsetResponse>, ApiError> {
+    let (Some(session_id), Some(file_id)) = (query.get("sessionId"), query.get("fileId")) else {
+        return Err(ApiError::bad_request("Missing parameters"));
+    };
+    let token = header_string(&headers, RESUME_TOKEN_HEADER)
+        .ok_or_else(|| ApiError::new(StatusCode::FORBIDDEN, "Resume token required"))?;
+    let path = state
+        .resume_lookup(session_id, file_id, peer.addr, &token)
+        .map_err(|refusal| match refusal {
+            UploadRefusal::Invalid => ApiError::invalid_token(),
+            UploadRefusal::InProgress => {
+                ApiError::new(StatusCode::CONFLICT, "File upload in progress")
+            }
+        })?;
+    let offset = match path {
+        Some(path) => save::partial_length(&path).await,
+        None => 0,
+    };
+    Ok(Json(ResumeOffsetResponse { offset }))
 }
 
 async fn cancel(
@@ -352,6 +463,31 @@ async fn cancel(
     }
 
     Ok(StatusCode::OK.into_response())
+}
+
+fn header_string(headers: &HeaderMap, name: &str) -> Option<String> {
+    headers
+        .get(name)
+        .and_then(|value| value.to_str().ok())
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
+/// `Range: bytes=<offset>-`, the only form the resume extension uses.
+fn parse_range(headers: &HeaderMap) -> Result<Option<u64>, ApiError> {
+    let Some(range) = header_string(headers, "range") else {
+        return Ok(None);
+    };
+    let offset = range
+        .strip_prefix("bytes=")
+        .and_then(|rest| rest.strip_suffix('-'))
+        .and_then(|start| start.trim().parse::<u64>().ok())
+        .ok_or_else(|| ApiError::bad_request("Unsupported Range header"))?;
+    Ok(Some(offset))
+}
+
+fn random_token() -> String {
+    format!("{}{}", Uuid::new_v4().simple(), Uuid::new_v4().simple())
 }
 
 /// Frees a claimed pending slot unless a session was created, also when the
@@ -399,12 +535,13 @@ impl Drop for PendingGuard {
     }
 }
 
-/// Records the outcome of an upload, as a failure when the handler future is
-/// dropped mid-transfer.
+/// Records the outcome of an upload, as an interruption when the handler
+/// future is dropped mid-transfer (the sender's connection went away).
 struct UploadGuard {
     state: Arc<AppState>,
     session_id: String,
     file_id: String,
+    path: Option<PathBuf>,
     armed: bool,
 }
 
@@ -414,6 +551,7 @@ impl UploadGuard {
             state,
             session_id,
             file_id,
+            path: None,
             armed: true,
         }
     }
@@ -432,8 +570,36 @@ impl UploadGuard {
 
 impl Drop for UploadGuard {
     fn drop(&mut self) {
-        if self.armed {
-            self.finish(&SaveOutcome::Failed("upload aborted".into()));
+        if !self.armed {
+            return;
+        }
+        let outcome = SaveOutcome::Interrupted {
+            received: 0,
+            reason: "connection dropped".into(),
+        };
+        self.finish(&outcome);
+        // Tell the application how much is on disk, for its partial records.
+        let Some(path) = self.path.take() else {
+            return;
+        };
+        let events = self.state.events.clone();
+        let (session_id, file_id) = (self.session_id.clone(), self.file_id.clone());
+        if let Ok(handle) = tokio::runtime::Handle::try_current() {
+            handle.spawn(async move {
+                let received = save::partial_length(&path).await;
+                let _ = events
+                    .send(ServerEvent::FileUploadResult {
+                        session_id,
+                        file_id,
+                        path,
+                        outcome: SaveOutcome::Interrupted {
+                            received,
+                            reason: "connection dropped".into(),
+                        },
+                        received,
+                    })
+                    .await;
+            });
         }
     }
 }

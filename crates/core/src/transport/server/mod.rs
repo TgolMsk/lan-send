@@ -9,7 +9,7 @@ mod routes;
 mod save;
 mod state;
 
-pub use save::SaveOutcome;
+pub use save::{SaveOutcome, part_path, partial_length};
 
 use crate::protocol::{DeviceInfo, FileDto, Fingerprint};
 use crate::transport::identity::Identity;
@@ -40,9 +40,16 @@ pub struct ServerConfig {
     pub pin: Option<String>,
     /// Verify sender-provided SHA-256 checksums after receiving.
     pub verify_checksums: bool,
+    /// An upload whose body sends nothing for this long is treated as
+    /// interrupted (a sender that vanished without closing the connection).
+    /// [`DEFAULT_UPLOAD_IDLE_TIMEOUT`] is a sensible value.
+    pub upload_idle_timeout: Duration,
     /// Where events for the application go.
     pub events: mpsc::Sender<ServerEvent>,
 }
+
+/// Thirty seconds without data on an upload counts as an interruption.
+pub const DEFAULT_UPLOAD_IDLE_TIMEOUT: Duration = Duration::from_secs(30);
 
 #[derive(Debug, thiserror::Error)]
 pub enum ServerError {
@@ -117,12 +124,15 @@ pub enum ServerEvent {
         received: u64,
     },
 
-    /// A file upload finished, successfully or not.
+    /// A file upload finished, successfully or not. `received` is what the
+    /// (part) file holds afterwards; with the resume extension an
+    /// interrupted upload keeps its part file and stays pending.
     FileUploadResult {
         session_id: String,
         file_id: String,
         path: PathBuf,
         outcome: SaveOutcome,
+        received: u64,
     },
 
     /// All accepted files reached a final state, or the sender cancelled.
@@ -142,6 +152,13 @@ pub enum ServerEvent {
 pub enum UploadDecision {
     /// Accept these file ids (any subset; empty answers 204).
     Accept(HashSet<String>),
+    /// Accept these file ids and, for files whose part file the application
+    /// still holds, tell the sender how many bytes to skip (resume
+    /// extension; only used when the sender announced `resume`).
+    AcceptWithResume {
+        files: HashSet<String>,
+        offsets: HashMap<String, u64>,
+    },
     /// Reject the whole request (403).
     Decline,
 }
@@ -160,6 +177,8 @@ pub enum UploadTarget {
 pub enum SessionEndReason {
     Finished,
     Cancelled,
+    /// No request for ten minutes; the slot was freed.
+    TimedOut,
 }
 
 /// A running server.
@@ -221,6 +240,7 @@ pub async fn start(config: ServerConfig) -> Result<ServerHandle, ServerError> {
         device,
         config.pin,
         config.verify_checksums,
+        config.upload_idle_timeout,
         config.events,
     ));
     let router = routes::router(state.clone());
@@ -237,6 +257,7 @@ pub async fn start(config: ServerConfig) -> Result<ServerHandle, ServerError> {
         cancel.clone(),
         connections.clone(),
     ));
+    connections.spawn(reap_idle_sessions(state.clone(), cancel.clone()));
 
     Ok(ServerHandle {
         port,
@@ -245,6 +266,21 @@ pub async fn start(config: ServerConfig) -> Result<ServerHandle, ServerError> {
         connections,
         task: parking_lot::Mutex::new(Some(task)),
     })
+}
+
+/// Frees the session slot when a sender disappears without cancelling.
+async fn reap_idle_sessions(state: Arc<state::AppState>, cancel: CancellationToken) {
+    let mut ticker = tokio::time::interval(Duration::from_secs(60));
+    loop {
+        tokio::select! {
+            _ = cancel.cancelled() => return,
+            _ = ticker.tick() => {}
+        }
+        if let Some(session_id) = state.reap_idle() {
+            tracing::info!("upload session {session_id} timed out");
+            state.emit_session_end(session_id, SessionEndReason::TimedOut);
+        }
+    }
 }
 
 async fn accept_loop(

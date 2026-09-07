@@ -315,7 +315,50 @@ pub struct PrepareUploadResponse {
     pub session_id: String,
     /// File id → upload token, only for the accepted files.
     pub files: HashMap<String, String>,
+
+    /// Resume extension: the token to send with `Range` uploads and resume
+    /// queries. Only present for senders that announced `resume`.
+    #[serde(
+        default,
+        rename = "x-resume-token",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub resume_token: Option<String>,
+
+    /// Resume extension: file id → bytes the receiver already holds.
+    #[serde(
+        default,
+        rename = "x-resume-offsets",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub resume_offsets: Option<HashMap<String, u64>>,
 }
+
+impl PrepareUploadResponse {
+    /// Bytes the receiver already has for `file_id` (0 when unknown).
+    pub fn resume_offset(&self, file_id: &str) -> u64 {
+        self.resume_offsets
+            .as_ref()
+            .and_then(|offsets| offsets.get(file_id).copied())
+            .unwrap_or(0)
+    }
+}
+
+/// Response of `GET /api/ext/v1/resume` (resume extension).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ResumeOffsetResponse {
+    /// Bytes the receiver holds for the file.
+    pub offset: u64,
+}
+
+/// Header carrying the resume token on `Range` uploads and resume queries.
+pub const RESUME_TOKEN_HEADER: &str = "x-resume-token";
+
+/// Header on a 416 response: the offset the receiver expects.
+pub const RESUME_OFFSET_HEADER: &str = "x-resume-offset";
+
+/// Path of the resume query endpoint.
+pub const RESUME_PATH: &str = "/api/ext/v1/resume";
 
 /// Error body used by every route.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -430,8 +473,25 @@ mod tests {
         let response = PrepareUploadResponse {
             session_id: "s".into(),
             files: HashMap::from([("f".to_string(), "t".to_string())]),
+            resume_token: None,
+            resume_offsets: None,
         };
         let json = serde_json::to_string(&response).unwrap();
         assert_eq!(json, r#"{"sessionId":"s","files":{"f":"t"}}"#);
+
+        let official = r#"{"sessionId":"s","files":{"f":"t"}}"#;
+        let parsed: PrepareUploadResponse = serde_json::from_str(official).unwrap();
+        assert_eq!(parsed.resume_offset("f"), 0);
+
+        let resumable = PrepareUploadResponse {
+            resume_token: Some("tok".into()),
+            resume_offsets: Some(HashMap::from([("f".to_string(), 7u64)])),
+            ..response
+        };
+        let json = serde_json::to_value(&resumable).unwrap();
+        assert_eq!(json["x-resume-token"], "tok");
+        assert_eq!(json["x-resume-offsets"]["f"], 7);
+        let back: PrepareUploadResponse = serde_json::from_value(json).unwrap();
+        assert_eq!(back.resume_offset("f"), 7);
     }
 }

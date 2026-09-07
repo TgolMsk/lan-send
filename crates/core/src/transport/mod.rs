@@ -9,7 +9,7 @@ pub mod identity;
 pub mod server;
 pub mod tls;
 
-pub use client::{Client, ClientError, PrepareUploadOutcome, Registered, Target};
+pub use client::{Client, ClientError, PrepareUploadOutcome, Registered, Resume, Target};
 pub use identity::{CertError, Identity, IdentityError};
 pub use server::{
     Peer, ServerConfig, ServerError, ServerEvent, ServerHandle, SessionEndReason, UploadDecision,

@@ -3,7 +3,9 @@
 use crate::{ClientCerts, Globals};
 use anyhow::Context;
 use lan_send_core::discovery::{Device, Discovery, DiscoveryConfig, DiscoveryEvent};
-use lan_send_core::protocol::{DeviceInfo, DeviceType, Extensions, PROTOCOL_VERSION, ProtocolType};
+use lan_send_core::protocol::{
+    DeviceInfo, DeviceType, Extensions, FEATURE_RESUME, PROTOCOL_VERSION, ProtocolType,
+};
 use lan_send_core::store::{AppPaths, Database, KnownDevice, Settings, TransferRecord};
 use lan_send_core::transport::{
     ClientCertPolicy, Identity, ServerConfig, ServerEvent, ServerHandle, Target, UploadDecision,
@@ -15,6 +17,8 @@ use tokio::sync::mpsc;
 
 /// Devices seen within this window are probed at startup, like favorites.
 const RECENT_DEVICE_WINDOW: Duration = Duration::from_secs(7 * 24 * 3600);
+/// Partial uploads older than this are discarded (ADR-0008).
+pub const RESUME_WINDOW: Duration = Duration::from_secs(24 * 3600);
 
 pub struct App {
     pub paths: AppPaths,
@@ -74,7 +78,28 @@ impl App {
             port,
             protocol: ProtocolType::Https,
             download: false,
-            ext: Some(Extensions::current(Vec::<String>::new())),
+            ext: Some(Extensions::current(self.features())),
+        }
+    }
+
+    /// Extension features this device announces.
+    pub fn features(&self) -> Vec<&'static str> {
+        let mut features = Vec::new();
+        if self.settings.resume {
+            features.push(FEATURE_RESUME);
+        }
+        features
+    }
+
+    /// Removes partial uploads older than the resume window, files included.
+    pub fn expire_partials(&self) {
+        match self.db.expire_partials(RESUME_WINDOW) {
+            Ok(expired) => {
+                for partial in expired {
+                    let _ = std::fs::remove_file(&partial.part_path);
+                }
+            }
+            Err(err) => tracing::warn!("could not expire partial uploads: {err}"),
         }
     }
 
@@ -91,6 +116,7 @@ impl App {
             device: self.device_info(self.port),
             pin,
             verify_checksums,
+            upload_idle_timeout: server::DEFAULT_UPLOAD_IDLE_TIMEOUT,
             events,
         })
         .await?;

@@ -4,10 +4,12 @@ use anyhow::{Context, bail};
 use futures_util::StreamExt;
 use indicatif::MultiProgress;
 use lan_send_core::discovery::{Device, Discovery};
-use lan_send_core::protocol::{DEFAULT_PORT, PrepareUploadRequest, ProtocolType};
+use lan_send_core::protocol::{DEFAULT_PORT, FEATURE_RESUME, PrepareUploadRequest, ProtocolType};
 use lan_send_core::store::{Direction, TransferRecord, TransferStatus, unix_now};
 use lan_send_core::transfer::{CollectOptions, OutgoingFile, collect};
-use lan_send_core::transport::{Client, ClientError, PrepareUploadOutcome, ServerEvent, Target};
+use lan_send_core::transport::{
+    Client, ClientError, PrepareUploadOutcome, Resume, ServerEvent, Target,
+};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
@@ -150,7 +152,19 @@ async fn send(
         }
     };
 
-    let session_id = response.session_id;
+    let session_id = response.session_id.clone();
+    let resume_token: Option<Arc<str>> = match (&response.resume_token, app.settings.resume) {
+        (Some(token), true) if device.supports(FEATURE_RESUME) => Some(Arc::from(token.as_str())),
+        _ => None,
+    };
+    let resumed: Vec<&str> = files
+        .iter()
+        .filter(|file| response.resume_offset(&file.id) > 0)
+        .map(|file| file.name.as_str())
+        .collect();
+    if resume_token.is_some() && !resumed.is_empty() {
+        eprintln!("Resuming {} file(s): {}", resumed.len(), resumed.join(", "));
+    }
     let (accepted, skipped): (Vec<&OutgoingFile>, Vec<&OutgoingFile>) = files
         .iter()
         .partition(|file| response.files.contains_key(&file.id));
@@ -218,11 +232,18 @@ async fn send(
             let target = target.clone();
             let session = session.clone();
             let cancel = cancel.clone();
+            let resume_token = resume_token.clone();
+            let offset = response.resume_offset(&file.id);
             async move {
-                let result = upload_with_retries(
-                    &client, &target, &session, &file.id, &token, &file.path, &bar, &cancel,
-                )
-                .await;
+                let plan = UploadPlan {
+                    session_id: &session,
+                    file_id: &file.id,
+                    token: &token,
+                    path: &file.path,
+                    resume_token: resume_token.as_deref(),
+                    offset,
+                };
+                let result = upload_with_retries(&client, &target, plan, &bar, &cancel).await;
                 bar.finish_and_clear();
                 (file, result)
             }
@@ -302,36 +323,90 @@ fn transfer_record(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+/// Everything one file upload needs.
+struct UploadPlan<'a> {
+    session_id: &'a str,
+    file_id: &'a str,
+    token: &'a str,
+    path: &'a Path,
+    /// Present when both sides support the resume extension.
+    resume_token: Option<&'a str>,
+    /// Bytes the receiver already holds (from an earlier session).
+    offset: u64,
+}
+
 async fn upload_with_retries(
     client: &Client,
     target: &Target,
-    session_id: &str,
-    file_id: &str,
-    token: &str,
-    path: &Path,
+    plan: UploadPlan<'_>,
     bar: &indicatif::ProgressBar,
     cancel: &CancellationToken,
 ) -> Result<(), String> {
     let mut attempt = 0;
+    let mut offset = if plan.resume_token.is_some() {
+        plan.offset
+    } else {
+        0
+    };
     loop {
         attempt += 1;
+        bar.set_position(offset);
         let bar_for_progress = bar.clone();
-        let upload = client.upload_file(target, session_id, file_id, token, path, move |sent| {
-            bar_for_progress.set_position(sent);
-        });
+        let resume = plan
+            .resume_token
+            .filter(|_| offset > 0)
+            .map(|token| Resume { offset, token });
+        let upload = client.upload_file_from(
+            target,
+            plan.session_id,
+            plan.file_id,
+            plan.token,
+            plan.path,
+            resume,
+            move |sent| bar_for_progress.set_position(sent),
+        );
         let result = tokio::select! {
             result = upload => result,
             _ = cancel.cancelled() => return Err("cancelled".into()),
         };
         match result {
             Ok(()) => return Ok(()),
-            Err(ClientError::Status { status: 422, .. }) if attempt < MAX_ATTEMPTS => {
-                bar.set_position(0);
+            Err(_) if attempt >= MAX_ATTEMPTS => {
+                return Err(format!("gave up after {attempt} attempts"));
+            }
+            Err(ClientError::Status { status: 422, .. }) => {
                 tracing::warn!(
                     "checksum mismatch reported for {}, retrying",
-                    path.display()
+                    plan.path.display()
                 );
+                offset = 0;
+            }
+            Err(ClientError::OffsetMismatch(expected)) => {
+                tracing::info!(
+                    "receiver holds {expected} bytes of {}, resuming there",
+                    plan.path.display()
+                );
+                offset = expected;
+            }
+            Err(err) if err.is_transport() && plan.resume_token.is_some() => {
+                let Some(token) = plan.resume_token else {
+                    return Err(err.to_string());
+                };
+                tokio::time::sleep(Duration::from_millis(500)).await;
+                match client
+                    .resume_offset(target, plan.session_id, plan.file_id, token)
+                    .await
+                {
+                    Ok(held) => {
+                        tracing::info!("resuming {} at byte {held}", plan.path.display());
+                        offset = held;
+                    }
+                    Err(query_err) => {
+                        return Err(format!(
+                            "{err}; could not query the resume offset: {query_err}"
+                        ));
+                    }
+                }
             }
             Err(err) => return Err(err.to_string()),
         }

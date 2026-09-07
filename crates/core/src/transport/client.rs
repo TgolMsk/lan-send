@@ -1,8 +1,10 @@
-//! HTTP client for the LocalSend v2 API (ADR-0004).
+//! HTTP client for the LocalSend v2 API and the resume extension (ADR-0004,
+//! ADR-0008).
 
 use crate::protocol::{
     API_PREFIX_V2, DeviceInfo, ErrorResponse, Fingerprint, PeerInfo, PrepareUploadRequest,
-    PrepareUploadResponse, ProtocolType,
+    PrepareUploadResponse, ProtocolType, RESUME_OFFSET_HEADER, RESUME_PATH, RESUME_TOKEN_HEADER,
+    ResumeOffsetResponse,
 };
 use crate::transport::identity::Identity;
 use crate::transport::tls::{self, TlsError};
@@ -23,16 +25,17 @@ pub struct Target {
 impl Target {
     /// Full URL of an API path such as `/register`.
     pub fn url(&self, path: &str) -> String {
+        format!("{}{API_PREFIX_V2}{path}", self.origin())
+    }
+
+    /// `scheme://host:port`, with IPv6 hosts bracketed.
+    pub fn origin(&self) -> String {
         let host = if self.host.contains(':') && !self.host.starts_with('[') {
             format!("[{}]", self.host)
         } else {
             self.host.clone()
         };
-        format!(
-            "{}://{host}:{}{API_PREFIX_V2}{path}",
-            self.protocol.scheme(),
-            self.port
-        )
+        format!("{}://{host}:{}", self.protocol.scheme(), self.port)
     }
 }
 
@@ -69,6 +72,11 @@ pub enum ClientError {
 
     #[error("cancelled")]
     Cancelled,
+
+    /// A `Range` upload started at the wrong offset; the receiver expects
+    /// this one (resume extension).
+    #[error("the receiver expects the upload to resume at byte {0}")]
+    OffsetMismatch(u64),
 }
 
 fn format_message(message: &str) -> String {
@@ -86,6 +94,12 @@ impl ClientError {
             Self::Status { status, .. } => Some(*status),
             _ => None,
         }
+    }
+
+    /// Whether the request itself failed (connection, timeout, body
+    /// stream) rather than being refused by the peer.
+    pub fn is_transport(&self) -> bool {
+        matches!(self, Self::Http(_) | Self::Io(_))
     }
 }
 
@@ -107,6 +121,15 @@ impl Registered {
             .clone()
             .unwrap_or_else(|| Fingerprint::parse(&self.response.fingerprint))
     }
+}
+
+/// Resume parameters of an upload (resume extension).
+#[derive(Clone, Copy, Debug)]
+pub struct Resume<'a> {
+    /// Bytes the receiver already holds; the body starts there.
+    pub offset: u64,
+    /// The session's resume token from `prepare-upload`.
+    pub token: &'a str,
 }
 
 /// Outcome of `prepare-upload`.
@@ -212,7 +235,23 @@ impl Client {
         token: &str,
         body: reqwest::Body,
     ) -> Result<(), ClientError> {
-        let response = self
+        self.upload_with(target, session_id, file_id, token, body, None)
+            .await
+    }
+
+    /// `POST /upload`, optionally resuming: with `resume` given, the body
+    /// starts at `resume.offset` and the request carries `Range` and the
+    /// resume token. A 416 answer becomes [`ClientError::OffsetMismatch`].
+    pub async fn upload_with(
+        &self,
+        target: &Target,
+        session_id: &str,
+        file_id: &str,
+        token: &str,
+        body: reqwest::Body,
+        resume: Option<Resume<'_>>,
+    ) -> Result<(), ClientError> {
+        let mut request = self
             .http
             .post(target.url("/upload"))
             .query(&[
@@ -220,9 +259,22 @@ impl Client {
                 ("fileId", file_id),
                 ("token", token),
             ])
-            .body(body)
-            .send()
-            .await?;
+            .body(body);
+        if let Some(resume) = resume {
+            request = request
+                .header("Range", format!("bytes={}-", resume.offset))
+                .header(RESUME_TOKEN_HEADER, resume.token);
+        }
+        let response = request.send().await?;
+        if response.status() == StatusCode::RANGE_NOT_SATISFIABLE
+            && let Some(expected) = response
+                .headers()
+                .get(RESUME_OFFSET_HEADER)
+                .and_then(|value| value.to_str().ok())
+                .and_then(|value| value.parse::<u64>().ok())
+        {
+            return Err(ClientError::OffsetMismatch(expected));
+        }
         ok_or_error(response).await?;
         Ok(())
     }
@@ -238,8 +290,31 @@ impl Client {
         path: &Path,
         progress: impl Fn(u64) + Send + Sync + 'static,
     ) -> Result<(), ClientError> {
-        let file = tokio::fs::File::open(path).await?;
-        let mut sent = 0u64;
+        self.upload_file_from(target, session_id, file_id, token, path, None, progress)
+            .await
+    }
+
+    /// Like [`Client::upload_file`], resuming at `resume.offset` when given;
+    /// `progress` then starts from that offset.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn upload_file_from(
+        &self,
+        target: &Target,
+        session_id: &str,
+        file_id: &str,
+        token: &str,
+        path: &Path,
+        resume: Option<Resume<'_>>,
+        progress: impl Fn(u64) + Send + Sync + 'static,
+    ) -> Result<(), ClientError> {
+        use tokio::io::AsyncSeekExt;
+
+        let mut file = tokio::fs::File::open(path).await?;
+        let offset = resume.as_ref().map(|resume| resume.offset).unwrap_or(0);
+        if offset > 0 {
+            file.seek(std::io::SeekFrom::Start(offset)).await?;
+        }
+        let mut sent = offset;
         let stream =
             tokio_util::io::ReaderStream::with_capacity(file, 512 * 1024).map(move |chunk| {
                 if let Ok(bytes) = &chunk {
@@ -248,14 +323,35 @@ impl Client {
                 }
                 chunk
             });
-        self.upload(
+        self.upload_with(
             target,
             session_id,
             file_id,
             token,
             reqwest::Body::wrap_stream(stream),
+            resume,
         )
         .await
+    }
+
+    /// Resume extension: how many bytes of a pending file the receiver
+    /// already holds.
+    pub async fn resume_offset(
+        &self,
+        target: &Target,
+        session_id: &str,
+        file_id: &str,
+        resume_token: &str,
+    ) -> Result<u64, ClientError> {
+        let response = self
+            .http
+            .get(format!("{}{RESUME_PATH}", target.origin()))
+            .query(&[("sessionId", session_id), ("fileId", file_id)])
+            .header(RESUME_TOKEN_HEADER, resume_token)
+            .send()
+            .await?;
+        let response = ok_or_error(response).await?;
+        Ok(response.json::<ResumeOffsetResponse>().await?.offset)
     }
 
     /// `POST /cancel`. Without a session id it withdraws a pending
@@ -318,5 +414,6 @@ mod tests {
             protocol: ProtocolType::Http,
         };
         assert_eq!(v6.url("/info"), "http://[fe80::1]:1/api/localsend/v2/info");
+        assert_eq!(v6.origin(), "http://[fe80::1]:1");
     }
 }

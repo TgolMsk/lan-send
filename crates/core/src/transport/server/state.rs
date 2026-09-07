@@ -6,20 +6,26 @@ use crate::protocol::{DeviceInfo, FileDto, PeerInfo};
 use parking_lot::{Mutex, RwLock};
 use std::collections::HashMap;
 use std::net::IpAddr;
+use std::path::PathBuf;
+use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 /// Failed PIN attempts per IP before requests are blocked with 429.
 pub(super) const MAX_PIN_ATTEMPTS: u32 = 3;
-/// How often the same file may be uploaded (retries after a checksum mismatch).
+/// How often the same file may be uploaded (retries after a checksum
+/// mismatch or, with the resume extension, after a dropped connection).
 pub(super) const MAX_UPLOAD_ATTEMPTS: u8 = 3;
 /// Bound on the PIN attempt table.
 const PIN_TABLE_CAPACITY: usize = 200;
+/// A session without any request for this long is dropped.
+pub(super) const SESSION_IDLE_TIMEOUT: Duration = Duration::from_secs(10 * 60);
 
 pub(super) struct AppState {
     pub device: RwLock<DeviceInfo>,
     pub pin: Option<String>,
     pub verify_checksums: bool,
+    pub upload_idle_timeout: Duration,
     pub events: mpsc::Sender<ServerEvent>,
     pub session: Mutex<Option<SessionState>>,
     pub pin_attempts: Mutex<HashMap<IpAddr, u32>>,
@@ -40,6 +46,10 @@ pub(super) struct Session {
     pub session_id: String,
     pub peer: IpAddr,
     pub files: HashMap<String, SessionFile>,
+    /// Resume extension: the token `Range` uploads must carry. `None` for
+    /// senders that did not announce the extension.
+    pub resume_token: Option<String>,
+    pub last_activity: Instant,
 }
 
 pub(super) struct SessionFile {
@@ -47,6 +57,8 @@ pub(super) struct SessionFile {
     pub token: String,
     pub status: FileStatus,
     pub attempts: u8,
+    /// Where the file is being written, once the application decided.
+    pub path: Option<PathBuf>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -63,6 +75,10 @@ impl Session {
             .values()
             .all(|file| matches!(file.status, FileStatus::Finished | FileStatus::Failed))
     }
+
+    pub fn resumable(&self) -> bool {
+        self.resume_token.is_some()
+    }
 }
 
 pub(super) enum PinCheck {
@@ -72,17 +88,35 @@ pub(super) enum PinCheck {
     TooManyAttempts,
 }
 
+/// Why an upload request was refused.
+pub(super) enum UploadRefusal {
+    /// 403: no such session/file/token, wrong address or wrong state.
+    Invalid,
+    /// 409: the file is currently being uploaded.
+    InProgress,
+}
+
+/// A validated upload request.
+pub(super) struct UploadStart {
+    pub file: FileDto,
+    /// The path chosen for an earlier attempt, when there was one.
+    pub path: Option<PathBuf>,
+    pub resumable: bool,
+}
+
 impl AppState {
     pub fn new(
         device: DeviceInfo,
         pin: Option<String>,
         verify_checksums: bool,
+        upload_idle_timeout: Duration,
         events: mpsc::Sender<ServerEvent>,
     ) -> Self {
         Self {
             device: RwLock::new(device),
             pin,
             verify_checksums,
+            upload_idle_timeout,
             events,
             session: Mutex::new(None),
             pin_attempts: Mutex::new(HashMap::new()),
@@ -178,33 +212,114 @@ impl AppState {
         }
     }
 
-    /// Validates an upload request and marks the file in progress.
+    /// Drops the active session when it has been idle for too long.
+    /// Returns its id when that happened.
+    pub fn reap_idle(&self) -> Option<String> {
+        let mut slot = self.session.lock();
+        match &*slot {
+            Some(SessionState::Active(session))
+                if session.last_activity.elapsed() >= SESSION_IDLE_TIMEOUT
+                    && !session
+                        .files
+                        .values()
+                        .any(|file| file.status == FileStatus::InProgress) =>
+            {
+                let session_id = session.session_id.clone();
+                *slot = None;
+                Some(session_id)
+            }
+            _ => None,
+        }
+    }
+
+    /// Validates an upload request and marks the file in progress. With
+    /// `resume_token` given, it must match the session's token.
     pub fn begin_upload(
         &self,
         session_id: &str,
         file_id: &str,
         token: &str,
         peer: IpAddr,
-    ) -> Option<FileDto> {
+        resume_token: Option<&str>,
+    ) -> Result<UploadStart, UploadRefusal> {
         let mut slot = self.session.lock();
         let Some(SessionState::Active(session)) = slot.as_mut() else {
-            return None;
+            return Err(UploadRefusal::Invalid);
         };
         if session.session_id != session_id || session.peer != peer {
-            return None;
+            return Err(UploadRefusal::Invalid);
         }
-        let file = session.files.get_mut(file_id)?;
-        if file.token != token || file.status != FileStatus::Pending {
-            return None;
+        if let Some(given) = resume_token
+            && session.resume_token.as_deref() != Some(given)
+        {
+            return Err(UploadRefusal::Invalid);
+        }
+        let resumable = session.resumable();
+        session.last_activity = Instant::now();
+        let file = session
+            .files
+            .get_mut(file_id)
+            .ok_or(UploadRefusal::Invalid)?;
+        if file.token != token {
+            return Err(UploadRefusal::Invalid);
+        }
+        match file.status {
+            FileStatus::Pending => {}
+            FileStatus::InProgress => return Err(UploadRefusal::InProgress),
+            FileStatus::Finished | FileStatus::Failed => return Err(UploadRefusal::Invalid),
         }
         file.status = FileStatus::InProgress;
         file.attempts = file.attempts.saturating_add(1);
-        Some(file.dto.clone())
+        Ok(UploadStart {
+            file: file.dto.clone(),
+            path: file.path.clone(),
+            resumable,
+        })
     }
 
-    /// Records the outcome of an upload. A checksum mismatch puts the file
-    /// back to pending (until the attempt limit) so the sender can retry
-    /// with the same token. Returns `true` when the session ended.
+    /// Remembers where a file is written, for later attempts and queries.
+    pub fn set_file_path(&self, session_id: &str, file_id: &str, path: PathBuf) {
+        let mut slot = self.session.lock();
+        if let Some(SessionState::Active(session)) = slot.as_mut()
+            && session.session_id == session_id
+            && let Some(file) = session.files.get_mut(file_id)
+        {
+            file.path = Some(path);
+        }
+    }
+
+    /// The resume query: the path of a pending file of `peer`'s session,
+    /// validated against the resume token.
+    pub fn resume_lookup(
+        &self,
+        session_id: &str,
+        file_id: &str,
+        peer: IpAddr,
+        resume_token: &str,
+    ) -> Result<Option<PathBuf>, UploadRefusal> {
+        let mut slot = self.session.lock();
+        let Some(SessionState::Active(session)) = slot.as_mut() else {
+            return Err(UploadRefusal::Invalid);
+        };
+        if session.session_id != session_id
+            || session.peer != peer
+            || session.resume_token.as_deref() != Some(resume_token)
+        {
+            return Err(UploadRefusal::Invalid);
+        }
+        session.last_activity = Instant::now();
+        let file = session.files.get(file_id).ok_or(UploadRefusal::Invalid)?;
+        match file.status {
+            FileStatus::InProgress => Err(UploadRefusal::InProgress),
+            FileStatus::Pending => Ok(file.path.clone()),
+            FileStatus::Finished | FileStatus::Failed => Err(UploadRefusal::Invalid),
+        }
+    }
+
+    /// Records the outcome of an upload. A checksum mismatch, or a dropped
+    /// connection with the resume extension, puts the file back to pending
+    /// (until the attempt limit) so the sender can retry with the same
+    /// token. Returns `true` when the session ended.
     pub fn finalize_file(&self, session_id: &str, file_id: &str, outcome: &SaveOutcome) -> bool {
         let mut slot = self.session.lock();
         let Some(SessionState::Active(session)) = slot.as_mut() else {
@@ -213,16 +328,21 @@ impl AppState {
         if session.session_id != session_id {
             return false;
         }
-        if let Some(file) = session.files.get_mut(file_id) {
-            if file.status == FileStatus::InProgress {
-                file.status = match outcome {
-                    SaveOutcome::Success => FileStatus::Finished,
-                    SaveOutcome::HashMismatch if file.attempts < MAX_UPLOAD_ATTEMPTS => {
-                        FileStatus::Pending
-                    }
-                    SaveOutcome::HashMismatch | SaveOutcome::Failed(_) => FileStatus::Failed,
-                };
-            }
+        session.last_activity = Instant::now();
+        let resumable = session.resumable();
+        if let Some(file) = session.files.get_mut(file_id)
+            && file.status == FileStatus::InProgress
+        {
+            let retry_allowed = file.attempts < MAX_UPLOAD_ATTEMPTS;
+            file.status = match outcome {
+                SaveOutcome::Success => FileStatus::Finished,
+                SaveOutcome::HashMismatch if retry_allowed => FileStatus::Pending,
+                SaveOutcome::Interrupted { .. } if resumable && retry_allowed => {
+                    FileStatus::Pending
+                }
+                SaveOutcome::OffsetMismatch { .. } if retry_allowed => FileStatus::Pending,
+                _ => FileStatus::Failed,
+            };
         }
         if session.is_complete() {
             *slot = None;

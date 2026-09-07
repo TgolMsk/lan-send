@@ -42,10 +42,20 @@
 
 只有双方都声明了某能力才使用它。字段名待确认。
 
-### 2.2 断点续传（里程碑 2）
+### 2.2 断点续传（已实现，ADR-0008）
 
-- `prepare-upload` 响应附加 `x-resume-token`；`upload` 支持 `Range`/`Content-Range`；对方未声明 `resume` 时整文件重传。
-- 详细语义在里程碑 2 的 ADR 中定义。
+前提：双方的 `x-lanext.features` 都含 `"resume"`。官方客户端不声明，因此永远走整文件重传。
+
+| 步骤 | 内容 |
+|---|---|
+| `prepare-upload` 响应 | 对声明了 `resume` 的发送方附加 `x-resume-token`（会话随机令牌）和 `x-resume-offsets`（`{fileId: 已收字节数}`，只列大于 0 的） |
+| `POST /upload` | 可带 `Range: bytes=<offset>-` 与 `x-resume-token` 头；offset 必须等于接收方 `.part` 当前长度，否则 416 并在 `x-resume-offset` 头给出实际值；无 `Range` 则从零开始 |
+| `GET /api/ext/v1/resume?sessionId=&fileId=` | 带 `x-resume-token`，返回 `{"offset": N}`；文件正在上传时 409；非会话发送方或 token 不符 403 |
+| 会话内恢复 | 传输中断（连接断开、30 秒无数据）不判失败，文件回到待上传并保留 `.part`，最多 3 次尝试 |
+| 跨会话恢复 | 接收方按（发送方指纹、sha256、大小）记住未完成的 `.part`，新会话命中时固定原路径并给出 offset；24 小时后清除 |
+| 会话回收 | 任何会话 10 分钟无请求即释放（`SessionEnd { TimedOut }`） |
+
+校验：续传时接收方先对已有前缀重新哈希再追加，最终仍按 sha256 校验；发送方未提供 sha256 时只能会话内恢复。
 
 ### 2.3 剪贴板同步（里程碑 3）
 
