@@ -27,9 +27,10 @@ tests/interop/  与官方 LocalSend 的互操作测试
 
 从 [Releases](https://github.com/TgolMsk/lan-send/releases) 下载：
 
-- macOS：`lan-send-<版本>-macos-universal.pkg`（Apple Silicon 与 Intel 通用，安装到 `/usr/local/bin`）
-- Windows：`lan-send-<版本>-windows-x86_64.msi`（安装到 Program Files 并加入 PATH）
+- 应用（带界面）：macOS `lan-send-<版本>-macos-universal.dmg`，Windows `lan-send-<版本>-windows-x86_64-setup.exe`
+- 命令行：macOS `lan-send-cli-<版本>-macos-universal.pkg`（装到 `/usr/local/bin`），Windows `lan-send-cli-<版本>-windows-x86_64.msi`（加入 PATH）
 - 免安装：对应平台的 `.zip` / `.tar.gz`，校验和在 `SHA256SUMS.txt`
+- iOS：暂未发布（需要证书后走 TestFlight）
 
 安装包由 GitHub Actions 构建（`.github/workflows/release.yml`），打标签、签名与公证的配置见 [`docs/release.md`](docs/release.md)。
 

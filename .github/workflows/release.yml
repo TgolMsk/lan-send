@@ -3,10 +3,13 @@ name: Release
 # Builds installable packages of the CLI and publishes them as a GitHub
 # Release when a `v*` tag is pushed (or on demand for a dry run).
 #
-#   macOS    lan-send-<ver>-macos-universal.pkg  (+ .tar.gz), signed and
-#            notarized when the MACOS_* secrets are configured (docs/release.md)
-#   Windows  lan-send-<ver>-windows-x86_64.msi   (+ .zip, + arm64 .zip)
-#   Linux    lan-send-<ver>-linux-{x86_64,aarch64}.tar.gz
+#   App      lan-send-<ver>-macos-universal.dmg (signed + notarized with the
+#            APPLE_* / MACOS_* secrets, see docs/release.md),
+#            lan-send-<ver>-windows-x86_64-setup.exe (NSIS) and
+#            lan-send-<ver>-windows-x86_64.msi
+#   CLI      lan-send-cli-<ver>-macos-universal.pkg (+ .tar.gz),
+#            lan-send-cli-<ver>-windows-x86_64.msi (+ .zip, + arm64 .zip),
+#            lan-send-cli-<ver>-linux-{x86_64,aarch64}.tar.gz
 #   SHA256SUMS.txt
 
 on:
@@ -47,7 +50,7 @@ jobs:
           echo "version $tag"
 
   macos:
-    name: macOS package
+    name: CLI package (macOS)
     needs: version
     runs-on: macos-latest
     env:
@@ -98,18 +101,18 @@ jobs:
         run: codesign --force --options runtime --timestamp --sign "$APP_IDENTITY" dist/root/usr/local/bin/lan-send
       - name: Package (.pkg and .tar.gz)
         run: |
-          PKG="dist/lan-send-${VERSION}-macos-universal.pkg"
+          PKG="dist/lan-send-cli-${VERSION}-macos-universal.pkg"
           if [ -n "${INSTALLER_IDENTITY:-}" ]; then
             pkgbuild --root dist/root --identifier dev.lan-send.cli --version "${VERSION%%-*}" --install-location / --sign "$INSTALLER_IDENTITY" --timestamp "$PKG"
           else
             pkgbuild --root dist/root --identifier dev.lan-send.cli --version "${VERSION%%-*}" --install-location / "$PKG"
           fi
-          tar -C dist/root/usr/local/bin -czf "dist/lan-send-${VERSION}-macos-universal.tar.gz" lan-send
+          tar -C dist/root/usr/local/bin -czf "dist/lan-send-cli-${VERSION}-macos-universal.tar.gz" lan-send
           ls -la dist
       - name: Notarize
         if: env.INSTALLER_IDENTITY != '' && env.APPLE_ID != ''
         run: |
-          PKG="dist/lan-send-${VERSION}-macos-universal.pkg"
+          PKG="dist/lan-send-cli-${VERSION}-macos-universal.pkg"
           xcrun notarytool submit "$PKG" --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" --wait
           xcrun stapler staple "$PKG"
       - uses: actions/upload-artifact@v7
@@ -121,7 +124,7 @@ jobs:
           if-no-files-found: error
 
   windows:
-    name: Windows package
+    name: CLI package (Windows)
     needs: version
     runs-on: windows-latest
     env:
@@ -147,12 +150,12 @@ jobs:
           cargo wix --package lan-send-cli --no-build --nocapture \
             --install-version "${VERSION%%-*}" \
             --target x86_64-pc-windows-msvc \
-            --output "../../dist/lan-send-${VERSION}-windows-x86_64.msi"
+            --output "../../dist/lan-send-cli-${VERSION}-windows-x86_64.msi"
       - name: Zips
         shell: bash
         run: |
-          (cd target/x86_64-pc-windows-msvc/release && 7z a "../../../dist/lan-send-${VERSION}-windows-x86_64.zip" lan-send.exe)
-          (cd target/aarch64-pc-windows-msvc/release && 7z a "../../../dist/lan-send-${VERSION}-windows-arm64.zip" lan-send.exe)
+          (cd target/x86_64-pc-windows-msvc/release && 7z a "../../../dist/lan-send-cli-${VERSION}-windows-x86_64.zip" lan-send.exe)
+          (cd target/aarch64-pc-windows-msvc/release && 7z a "../../../dist/lan-send-cli-${VERSION}-windows-arm64.zip" lan-send.exe)
           ls -la dist
       - uses: actions/upload-artifact@v7
         with:
@@ -160,8 +163,89 @@ jobs:
           path: dist/*
           if-no-files-found: error
 
+  app-macos:
+    name: App bundle (macOS universal)
+    needs: version
+    runs-on: macos-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      # Tauri signs and notarizes on its own when these are present.
+      APPLE_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: apps/app/pnpm-lock.yaml
+      - name: Frontend dependencies
+        working-directory: apps/app
+        run: pnpm install --frozen-lockfile
+      - name: Build the app (.app + .dmg)
+        working-directory: apps/app
+        run: pnpm tauri build --target universal-apple-darwin --bundles app,dmg
+      - name: Collect
+        run: |
+          mkdir -p dist
+          cp target/universal-apple-darwin/release/bundle/dmg/*.dmg "dist/lan-send-${VERSION}-macos-universal.dmg"
+          ditto -c -k --keepParent target/universal-apple-darwin/release/bundle/macos/lan-send.app "dist/lan-send-${VERSION}-macos-universal.app.zip"
+          ls -la dist
+      - uses: actions/upload-artifact@v7
+        with:
+          name: app-macos
+          path: dist/*
+          if-no-files-found: error
+
+  app-windows:
+    name: App bundle (Windows x86_64)
+    needs: version
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: apps/app/pnpm-lock.yaml
+      - name: Frontend dependencies
+        working-directory: apps/app
+        run: pnpm install --frozen-lockfile
+      - name: Build the app (.msi + NSIS .exe)
+        working-directory: apps/app
+        run: pnpm tauri build --bundles msi,nsis
+      - name: Collect
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp target/release/bundle/msi/*.msi "dist/lan-send-${VERSION}-windows-x86_64.msi"
+          cp target/release/bundle/nsis/*-setup.exe "dist/lan-send-${VERSION}-windows-x86_64-setup.exe"
+          ls -la dist
+      - uses: actions/upload-artifact@v7
+        with:
+          name: app-windows
+          path: dist/*
+          if-no-files-found: error
+
   linux:
-    name: Linux archive (${{ matrix.arch }})
+    name: CLI archive (Linux ${{ matrix.arch }})
     needs: version
     strategy:
       fail-fast: false
@@ -187,7 +271,7 @@ jobs:
       - name: Archive
         run: |
           mkdir -p dist
-          tar -C target/${{ matrix.target }}/release -czf "dist/lan-send-${VERSION}-linux-${{ matrix.arch }}.tar.gz" lan-send
+          tar -C target/${{ matrix.target }}/release -czf "dist/lan-send-cli-${VERSION}-linux-${{ matrix.arch }}.tar.gz" lan-send
       - uses: actions/upload-artifact@v7
         with:
           name: linux-${{ matrix.arch }}
@@ -196,7 +280,7 @@ jobs:
 
   publish:
     name: Publish release
-    needs: [version, macos, windows, linux]
+    needs: [version, app-macos, app-windows, macos, windows, linux]
     if: startsWith(github.ref, 'refs/tags/v') || inputs.publish
     runs-on: ubuntu-latest
     env:
@@ -218,7 +302,7 @@ jobs:
           text = open("CHANGELOG.md", encoding="utf-8").read()
           match = re.search(r"^## \[?" + re.escape(version) + r"\]?[^\n]*\n(.*?)(?=^## |\Z)", text, re.S | re.M)
           body = match.group(1).strip() if match else "See CHANGELOG.md."
-          body += "\n\n---\n安装：macOS 双击 `.pkg`（未签名版本需在“系统设置 › 隐私与安全性”允许），Windows 运行 `.msi`（会把 `lan-send` 加入 PATH），或解压压缩包后把 `lan-send` 放到 PATH 里。校验和见 `SHA256SUMS.txt`。"
+          body += "\n\n---\n**应用**：macOS 打开 `.dmg` 把 lan-send 拖进“应用程序”（未签名版本首次打开需在“系统设置 › 隐私与安全性”允许），Windows 运行 `-setup.exe`（或 `.msi`）。**命令行**：`lan-send-cli-*` 的 `.pkg` / `.msi` 会把 `lan-send` 加入 PATH，压缩包免安装。校验和见 `SHA256SUMS.txt`。"
           open("release-notes.md", "w", encoding="utf-8").write(body)
           PY
           cat release-notes.md

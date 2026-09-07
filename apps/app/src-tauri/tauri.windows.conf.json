@@ -1,8 +1,17 @@
 {
   "bundle": {
     "windows": {
-      "wix": { "language": ["en-US", "zh-CN"] },
-      "nsis": { "installMode": "currentUser", "languages": ["English", "SimpChinese"] }
+      "wix": {
+        "language": "en-US"
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": [
+          "English",
+          "SimpChinese"
+        ],
+        "displayLanguageSelector": true
+      }
     }
   }
 }

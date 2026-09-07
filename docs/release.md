@@ -6,12 +6,14 @@
 
 | 平台 | 文件 | 说明 |
 |---|---|---|
-| macOS | `lan-send-<ver>-macos-universal.pkg` | arm64 + x86_64 通用二进制，安装到 `/usr/local/bin`；有证书时自动签名并公证 |
-| macOS | `lan-send-<ver>-macos-universal.tar.gz` | 免安装 |
-| Windows | `lan-send-<ver>-windows-x86_64.msi` | 安装到 Program Files 并加入 PATH（WiX，`crates/cli/wix/main.wxs`） |
-| Windows | `lan-send-<ver>-windows-{x86_64,arm64}.zip` | 免安装 |
-| Linux | `lan-send-<ver>-linux-{x86_64,aarch64}.tar.gz` | 免安装（Linux 只作测试用途） |
+| macOS 应用 | `lan-send-<ver>-macos-universal.dmg`、`.app.zip` | Tauri 应用，通用二进制；有证书 secrets 时由 Tauri 自动签名并公证 |
+| Windows 应用 | `lan-send-<ver>-windows-x86_64-setup.exe`（NSIS，中英文）、`.msi` | Tauri 应用，按用户安装 |
+| macOS CLI | `lan-send-cli-<ver>-macos-universal.pkg` / `.tar.gz` | 安装到 `/usr/local/bin` |
+| Windows CLI | `lan-send-cli-<ver>-windows-x86_64.msi`、`-{x86_64,arm64}.zip` | 安装到 Program Files 并加入 PATH（WiX，`crates/cli/wix/main.wxs`） |
+| Linux CLI | `lan-send-cli-<ver>-linux-{x86_64,aarch64}.tar.gz` | 免安装（Linux 只作测试用途） |
 | 全部 | `SHA256SUMS.txt` | 校验和 |
+
+iOS 不在发布流程里：没有证书无法出 `.ipa`，等 App Store Connect 的 API Key 配好后再加 TestFlight 上传（`cargo tauri ios build`）。
 
 版本号取自标签；`0.x` 或带 `-` 的版本自动标记为预发布。发布说明取自 `CHANGELOG.md` 中对应版本的小节。
 
@@ -26,7 +28,7 @@ git push origin v0.1.0
 
 ## macOS 签名与公证（可选）
 
-在仓库 `Settings › Secrets and variables › Actions` 配置以下 secrets 后，macOS 产物会自动签名并公证；没有时产出未签名包，用户首次打开需要在"系统设置 › 隐私与安全性"里允许。
+在仓库 `Settings › Secrets and variables › Actions` 配置以下 secrets 后，macOS 的应用与 CLI 产物都会自动签名并公证（应用由 Tauri 读取 `APPLE_*` 环境变量完成，工作流已把这些 secrets 映射过去）；没有时产出未签名包，用户首次打开需要在"系统设置 › 隐私与安全性"里允许。
 
 | Secret | 内容 |
 |---|---|
@@ -44,6 +46,10 @@ git push origin v0.1.0
 
 `.msi` 目前未签名，SmartScreen 会提示"未知发布者"。需要时可加 Authenticode 证书步骤（`signtool`）。
 
-## Tauri 应用
+## 本地打包
 
-里程碑 5 之后由 `tauri-action` 产出 `.dmg` / `.msi` / iOS 包，会加入同一工作流。
+```bash
+cd apps/app && pnpm install
+pnpm tauri build                      # 当前平台的安装包，在 target/release/bundle/
+pnpm tauri build --target universal-apple-darwin   # macOS 通用二进制
+```
