@@ -20,6 +20,7 @@
 //! | [`discovery`] | UDP multicast + HTTP register / subnet scan        | 1         |
 //! | [`transport`] | TLS identity, HTTPS server and client               | 1–2       |
 //! | [`store`]     | app directories; settings, history, trust (SQLite) | 1–2       |
+//! | [`transfer`]  | outgoing file collection, incoming placement       | 2         |
 //! | [`clipboard`] | clipboard abstraction and sync engine              | 3         |
 //! | [`media`]     | MIME sniffing, thumbnails, audio metadata          | 4         |
 
@@ -28,4 +29,5 @@ pub mod discovery;
 pub mod media;
 pub mod protocol;
 pub mod store;
+pub mod transfer;
 pub mod transport;

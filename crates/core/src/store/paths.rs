@@ -14,6 +14,16 @@ pub enum StoreError {
         #[source]
         source: std::io::Error,
     },
+
+    #[error("invalid settings file {path}: {source}")]
+    Settings {
+        path: PathBuf,
+        #[source]
+        source: serde_json::Error,
+    },
+
+    #[error("database error: {0}")]
+    Database(#[from] rusqlite::Error),
 }
 
 /// The directories used by this application.
@@ -69,6 +79,16 @@ impl AppPaths {
     /// The file holding this device's certificate and private key.
     pub fn identity_file(&self) -> PathBuf {
         self.config_dir.join("identity.pem")
+    }
+
+    /// The user-editable settings.
+    pub fn settings_file(&self) -> PathBuf {
+        self.config_dir.join("settings.json")
+    }
+
+    /// The SQLite database with history, devices and partial uploads.
+    pub fn database_file(&self) -> PathBuf {
+        self.data_dir.join("lan-send.sqlite3")
     }
 }
 

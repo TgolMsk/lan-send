@@ -3,7 +3,7 @@
 局域网文件与剪贴板互传工具，兼容 [LocalSend](https://localsend.org) 协议 v2.2，可与官方客户端互相发现、互相收发。
 Rust 核心库 + Tauri 2 应用，目标平台 **macOS / Windows / iOS**。MIT 许可证。
 
-> 状态：里程碑 1 完成——命令行工具已能与官方 LocalSend 1.18 互相发现并互传单个文件（双向互操作测试通过）。进度见 `CHANGELOG.md` 与 `CLAUDE.md`。
+> 状态：里程碑 1 完成，里程碑 2 进行中——命令行工具已能与官方 LocalSend 1.18 互相发现、互传文件与文件夹，带历史与设备记录。进度见 `CHANGELOG.md` 与 `CLAUDE.md`。
 
 ## 特性（规划）
 
@@ -33,7 +33,10 @@ cargo run -p lan-send-cli -- --help
 ```bash
 lan-send discover                      # 列出局域网里的 LocalSend 设备
 lan-send receive --dir ~/Downloads      # 前台接收，逐个请求确认（--auto-accept 免确认，--pin 123456 要求 PIN）
-lan-send send "Nice Orange" a.jpg b.pdf # 按别名、指纹前缀或 IP 发送文件
+lan-send send "Nice Orange" a.jpg photos/ # 按别名、指纹前缀或 IP[:端口] 发送文件与文件夹
+lan-send receive --organize device,type --on-conflict ask   # 按设备与类型分目录，同名时询问
+lan-send history --limit 20            # 传输历史（--delete <id>，--clear）
+lan-send devices --favorite "Nice Orange"   # 已知设备与收藏
 lan-send identity                      # 本机别名、指纹、配置目录
 ```
 

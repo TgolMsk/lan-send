@@ -1,6 +1,7 @@
 //! The devices discovery has confirmed, keyed by fingerprint.
 
 use crate::protocol::{DeviceInfo, DeviceType, Extensions, Fingerprint, PeerInfo, ProtocolType};
+use crate::store::{KnownDevice, unix_now};
 use crate::transport::Target;
 use parking_lot::RwLock;
 use std::net::IpAddr;
@@ -86,6 +87,28 @@ impl Device {
         self.addresses
             .iter()
             .any(|address| address.host == host && port.is_none_or(|port| address.port == port))
+    }
+}
+
+impl From<&Device> for KnownDevice {
+    /// The persisted form of a discovered device, seen now.
+    fn from(device: &Device) -> Self {
+        let now = unix_now();
+        Self {
+            fingerprint: device.fingerprint.to_string(),
+            alias: device.alias.clone(),
+            custom_alias: None,
+            device_type: device.device_type.map(|kind| kind.to_string()),
+            device_model: device.device_model.clone(),
+            version: Some(device.version.clone()),
+            host: Some(device.host.clone()),
+            port: Some(device.port),
+            protocol: Some(device.protocol.to_string()),
+            favorite: false,
+            paired: false,
+            first_seen: now,
+            last_seen: now,
+        }
     }
 }
 

@@ -1,19 +1,25 @@
-//! Shared setup: paths, identity, device information, server and discovery.
+//! Shared setup: paths, settings, database, identity, server and discovery.
 
 use crate::{ClientCerts, Globals};
-use lan_send_core::discovery::{Device, Discovery, DiscoveryConfig};
-use lan_send_core::protocol::{
-    DEFAULT_PORT, DeviceInfo, DeviceType, Extensions, PROTOCOL_VERSION, ProtocolType,
-};
-use lan_send_core::store::AppPaths;
+use anyhow::Context;
+use lan_send_core::discovery::{Device, Discovery, DiscoveryConfig, DiscoveryEvent};
+use lan_send_core::protocol::{DeviceInfo, DeviceType, Extensions, PROTOCOL_VERSION, ProtocolType};
+use lan_send_core::store::{AppPaths, Database, KnownDevice, Settings, TransferRecord};
 use lan_send_core::transport::{
-    ClientCertPolicy, Identity, ServerConfig, ServerEvent, ServerHandle, UploadDecision, server,
+    ClientCertPolicy, Identity, ServerConfig, ServerEvent, ServerHandle, Target, UploadDecision,
+    server,
 };
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::mpsc;
+
+/// Devices seen within this window are probed at startup, like favorites.
+const RECENT_DEVICE_WINDOW: Duration = Duration::from_secs(7 * 24 * 3600);
 
 pub struct App {
     pub paths: AppPaths,
+    pub settings: Settings,
+    pub db: Arc<Database>,
     pub identity: Arc<Identity>,
     pub alias: String,
     pub port: u16,
@@ -27,22 +33,33 @@ impl App {
             None => AppPaths::resolve()?,
         };
         paths.ensure_dirs()?;
+        let settings = Settings::load_or_create(&paths.settings_file())?;
+        let db = Arc::new(
+            Database::open(&paths.database_file())
+                .with_context(|| format!("cannot open {}", paths.database_file().display()))?,
+        );
         let identity = Arc::new(Identity::load_or_generate(&paths.identity_file())?);
         let alias = globals
             .alias
             .clone()
+            .or_else(|| settings.alias.clone())
             .map(|alias| alias.trim().to_string())
             .filter(|alias| !alias.is_empty())
             .unwrap_or_else(default_alias);
+        let client_cert_policy = match globals.client_certs {
+            Some(ClientCerts::Required) => ClientCertPolicy::Required,
+            Some(ClientCerts::Optional) => ClientCertPolicy::Optional,
+            None if settings.require_client_certs => ClientCertPolicy::Required,
+            None => ClientCertPolicy::Optional,
+        };
         Ok(Self {
+            port: globals.port.unwrap_or(settings.port),
             paths,
+            settings,
+            db,
             identity,
             alias,
-            port: globals.port.unwrap_or(DEFAULT_PORT),
-            client_cert_policy: match globals.client_certs {
-                ClientCerts::Required => ClientCertPolicy::Required,
-                ClientCerts::Optional => ClientCertPolicy::Optional,
-            },
+            client_cert_policy,
         })
     }
 
@@ -80,26 +97,74 @@ impl App {
         Ok(handle)
     }
 
+    /// Starts discovery and keeps the database updated with every device
+    /// it confirms.
     pub fn start_discovery(&self, port: u16) -> Discovery {
-        Discovery::start(DiscoveryConfig::new(
+        let discovery = Discovery::start(DiscoveryConfig::new(
             self.identity.clone(),
             self.device_info(port),
-        ))
+        ));
+        let mut events = discovery.subscribe();
+        let db = self.db.clone();
+        tokio::spawn(async move {
+            loop {
+                match events.recv().await {
+                    Ok(DiscoveryEvent::Found(device) | DiscoveryEvent::Updated(device)) => {
+                        if let Err(err) = db.upsert_device(&KnownDevice::from(&device)) {
+                            tracing::warn!("could not remember {}: {err}", device.alias);
+                        }
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
+                    Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+                }
+            }
+        });
+        discovery
     }
-}
 
-/// Feeds registrations into discovery and declines transfer requests; what
-/// every command does with server events it is not interested in.
-pub fn handle_background_event(discovery: &Discovery, event: ServerEvent) {
-    match event {
-        ServerEvent::Register { peer, info } => {
-            let fingerprint = peer.identity(&info.fingerprint);
-            discovery.add_confirmed(Device::from_info(peer.addr, &info, fingerprint));
+    /// Addresses worth probing at startup: favorites and recently seen
+    /// devices.
+    pub fn known_targets(&self) -> Vec<Target> {
+        self.db
+            .devices_to_probe(RECENT_DEVICE_WINDOW)
+            .unwrap_or_default()
+            .into_iter()
+            .filter_map(|device| {
+                Some(Target {
+                    host: device.host?,
+                    port: device.port?,
+                    protocol: match device.protocol.as_deref() {
+                        Some("http") => ProtocolType::Http,
+                        _ => ProtocolType::Https,
+                    },
+                })
+            })
+            .collect()
+    }
+
+    /// Writes a history entry and keeps the history within its limit.
+    pub fn record_transfer(&self, record: &TransferRecord) {
+        if let Err(err) = self.db.record_transfer(record) {
+            tracing::warn!("could not record transfer of {}: {err}", record.file_name);
         }
-        ServerEvent::PrepareUpload { decision, .. } => {
-            let _ = decision.send(UploadDecision::Decline);
+        if let Err(err) = self.db.prune_transfers(self.settings.history_limit) {
+            tracing::warn!("could not prune the history: {err}");
         }
-        _ => {}
+    }
+
+    /// Feeds registrations into discovery and declines transfer requests;
+    /// what every command does with server events it is not interested in.
+    pub fn handle_background_event(&self, discovery: &Discovery, event: ServerEvent) {
+        match event {
+            ServerEvent::Register { peer, info } => {
+                let fingerprint = peer.identity(&info.fingerprint);
+                discovery.add_confirmed(Device::from_info(peer.addr, &info, fingerprint));
+            }
+            ServerEvent::PrepareUpload { decision, .. } => {
+                let _ = decision.send(UploadDecision::Decline);
+            }
+            _ => {}
+        }
     }
 }
 

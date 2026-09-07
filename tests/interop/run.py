@@ -270,6 +270,11 @@ def test_ours_to_official(ours: Path, official: Path, tmp: Path) -> None:
     inbox.mkdir()
     payload = tmp / "payload-b.bin"
     expected = make_payload(payload)
+    # A folder as well: the official receiver must recreate the relative path.
+    folder = tmp / "payload-dir"
+    (folder / "inner").mkdir(parents=True)
+    nested = folder / "inner" / "nested.bin"
+    nested_expected = make_payload(nested)
 
     # Pre-pair our device on the official side so it auto-accepts.
     write_paired(official_cfg, our_fingerprint(ours, ours_cfg), "ours-send", [])
@@ -286,7 +291,7 @@ def test_ours_to_official(ours: Path, official: Path, tmp: Path) -> None:
         for target in ("official-b", f"127.0.0.1:{OFFICIAL_PORT}"):
             sender = subprocess.run(
                 [str(ours), "--config-dir", str(ours_cfg), "--alias", "ours-send", "--port", str(OURS_PORT),
-                 "send", target, str(payload), "--timeout", "15"],
+                 "send", target, str(payload), str(folder), "--timeout", "15"],
                 capture_output=True, text=True, timeout=180,
             )
             print(sender.stdout[-2000:])
@@ -298,6 +303,11 @@ def test_ours_to_official(ours: Path, official: Path, tmp: Path) -> None:
             raise AssertionError("lan-send send failed for every target")
         received = wait_for_file(inbox, payload.name, expected, 30)
         print(f"received {received} OK")
+        # The official *CLI* flattens directory components (its
+        # `sanitize_path` keeps the last segment only); the official *app*
+        # recreates them. Only the content can be checked here.
+        nested_received = wait_for_file(inbox, nested.name, nested_expected, 30)
+        print(f"received {nested_received} OK (from a folder)")
     finally:
         print("official output tail:\n" + close_official(child))
 

@@ -1,10 +1,13 @@
-use crate::app::{App, handle_background_event};
+use crate::app::App;
 use crate::ui;
 use anyhow::Context;
 use indicatif::{MultiProgress, ProgressBar};
-use lan_send_core::transport::filename::{
-    Rules, ensure_within, sanitize_relative_path, unique_path,
+use lan_send_core::discovery::Device;
+use lan_send_core::protocol::FileDto;
+use lan_send_core::store::{
+    ConflictPolicy, Direction, KnownDevice, OrganizeRules, TransferRecord, TransferStatus, unix_now,
 };
+use lan_send_core::transfer::{Destination, Placement};
 use lan_send_core::transport::{ServerEvent, SessionEndReason, UploadDecision, UploadTarget};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
@@ -15,19 +18,47 @@ pub struct ReceiveOptions {
     pub pin: Option<String>,
     pub auto_accept: bool,
     pub verify_checksums: bool,
+    pub organize: OrganizeRules,
+    pub on_conflict: ConflictPolicy,
+}
+
+/// Parses the `--organize` flag: a comma list of device, date, type, or "none".
+pub fn parse_organize(rules: &str) -> anyhow::Result<OrganizeRules> {
+    let mut organize = OrganizeRules::default();
+    for rule in rules
+        .split(',')
+        .map(str::trim)
+        .filter(|rule| !rule.is_empty())
+    {
+        match rule.to_ascii_lowercase().as_str() {
+            "device" => organize.by_device = true,
+            "date" => organize.by_date = true,
+            "type" => organize.by_type = true,
+            "none" => {}
+            other => {
+                anyhow::bail!("unknown organize rule '{other}' (use device, date, type or none)")
+            }
+        }
+    }
+    Ok(organize)
+}
+
+/// What is known about the current session's sender, for history entries.
+struct SessionInfo {
+    session_id: String,
+    peer_alias: String,
+    peer_fingerprint: String,
+    files: HashMap<String, (FileDto, i64)>,
 }
 
 pub async fn run(app: App, options: ReceiveOptions) -> anyhow::Result<()> {
-    let destination = options
+    let root = options
         .dir
         .clone()
         .or_else(|| app.paths.download_dir.clone())
         .context("no download directory known; pass --dir")?;
-    std::fs::create_dir_all(&destination)
-        .with_context(|| format!("cannot create {}", destination.display()))?;
-    let destination = destination
-        .canonicalize()
-        .with_context(|| format!("cannot resolve {}", destination.display()))?;
+    let destination = Destination::new(&root, options.organize, options.on_conflict)
+        .with_context(|| format!("cannot use {}", root.display()))?;
 
     let (events_tx, mut events_rx) = mpsc::channel(256);
     let server = app
@@ -42,7 +73,7 @@ pub async fn run(app: App, options: ReceiveOptions) -> anyhow::Result<()> {
         app.alias,
         app.identity.fingerprint().short(),
         server.port(),
-        destination.display(),
+        destination.root().display(),
         if options.pin.is_some() {
             " [PIN required]"
         } else {
@@ -52,12 +83,16 @@ pub async fn run(app: App, options: ReceiveOptions) -> anyhow::Result<()> {
     eprintln!("Press Ctrl+C to stop.");
     {
         let discovery = discovery.clone();
-        tokio::spawn(async move { discovery.announce().await });
+        let known = app.known_targets();
+        tokio::spawn(async move {
+            tokio::join!(discovery.announce(), discovery.probe_many(known));
+        });
     }
 
     let progress = MultiProgress::new();
     let mut bars: HashMap<String, ProgressBar> = HashMap::new();
     let mut assigned: HashSet<PathBuf> = HashSet::new();
+    let mut session: Option<SessionInfo> = None;
     let mut received = 0usize;
     let mut failed = 0usize;
 
@@ -83,6 +118,10 @@ pub async fn run(app: App, options: ReceiveOptions) -> anyhow::Result<()> {
                 decision,
             } => {
                 let sender = peer.identity(&info.fingerprint);
+                let device = Device::from_info(peer.addr, &info, sender.clone());
+                discovery.add_confirmed(device.clone());
+                let _ = app.db.upsert_device(&KnownDevice::from(&device));
+
                 let total: u64 = files.values().map(|file| file.size).sum();
                 let mut names: Vec<&str> =
                     files.values().map(|file| file.file_name.as_str()).collect();
@@ -107,6 +146,15 @@ pub async fn run(app: App, options: ReceiveOptions) -> anyhow::Result<()> {
                         .map(|answer| matches!(answer.to_ascii_lowercase().as_str(), "y" | "yes"))
                         .unwrap_or(false);
                 let answer = if accept {
+                    session = Some(SessionInfo {
+                        session_id: session_id.clone(),
+                        peer_alias: info.alias.clone(),
+                        peer_fingerprint: sender.to_string(),
+                        files: files
+                            .iter()
+                            .map(|(id, file)| (id.clone(), (file.clone(), unix_now())))
+                            .collect(),
+                    });
                     UploadDecision::Accept(files.keys().cloned().collect())
                 } else {
                     println!("Declined.");
@@ -114,6 +162,7 @@ pub async fn run(app: App, options: ReceiveOptions) -> anyhow::Result<()> {
                 };
                 if decision.send(answer).is_err() {
                     println!("The sender withdrew the request {}.", short_id(&session_id));
+                    session = None;
                 }
                 assigned.clear();
             }
@@ -122,6 +171,7 @@ pub async fn run(app: App, options: ReceiveOptions) -> anyhow::Result<()> {
                     "Request {} was withdrawn by the sender.",
                     short_id(&session_id)
                 );
+                session = None;
             }
             ServerEvent::FileUpload {
                 file_id,
@@ -129,24 +179,37 @@ pub async fn run(app: App, options: ReceiveOptions) -> anyhow::Result<()> {
                 target,
                 ..
             } => {
-                let answer = match sanitize_relative_path(&file.file_name, Rules::current()) {
-                    Ok(relative) => {
-                        let path = unique_path(&destination, &relative, &assigned);
-                        match ensure_within(&destination, &path) {
-                            Ok(()) => {
-                                assigned.insert(path.clone());
-                                let bar =
-                                    progress.add(ui::transfer_bar(&file.file_name, file.size));
-                                bars.insert(file_id.clone(), bar);
-                                UploadTarget::Path(path)
+                let sender_alias = session
+                    .as_ref()
+                    .map(|info| info.peer_alias.as_str())
+                    .unwrap_or("unknown");
+                let answer = match destination.place(&file, sender_alias, &assigned) {
+                    Ok(placement) => {
+                        let path = match placement {
+                            Placement::New(path) => path,
+                            Placement::Replace(path) => {
+                                println!("Replacing {}", path.display());
+                                path
                             }
-                            Err(err) => UploadTarget::Reject(err.to_string()),
-                        }
+                            Placement::NeedsDecision { existing, renamed } => {
+                                decide_conflict(options.auto_accept, existing, renamed).await
+                            }
+                        };
+                        assigned.insert(path.clone());
+                        let bar = progress.add(ui::transfer_bar(&file.file_name, file.size));
+                        bars.insert(file_id.clone(), bar);
+                        UploadTarget::Path(path)
                     }
                     Err(err) => UploadTarget::Reject(err.to_string()),
                 };
                 if let UploadTarget::Reject(reason) = &answer {
                     println!("Refusing {}: {reason}", file.file_name);
+                }
+                if let Some(info) = session.as_mut() {
+                    info.files
+                        .entry(file_id.clone())
+                        .or_insert((file, unix_now()))
+                        .1 = unix_now();
                 }
                 let _ = target.send(answer);
             }
@@ -158,10 +221,10 @@ pub async fn run(app: App, options: ReceiveOptions) -> anyhow::Result<()> {
                 }
             }
             ServerEvent::FileUploadResult {
+                session_id,
                 file_id,
                 path,
                 outcome,
-                ..
             } => {
                 if let Some(bar) = bars.remove(&file_id) {
                     bar.finish_and_clear();
@@ -173,6 +236,35 @@ pub async fn run(app: App, options: ReceiveOptions) -> anyhow::Result<()> {
                     failed += 1;
                     println!("Failed {}: {outcome:?}", path.display());
                 }
+                if let Some(info) = session.as_ref() {
+                    let (file, started_at) = info
+                        .files
+                        .get(&file_id)
+                        .cloned()
+                        .unwrap_or_else(|| (placeholder_file(&file_id, &path), unix_now()));
+                    app.record_transfer(&TransferRecord {
+                        id: uuid::Uuid::new_v4().to_string(),
+                        session_id: session_id.clone(),
+                        direction: Direction::Receive,
+                        peer_fingerprint: info.peer_fingerprint.clone(),
+                        peer_alias: info.peer_alias.clone(),
+                        file_name: file.file_name.clone(),
+                        path: Some(path),
+                        size: file.size,
+                        mime: file.file_type.clone(),
+                        status: if outcome.is_success() {
+                            TransferStatus::Finished
+                        } else {
+                            TransferStatus::Failed
+                        },
+                        error: match &outcome {
+                            lan_send_core::transport::server::SaveOutcome::Success => None,
+                            other => Some(format!("{other:?}")),
+                        },
+                        started_at,
+                        finished_at: Some(unix_now()),
+                    });
+                }
             }
             ServerEvent::SessionEnd { session_id, reason } => {
                 let word = match reason {
@@ -180,8 +272,14 @@ pub async fn run(app: App, options: ReceiveOptions) -> anyhow::Result<()> {
                     SessionEndReason::Cancelled => "cancelled by the sender",
                 };
                 println!("Session {} {word}.", short_id(&session_id));
+                if session
+                    .as_ref()
+                    .is_some_and(|info| info.session_id == session_id)
+                {
+                    session = None;
+                }
             }
-            other => handle_background_event(&discovery, other),
+            other => app.handle_background_event(&discovery, other),
         }
     }
 
@@ -189,6 +287,43 @@ pub async fn run(app: App, options: ReceiveOptions) -> anyhow::Result<()> {
     server.stop().await;
     discovery.stop().await;
     Ok(())
+}
+
+async fn decide_conflict(auto_accept: bool, existing: PathBuf, renamed: PathBuf) -> PathBuf {
+    if auto_accept {
+        return renamed;
+    }
+    let answer = ui::prompt_line(&format!(
+        "{} exists. [r]ename to {} / [o]verwrite? ",
+        existing.display(),
+        renamed
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned())
+            .unwrap_or_default()
+    ))
+    .await
+    .unwrap_or_default();
+    if matches!(answer.to_ascii_lowercase().as_str(), "o" | "overwrite") {
+        println!("Replacing {}", existing.display());
+        existing
+    } else {
+        renamed
+    }
+}
+
+fn placeholder_file(file_id: &str, path: &std::path::Path) -> FileDto {
+    FileDto {
+        id: file_id.to_string(),
+        file_name: path
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned())
+            .unwrap_or_default(),
+        size: std::fs::metadata(path).map(|m| m.len()).unwrap_or(0),
+        file_type: "application/octet-stream".into(),
+        sha256: None,
+        preview: None,
+        metadata: None,
+    }
 }
 
 fn short_id(session_id: &str) -> &str {
