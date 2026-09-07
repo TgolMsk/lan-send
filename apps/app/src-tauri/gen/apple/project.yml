@@ -1,6 +1,6 @@
 name: lan-send-app
 options:
-  bundleIdPrefix: dev.lansend.client
+  bundleIdPrefix: com.wangsheng.lansend
   deploymentTarget:
     iOS: 15.0
 fileGroups: [../../src]
@@ -11,7 +11,7 @@ settingGroups:
   app:
     base:
       PRODUCT_NAME: lan-send
-      PRODUCT_BUNDLE_IDENTIFIER: dev.lansend.client
+      PRODUCT_BUNDLE_IDENTIFIER: com.wangsheng.lansend
 targetTemplates:
   app:
     type: application

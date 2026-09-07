@@ -4,6 +4,9 @@
 
 ## [Unreleased]
 
+### Changed
+- 应用标识符改为 `com.wangsheng.lansend`（与 Apple 开发者账号里已注册的 App ID 一致；0.2.0 的 macOS 应用用的是旧标识符，升级后设置目录不变，但系统权限记录会重新询问）。
+
 ## [0.2.0] - 2026-09-07
 
 首个带界面的版本：macOS 与 Windows 桌面应用（Tauri 2），iOS 通过 TestFlight 分发；命令行工具改名 `lan-send-cli-*` 继续随发布提供。

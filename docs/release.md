@@ -44,7 +44,7 @@ git push origin v0.1.0
 
 ## iOS：TestFlight 需要的准备（只能由账号持有人操作）
 
-1. **App Store Connect 里建应用**：Apps › 新建 App，平台 iOS，名称 `lan-send`（或你想要的名字），Bundle ID 选 `dev.lansend.client`（先在 [Certificates, Identifiers & Profiles › Identifiers](https://developer.apple.com/account/resources/identifiers/list) 注册这个 App ID；想换成自己的域名前缀也可以，同时改 `apps/app/src-tauri/tauri.conf.json` 的 `identifier` 和 `gen/apple/project.yml`）。
+1. **App Store Connect 里建应用**：Apps › 新建 App，平台 iOS，名称 `lan-send`（或你想要的名字），Bundle ID 选 `com.wangsheng.lansend`（先在 [Certificates, Identifiers & Profiles › Identifiers](https://developer.apple.com/account/resources/identifiers/list) 注册这个 App ID；想换成自己的域名前缀也可以，同时改 `apps/app/src-tauri/tauri.conf.json` 的 `identifier` 和 `gen/apple/project.yml`）。
 2. **生成 API Key**：App Store Connect › Users and Access › Integrations › App Store Connect API › Team Keys › 生成，角色 **App Manager**（自动签名需要它能创建描述文件）。记下 **Issuer ID**、**Key ID**，下载 `AuthKey_XXXX.p8`（只能下载一次）。
 3. **Team ID**：developer.apple.com › Membership details。
 4. 在仓库 `Settings › Secrets and variables › Actions` 添加：
