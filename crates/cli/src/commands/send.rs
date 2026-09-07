@@ -108,7 +108,8 @@ async fn send(
     }
 
     let client = Client::new(&app.identity, Some(device.fingerprint.clone()), None)?;
-    let target = device.target();
+    // An address given by the user wins over whatever discovery saw last.
+    let target = direct_target(&options.device).unwrap_or_else(|| device.target());
     let request = PrepareUploadRequest {
         info: app.device_info(app.port),
         files: files
@@ -170,7 +171,7 @@ async fn send(
         let cancel = cancel.clone();
         let discovery = discovery.clone();
         let session_id = session_id.clone();
-        let peer_host = device.host.clone();
+        let peer_host = target.host.clone();
         tokio::spawn(async move {
             while let Some(event) = events_rx.recv().await {
                 match event {

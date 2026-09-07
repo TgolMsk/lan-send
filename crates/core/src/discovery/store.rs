@@ -22,6 +22,8 @@ pub struct Device {
     /// Its `x-lanext` block, absent for official clients.
     pub ext: Option<Extensions>,
     pub last_seen: SystemTime,
+    /// Every address the device was confirmed at, most recent first.
+    pub addresses: Vec<Target>,
 }
 
 impl Device {
@@ -53,6 +55,11 @@ impl Device {
             download: info.download,
             ext: info.ext.clone(),
             last_seen: SystemTime::now(),
+            addresses: vec![Target {
+                host: host.to_string(),
+                port: info.port,
+                protocol: info.protocol,
+            }],
         }
     }
 
@@ -70,9 +77,20 @@ impl Device {
             download: info.download,
             ext: info.ext.clone(),
             last_seen: SystemTime::now(),
+            addresses: vec![target.clone()],
         }
     }
+
+    /// Whether the device was confirmed at `host` (and `port`, when given).
+    pub fn reachable_at(&self, host: &str, port: Option<u16>) -> bool {
+        self.addresses
+            .iter()
+            .any(|address| address.host == host && port.is_none_or(|port| address.port == port))
+    }
 }
+
+/// How many addresses are remembered per device.
+const MAX_ADDRESSES: usize = 8;
 
 #[derive(Default)]
 pub(super) struct DeviceStore {
@@ -81,14 +99,20 @@ pub(super) struct DeviceStore {
 
 impl DeviceStore {
     /// Inserts or refreshes a device. Returns whether it is new and the
-    /// stored state.
-    pub fn upsert(&self, device: Device) -> (bool, Device) {
+    /// stored state. Addresses are merged, most recent first.
+    pub fn upsert(&self, mut device: Device) -> (bool, Device) {
         let mut devices = self.devices.write();
         match devices
             .iter_mut()
             .find(|known| known.fingerprint == device.fingerprint)
         {
             Some(known) => {
+                for address in known.addresses.drain(..) {
+                    if !device.addresses.contains(&address) {
+                        device.addresses.push(address);
+                    }
+                }
+                device.addresses.truncate(MAX_ADDRESSES);
                 *known = device;
                 (false, known.clone())
             }

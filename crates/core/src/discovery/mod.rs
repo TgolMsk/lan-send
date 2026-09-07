@@ -173,10 +173,17 @@ impl Discovery {
     }
 
     /// Finds a device by exact alias (case-insensitive), fingerprint prefix
-    /// (at least 4 characters) or host address.
+    /// (at least 4 characters), IP address or `ip:port`.
     pub fn find(&self, query: &str) -> Option<Device> {
         let query = query.trim();
         let devices = self.devices();
+        let by_address = |device: &Device| match query.parse::<std::net::SocketAddr>() {
+            Ok(addr) => device.reachable_at(&addr.ip().to_string(), Some(addr.port())),
+            Err(_) => match query.parse::<IpAddr>() {
+                Ok(ip) => device.reachable_at(&ip.to_string(), None),
+                Err(_) => false,
+            },
+        };
         devices
             .iter()
             .find(|device| device.alias.eq_ignore_ascii_case(query))
@@ -185,7 +192,7 @@ impl Discovery {
                     .iter()
                     .find(|device| query.len() >= 4 && device.fingerprint.has_prefix(query))
             })
-            .or_else(|| devices.iter().find(|device| device.host == query))
+            .or_else(|| devices.iter().find(|device| by_address(device)))
             .cloned()
     }
 
