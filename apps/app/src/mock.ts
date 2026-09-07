@@ -240,7 +240,187 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       ] as T;
     case "cmd_clipboard_sync_get":
       return true as T;
+    case "cmd_pair_start":
+      return mockPairStart(String(args?.device)) as T;
+    case "cmd_pair_confirm":
+      mockPairConfirm(String(args?.fingerprint), Boolean(args?.matches));
+      return undefined as T;
+    case "cmd_pair_respond": {
+      const device = devices.find((d) => d.fingerprint === args?.fingerprint);
+      if (device) device.paired = Boolean(args?.accept);
+      window.setTimeout(
+        () => emit({ type: "pair-result", fingerprint: String(args?.fingerprint), alias: device?.displayName ?? "device", paired: Boolean(args?.accept), message: null }),
+        200,
+      );
+      return undefined as T;
+    }
+    case "cmd_pair_unpair": {
+      const device = devices.find((d) => d.fingerprint === args?.fingerprint);
+      if (device) device.paired = false;
+      return undefined as T;
+    }
+    case "cmd_transfer_respond_incoming": {
+      if (args?.accept) {
+        const transfer: TransferView = {
+          id: String(args.sessionId),
+          direction: "receive",
+          sessionId: String(args.sessionId),
+          peerFingerprint: devices[0]?.fingerprint ?? "",
+          peerAlias: "Nice Orange",
+          files: [
+            { id: "a", name: "IMG_2041.HEIC", size: 3_800_000, mime: "image/heic", done: 0, state: "pending", path: null, error: null },
+            { id: "b", name: "Q3 report.pdf", size: 1_200_000, mime: "application/pdf", done: 0, state: "pending", path: null, error: null },
+            { id: "c", name: "notes.txt", size: 2_400, mime: "text/plain", done: 0, state: "pending", path: null, error: null },
+          ],
+          totalSize: 5_002_400,
+          doneSize: 0,
+          state: "active",
+          clipboardIntent: false,
+          error: null,
+          startedAt: Date.now() / 1000,
+          finishedAt: null,
+        };
+        transfers.unshift(transfer);
+        emit({ type: "transfer-updated", transfer });
+        let tick = 0;
+        const timer = setInterval(() => {
+          tick += 1;
+          for (const file of transfer.files) {
+            file.done = Math.min(file.size, Math.round((file.size * tick) / 30));
+            file.state = file.done >= file.size ? "finished" : "active";
+          }
+          transfer.doneSize = transfer.files.reduce((sum, file) => sum + file.done, 0);
+          emit({ type: "transfer-progress", transferId: transfer.id, fileId: "a", done: transfer.files[0].done, size: transfer.files[0].size, totalDone: transfer.doneSize, totalSize: transfer.totalSize });
+          if (tick >= 30) {
+            clearInterval(timer);
+            transfer.state = "finished";
+            transfer.finishedAt = Date.now() / 1000;
+            emit({ type: "transfer-completed", transfer });
+          }
+        }, 200);
+      }
+      return undefined as T;
+    }
+    case "cmd_transfer_cancel": {
+      const transfer = transfers.find((t) => t.id === args?.transferId);
+      if (transfer) {
+        transfer.state = "cancelled";
+        emit({ type: "transfer-completed", transfer });
+      }
+      return undefined as T;
+    }
+    case "cmd_transfer_dismiss":
+      return true as T;
+    case "cmd_transfer_provide_pin":
+    case "cmd_transfer_respond_conflict":
+    case "cmd_devices_set_alias":
+    case "cmd_devices_forget":
+    case "cmd_history_delete":
+    case "cmd_history_clear":
+    case "cmd_clipboard_copy":
+    case "cmd_clipboard_delete":
+    case "cmd_clipboard_clear":
+    case "cmd_clipboard_sync_set":
+    case "cmd_app_open_path":
+    case "cmd_app_reveal_path":
+    case "cmd_app_restart":
+      return undefined as T;
+    case "cmd_clipboard_push":
+      return {
+        id: "c-push",
+        origin: identity.fingerprint,
+        originAlias: identity.alias,
+        fromSelf: true,
+        createdAt: Date.now(),
+        kind: "text",
+        size: 12,
+        text: "hello there",
+        imagePath: null,
+        imageWidth: null,
+        imageHeight: null,
+        filePaths: [],
+        stored: true,
+        description: "text, 12 B",
+      } as T;
     default:
       return undefined as T;
   }
+}
+
+// ----- extra mock behaviour: pairing, incoming, demo triggers ----------------
+
+declare global {
+  interface Window {
+    lanSendDemo?: {
+      incoming: () => void;
+      pin: () => void;
+      pairRequest: () => void;
+      conflict: () => void;
+      clipboard: () => void;
+    };
+  }
+}
+
+window.lanSendDemo = {
+  incoming: () =>
+    emit({
+      type: "incoming-request",
+      request: {
+        sessionId: "s-demo",
+        peerFingerprint: devices[0]?.fingerprint ?? "",
+        peerAlias: "Nice Orange",
+        peerHost: "192.168.1.24",
+        files: [
+          { id: "a", name: "IMG_2041.HEIC", size: 3_800_000, mime: "image/heic" },
+          { id: "b", name: "Q3 report.pdf", size: 1_200_000, mime: "application/pdf" },
+          { id: "c", name: "notes.txt", size: 2_400, mime: "text/plain" },
+        ],
+        totalSize: 5_002_400,
+        resumable: true,
+        clipboardIntent: false,
+        autoAccepted: false,
+      },
+    }),
+  pin: () => emit({ type: "transfer-needs-pin", transferId: "t-demo", message: "PIN required" }),
+  pairRequest: () =>
+    emit({ type: "pair-request", fingerprint: devices[1]?.fingerprint ?? "", alias: "Work PC", host: "192.168.1.40", code: "482913" }),
+  conflict: () =>
+    emit({ type: "incoming-conflict", sessionId: "s-demo", fileId: "a", existing: "/Users/me/Downloads/IMG_2041.HEIC", renamed: "/Users/me/Downloads/IMG_2041 (1).HEIC" }),
+  clipboard: () =>
+    emit({
+      type: "clipboard-received",
+      item: {
+        id: `c-${Date.now()}`,
+        origin: devices[0]?.fingerprint ?? "",
+        originAlias: "Nice Orange",
+        fromSelf: false,
+        createdAt: Date.now(),
+        kind: "text",
+        size: 27,
+        text: "Meet at 3pm, room 4B",
+        imagePath: null,
+        imageWidth: null,
+        imageHeight: null,
+        filePaths: [],
+        stored: true,
+        description: "text, 27 B",
+      },
+    }),
+};
+
+export function mockPairStart(device: string) {
+  const found = devices.find((d) => d.fingerprint === device || d.displayName === device);
+  const fingerprint = found?.fingerprint ?? "FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000";
+  const alias = found?.displayName ?? device;
+  window.setTimeout(() => emit({ type: "pair-response", fingerprint, alias, code: "271828" }), 1500);
+  return { fingerprint, alias, code: "271828" };
+}
+
+export function mockPairConfirm(fingerprint: string, matches: boolean) {
+  const device = devices.find((d) => d.fingerprint === fingerprint);
+  if (device) device.paired = matches;
+  window.setTimeout(
+    () => emit({ type: "pair-result", fingerprint, alias: device?.displayName ?? "device", paired: matches, message: matches ? null : "the codes did not match" }),
+    300,
+  );
 }

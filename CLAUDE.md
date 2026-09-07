@@ -54,5 +54,5 @@ Linux 上 `--workspace` 要加 `--exclude lan-send-app`（Tauri 需要 GTK）。
 3. 剪贴板同步 —— **完成**（2026-09-07：配对、文本 / 图片 / 文件列表同步，macOS 与 Windows 后端，历史；iOS 不做）。
 4. 媒体层（等用户对 HEIC / AVIF / 缩略图缓存的决策；顺序上放到 5、6 之后）。
 5. Tauri 骨架与 IPC —— **完成**（2026-09-07：`core::runtime` 事件式运行时、`apps/app` Tauri 壳、托盘与快捷键、类型化 IPC；ADR-0013）。
-6. 前端（等 UI 方案，参考 `docs/ui-style-reference.md`）。
+6. 前端 —— **完成**（2026-09-07：五个页面与全部弹窗，桌面侧栏 / 移动端底部标签栏，中英文，深浅色；参考 `docs/ui-style-reference.md`）。
 7. 可选项。

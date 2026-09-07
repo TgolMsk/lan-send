@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "app-frontend",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--dir", "apps/app", "dev"],
+      "port": 1420
+    }
+  ]
+}

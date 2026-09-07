@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Added
+- 里程碑 6：正式界面（`apps/app/src`）——按 `docs/ui-style-reference.md` 的金融风格实现：深色对角渐变底、半透明卡片与白色重点卡片、薄荷绿单一强调色、单色速度曲线；桌面侧栏布局，窄屏（iOS）自动切到底部标签栏；设备（在线/收藏/配对、发送、配对、重命名、忘记、按地址发送、拖放发送）、传输（进行中的大数字进度卡、速度与剩余时间、逐文件进度、取消/移除/在文件夹中显示）、剪贴板（同步开关、立即推送、历史与重新复制）、历史、设置（常规/网络/剪贴板/应用）；接收请求、PIN、同名冲突、配对（双向）、发送弹窗与提示条；中英文界面，深/浅色主题。浏览器假数据层可脱离 Tauri 预览。
 - 里程碑 5：`lan_send_core::runtime`——把 CLI 里的编排（接受请求、落盘、续传、历史、配对、剪贴板同步、发送重试）下沉为核心库的事件式运行时：`Runtime::start` 启动服务、发现、探活与可选的剪贴板同步；所有需要用户决定的事情变成 `RuntimeEvent` + 应答方法（`respond_incoming`、`respond_conflict`、`provide_pin`、`respond_pair_request`、`pair_confirm`）；设备列表合并发现结果与数据库；每 30 s 探活、两次失败发 `device-lost`；进程内双实例集成测试覆盖 PIN、接受、拒绝、配对与解除配对。ADR-0013。
 - 里程碑 5：Tauri 2 壳 `apps/app`（crate `lan-send-app`，加入工作区）：`cmd_<模块>_<动作>` 命令一一对应运行时 API（app / devices / transfer / pair / history / clipboard），运行时事件转发为 `event:<name>`（含简报要求的六个），桌面端托盘菜单、全局快捷键（默认 `CmdOrCtrl+Shift+V` 推送剪贴板，可配置）、关窗隐藏到托盘；`platform/{desktop,macos,windows,ios}.rs`；前端骨架 Vite + React 19 + TypeScript、类型化 IPC 层与浏览器假数据层（里程碑 6 换成正式界面）。
 - 设置新增 `clipboard.syncEnabled`（默认开）与 `app { globalShortcut, closeToTray, theme(默认 dark), autoAcceptPaired, notifications }`；历史、设备、剪贴板记录可序列化供 IPC 使用。
