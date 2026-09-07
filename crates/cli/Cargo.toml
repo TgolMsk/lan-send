@@ -12,7 +12,7 @@ name = "lan-send"
 path = "src/main.rs"
 
 [dependencies]
-lan-send-core = { path = "../core" }
+lan-send-core = { path = "../core", version = "0.1.0" }
 anyhow.workspace = true
 clap.workspace = true
 tokio.workspace = true
