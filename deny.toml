@@ -2,6 +2,16 @@
 # rule from the brief. Run locally with `cargo deny check`; CI runs it on every push.
 [graph]
 all-features = true
+# Only the platforms we ship. Tauri on Linux links GTK / WebKitGTK (LGPL);
+# Linux is a CI host, not a target (ADR-0001, ADR-0013).
+targets = [
+    "aarch64-apple-darwin",
+    "x86_64-apple-darwin",
+    "x86_64-pc-windows-msvc",
+    "aarch64-pc-windows-msvc",
+    "aarch64-apple-ios",
+    "aarch64-apple-ios-sim",
+]
 
 [licenses]
 allow = [

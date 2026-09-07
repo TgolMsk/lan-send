@@ -42,6 +42,7 @@ if-addrs = "0.15"
 # misc
 time = { version = "0.3", features = ["formatting", "parsing", "local-offset"] }
 directories = "6"
+gethostname = "1"
 rusqlite = { version = "0.40", features = ["bundled"] }
 walkdir = "2"
 mime_guess = "2"

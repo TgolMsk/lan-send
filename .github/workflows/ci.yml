@@ -25,13 +25,38 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Format
         run: cargo fmt --all --check
+      # Linux is a CI host only: the Tauri app would need GTK / WebKitGTK there.
+      - name: Clippy (Linux, without the app)
+        if: runner.os == 'Linux'
+        run: cargo clippy --workspace --exclude lan-send-app --all-targets -- -D warnings
+      - name: Test (Linux, without the app)
+        if: runner.os == 'Linux'
+        run: cargo test --workspace --exclude lan-send-app
+      - uses: pnpm/action-setup@v4
+        if: runner.os != 'Linux'
+        with:
+          version: 11
+      - uses: actions/setup-node@v6
+        if: runner.os != 'Linux'
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: apps/app/pnpm-lock.yaml
+      - name: Frontend (type-check and build)
+        if: runner.os != 'Linux'
+        working-directory: apps/app
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
       - name: Clippy
+        if: runner.os != 'Linux'
         run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Test
+        if: runner.os != 'Linux'
         run: cargo test --workspace
 
-  ios-core-check:
-    name: iOS (core crate cross-check)
+  ios-check:
+    name: iOS (cross-check core and app)
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
@@ -39,10 +64,23 @@ jobs:
         with:
           targets: aarch64-apple-ios, aarch64-apple-ios-sim
       - uses: Swatinem/rust-cache@v2
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: apps/app/pnpm-lock.yaml
+      - name: Frontend
+        working-directory: apps/app
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
       - name: Check core for iOS device
         run: cargo check -p lan-send-core --target aarch64-apple-ios
-      - name: Check core for iOS simulator
-        run: cargo check -p lan-send-core --target aarch64-apple-ios-sim
+      - name: Check app for iOS simulator
+        run: cargo check -p lan-send-app --lib --target aarch64-apple-ios-sim
 
   licenses:
     name: Licenses (cargo-deny)

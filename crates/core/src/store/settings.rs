@@ -66,6 +66,46 @@ pub struct Settings {
     /// PIN senders must know; `None` disables the PIN.
     pub pin: Option<String>,
     pub clipboard: ClipboardSettings,
+    pub app: AppSettings,
+}
+
+/// Preferences of the graphical application (ADR-0013). The CLI ignores
+/// them.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct AppSettings {
+    /// Global shortcut that pushes the clipboard to paired devices, in
+    /// Tauri's accelerator syntax; empty disables it.
+    pub global_shortcut: String,
+    /// Closing the main window hides it to the tray instead of quitting.
+    pub close_to_tray: bool,
+    /// `dark`, `light` or `system`.
+    pub theme: Theme,
+    /// Accept transfers from paired devices without asking.
+    pub auto_accept_paired: bool,
+    /// Show a system notification for received files and clipboard items.
+    pub notifications: bool,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Theme {
+    #[default]
+    Dark,
+    Light,
+    System,
+}
+
+impl Default for AppSettings {
+    fn default() -> Self {
+        Self {
+            global_shortcut: "CmdOrCtrl+Shift+V".to_string(),
+            close_to_tray: true,
+            theme: Theme::Dark,
+            auto_accept_paired: false,
+            notifications: true,
+        }
+    }
 }
 
 /// Clipboard synchronisation preferences (ADR-0011).
@@ -84,6 +124,9 @@ pub struct ClipboardSettings {
     /// Never keep text items in the history (in addition to the secret
     /// heuristic).
     pub never_store_text: bool,
+    /// Keep the clipboard in sync with paired devices while the application
+    /// runs (the CLI syncs only during `clip watch`).
+    pub sync_enabled: bool,
 }
 
 impl Default for ClipboardSettings {
@@ -94,6 +137,7 @@ impl Default for ClipboardSettings {
             history_limit: 50,
             poll_interval_ms: 300,
             never_store_text: false,
+            sync_enabled: true,
         }
     }
 }
@@ -116,6 +160,7 @@ impl Default for Settings {
             ipv6: true,
             pin: None,
             clipboard: ClipboardSettings::default(),
+            app: AppSettings::default(),
         }
     }
 }
@@ -139,6 +184,17 @@ impl Settings {
                 source,
             }),
         }
+    }
+
+    /// Whether switching from `self` to `other` needs the server and
+    /// discovery to be restarted (port, identity policy, PIN, IPv6, alias).
+    pub fn network_differs(&self, other: &Settings) -> bool {
+        self.alias != other.alias
+            || self.port != other.port
+            || self.require_client_certs != other.require_client_certs
+            || self.ipv6 != other.ipv6
+            || self.pin != other.pin
+            || self.resume != other.resume
     }
 
     pub fn save(&self, path: &Path) -> Result<(), StoreError> {

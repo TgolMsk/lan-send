@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### Added
+- 里程碑 5：`lan_send_core::runtime`——把 CLI 里的编排（接受请求、落盘、续传、历史、配对、剪贴板同步、发送重试）下沉为核心库的事件式运行时：`Runtime::start` 启动服务、发现、探活与可选的剪贴板同步；所有需要用户决定的事情变成 `RuntimeEvent` + 应答方法（`respond_incoming`、`respond_conflict`、`provide_pin`、`respond_pair_request`、`pair_confirm`）；设备列表合并发现结果与数据库；每 30 s 探活、两次失败发 `device-lost`；进程内双实例集成测试覆盖 PIN、接受、拒绝、配对与解除配对。ADR-0013。
+- 里程碑 5：Tauri 2 壳 `apps/app`（crate `lan-send-app`，加入工作区）：`cmd_<模块>_<动作>` 命令一一对应运行时 API（app / devices / transfer / pair / history / clipboard），运行时事件转发为 `event:<name>`（含简报要求的六个），桌面端托盘菜单、全局快捷键（默认 `CmdOrCtrl+Shift+V` 推送剪贴板，可配置）、关窗隐藏到托盘；`platform/{desktop,macos,windows,ios}.rs`；前端骨架 Vite + React 19 + TypeScript、类型化 IPC 层与浏览器假数据层（里程碑 6 换成正式界面）。
+- 设置新增 `clipboard.syncEnabled`（默认开）与 `app { globalShortcut, closeToTray, theme(默认 dark), autoAcceptPaired, notifications }`；历史、设备、剪贴板记录可序列化供 IPC 使用。
+- `deny.toml` 把许可证检查限定到 macOS / Windows / iOS 目标三元组（Tauri 在 Linux 会链接 LGPL 的 GTK，Linux 不是目标平台）。
+
 ## [0.1.0] - 2026-09-07
 
 首个版本：命令行客户端，覆盖里程碑 1–3（协议、发现、传输、断点续传、IPv6、配对、剪贴板同步）。

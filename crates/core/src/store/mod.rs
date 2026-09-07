@@ -13,4 +13,6 @@ pub use db::{
 };
 pub use paths::{AppPaths, StoreError};
 pub(crate) use secure_file::write_private;
-pub use settings::{ClipboardSettings, ConflictPolicy, OrganizeRules, Settings};
+pub use settings::{
+    AppSettings, ClipboardSettings, ConflictPolicy, OrganizeRules, Settings, Theme,
+};

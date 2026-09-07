@@ -93,7 +93,8 @@ fn to_u64(value: i64) -> u64 {
     u64::try_from(value).unwrap_or(0)
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Direction {
     Send,
     Receive,
@@ -115,7 +116,8 @@ impl Direction {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum TransferStatus {
     Finished,
     Failed,
@@ -144,7 +146,8 @@ impl TransferStatus {
 }
 
 /// One file of one transfer session.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TransferRecord {
     pub id: String,
     pub session_id: String,
@@ -164,7 +167,8 @@ pub struct TransferRecord {
 }
 
 /// A device seen at least once.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct KnownDevice {
     pub fingerprint: String,
     pub alias: String,
@@ -191,7 +195,8 @@ impl KnownDevice {
 
 /// One clipboard history entry. Image bytes live in a file under the cache
 /// directory; the row only keeps its path.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ClipboardRecord {
     pub id: String,
     pub origin: String,
@@ -212,7 +217,8 @@ pub struct ClipboardRecord {
 }
 
 /// An upload that did not complete; its `.part` file can be resumed.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PartialUpload {
     pub part_path: PathBuf,
     pub final_path: PathBuf,

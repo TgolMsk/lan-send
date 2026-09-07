@@ -1,0 +1,504 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		160A847BC23749301EAD77D2 /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 85083BD17CA0DA8F452C07B4 /* MetalKit.framework */; };
+		1C8B79B88C42081A77D5BD94 /* libapp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 816E04BBC23C0B605CCD0727 /* libapp.a */; };
+		29571A07D63755958E00464D /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2313E0C7EE168A1C3DC25D62 /* CoreGraphics.framework */; };
+		2F407C34C1765D39E0A90095 /* assets in Resources */ = {isa = PBXBuildFile; fileRef = 970AF1AC6B3104352969A454 /* assets */; };
+		47894217044221776A3583FD /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0CF447EF9CAE2280A7AB0721 /* Security.framework */; };
+		4B46BA290B37302C2EEDD300 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FC49E43E810987A1B1667F4 /* QuartzCore.framework */; };
+		9771D873D34D6FAC4EDB445D /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 12633BE78948CA41E1E59AB0 /* UIKit.framework */; };
+		BB2FD0C6D7C2FEF9CAB9FE38 /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 434B7B6F23E99C951B8CEB23 /* WebKit.framework */; };
+		C12A3CE3E0AAF072E0082301 /* main.mm in Sources */ = {isa = PBXBuildFile; fileRef = AFB14E6F28FE59A594AEFC6E /* main.mm */; };
+		C4EF22C41795B34F6C44614D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B73363CF0DA46E85B1E7B466 /* Assets.xcassets */; };
+		E09E92AE1FE18A9D5444AA24 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A67A2F1AA3610F9040ED70B9 /* Metal.framework */; };
+		FCD2E6CE75A95B043ADC4A4B /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = B49E747DA1399D136804FC0E /* LaunchScreen.storyboard */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0CF447EF9CAE2280A7AB0721 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
+		12633BE78948CA41E1E59AB0 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
+		2313E0C7EE168A1C3DC25D62 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
+		2FC49E43E810987A1B1667F4 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
+		30DE6C4DB119E81AA3D83AE7 /* desktop.rs */ = {isa = PBXFileReference; path = desktop.rs; sourceTree = "<group>"; };
+		32FC8985E2680E8DAB73D4EC /* main.rs */ = {isa = PBXFileReference; path = main.rs; sourceTree = "<group>"; };
+		349E3062654A632EFC49CB7E /* mod.rs */ = {isa = PBXFileReference; path = mod.rs; sourceTree = "<group>"; };
+		36A7DEEB97A04F2015A803F9 /* clipboard.rs */ = {isa = PBXFileReference; path = clipboard.rs; sourceTree = "<group>"; };
+		38BBDAA594266351304AE45D /* state.rs */ = {isa = PBXFileReference; path = state.rs; sourceTree = "<group>"; };
+		434B7B6F23E99C951B8CEB23 /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
+		599248B010BAB3FFE140E569 /* bindings.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bindings.h; sourceTree = "<group>"; };
+		6C279894CED580D1EC460D8B /* devices.rs */ = {isa = PBXFileReference; path = devices.rs; sourceTree = "<group>"; };
+		6D3BF76FB52B9D5D36B1852D /* error.rs */ = {isa = PBXFileReference; path = error.rs; sourceTree = "<group>"; };
+		7CCD505FC1D662967C25BD8C /* windows.rs */ = {isa = PBXFileReference; path = windows.rs; sourceTree = "<group>"; };
+		816E04BBC23C0B605CCD0727 /* libapp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libapp.a; sourceTree = "<group>"; };
+		85083BD17CA0DA8F452C07B4 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
+		8617D9A6D7F3A2E68D8FCCDF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		8F8FC6453547EFA51AE1C261 /* transfer.rs */ = {isa = PBXFileReference; path = transfer.rs; sourceTree = "<group>"; };
+		9439FB3B6B5B8801844AB4B7 /* macos.rs */ = {isa = PBXFileReference; path = macos.rs; sourceTree = "<group>"; };
+		970AF1AC6B3104352969A454 /* assets */ = {isa = PBXFileReference; lastKnownFileType = folder; path = assets; sourceTree = SOURCE_ROOT; };
+		9F36D5007E8C1E00EEEDEE8B /* lan-send-app_iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "lan-send-app_iOS.entitlements"; sourceTree = "<group>"; };
+		9F94A59DAFD8943F8217E5FF /* lib.rs */ = {isa = PBXFileReference; path = lib.rs; sourceTree = "<group>"; };
+		A67A2F1AA3610F9040ED70B9 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
+		AFB14E6F28FE59A594AEFC6E /* main.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = main.mm; sourceTree = "<group>"; };
+		B49E747DA1399D136804FC0E /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		B6C6511F0187783C3CB80A5D /* history.rs */ = {isa = PBXFileReference; path = history.rs; sourceTree = "<group>"; };
+		B6F16F35F5A110A9D336421F /* mod.rs */ = {isa = PBXFileReference; path = mod.rs; sourceTree = "<group>"; };
+		B73363CF0DA46E85B1E7B466 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		C09DF9CA7358F044FB39E0F0 /* app.rs */ = {isa = PBXFileReference; path = app.rs; sourceTree = "<group>"; };
+		C0C5932595EEBE4868CFB3B3 /* ios.rs */ = {isa = PBXFileReference; path = ios.rs; sourceTree = "<group>"; };
+		EA0C2E4B82A7BD3D6E194E1E /* lan-send-app_iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "lan-send-app_iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		EC3B0F26F1EFB8246B931C8F /* pair.rs */ = {isa = PBXFileReference; path = pair.rs; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		627D6E232C5B2CD332780740 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1C8B79B88C42081A77D5BD94 /* libapp.a in Frameworks */,
+				29571A07D63755958E00464D /* CoreGraphics.framework in Frameworks */,
+				E09E92AE1FE18A9D5444AA24 /* Metal.framework in Frameworks */,
+				160A847BC23749301EAD77D2 /* MetalKit.framework in Frameworks */,
+				4B46BA290B37302C2EEDD300 /* QuartzCore.framework in Frameworks */,
+				47894217044221776A3583FD /* Security.framework in Frameworks */,
+				9771D873D34D6FAC4EDB445D /* UIKit.framework in Frameworks */,
+				BB2FD0C6D7C2FEF9CAB9FE38 /* WebKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0C4F5519DD947AB7784C5B8E /* lan-send-app_iOS */ = {
+			isa = PBXGroup;
+			children = (
+				8617D9A6D7F3A2E68D8FCCDF /* Info.plist */,
+				9F36D5007E8C1E00EEEDEE8B /* lan-send-app_iOS.entitlements */,
+			);
+			path = "lan-send-app_iOS";
+			sourceTree = "<group>";
+		};
+		322B345950985C6B9426F8F7 /* bindings */ = {
+			isa = PBXGroup;
+			children = (
+				599248B010BAB3FFE140E569 /* bindings.h */,
+			);
+			path = bindings;
+			sourceTree = "<group>";
+		};
+		5C953CE98531307500FE0864 /* commands */ = {
+			isa = PBXGroup;
+			children = (
+				C09DF9CA7358F044FB39E0F0 /* app.rs */,
+				36A7DEEB97A04F2015A803F9 /* clipboard.rs */,
+				6C279894CED580D1EC460D8B /* devices.rs */,
+				B6C6511F0187783C3CB80A5D /* history.rs */,
+				B6F16F35F5A110A9D336421F /* mod.rs */,
+				EC3B0F26F1EFB8246B931C8F /* pair.rs */,
+				8F8FC6453547EFA51AE1C261 /* transfer.rs */,
+			);
+			path = commands;
+			sourceTree = "<group>";
+		};
+		60D5680C2B0A90BE75263998 /* Externals */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Externals;
+			sourceTree = "<group>";
+		};
+		669CA7573B1B062FD7822B79 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				2313E0C7EE168A1C3DC25D62 /* CoreGraphics.framework */,
+				816E04BBC23C0B605CCD0727 /* libapp.a */,
+				A67A2F1AA3610F9040ED70B9 /* Metal.framework */,
+				85083BD17CA0DA8F452C07B4 /* MetalKit.framework */,
+				2FC49E43E810987A1B1667F4 /* QuartzCore.framework */,
+				0CF447EF9CAE2280A7AB0721 /* Security.framework */,
+				12633BE78948CA41E1E59AB0 /* UIKit.framework */,
+				434B7B6F23E99C951B8CEB23 /* WebKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		69D9F16D64043F8E1805BC4F = {
+			isa = PBXGroup;
+			children = (
+				970AF1AC6B3104352969A454 /* assets */,
+				B73363CF0DA46E85B1E7B466 /* Assets.xcassets */,
+				B49E747DA1399D136804FC0E /* LaunchScreen.storyboard */,
+				60D5680C2B0A90BE75263998 /* Externals */,
+				0C4F5519DD947AB7784C5B8E /* lan-send-app_iOS */,
+				EF126E61B6706F669ABFDC79 /* Sources */,
+				7D0CD99EED6E3F7720AD7789 /* src */,
+				669CA7573B1B062FD7822B79 /* Frameworks */,
+				C7786DB4A480445547CBE3E4 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		7D0CD99EED6E3F7720AD7789 /* src */ = {
+			isa = PBXGroup;
+			children = (
+				6D3BF76FB52B9D5D36B1852D /* error.rs */,
+				9F94A59DAFD8943F8217E5FF /* lib.rs */,
+				32FC8985E2680E8DAB73D4EC /* main.rs */,
+				38BBDAA594266351304AE45D /* state.rs */,
+				5C953CE98531307500FE0864 /* commands */,
+				CE06A7ED26B324B59F198112 /* platform */,
+			);
+			name = src;
+			path = ../../src;
+			sourceTree = "<group>";
+		};
+		AFADF8543088BBC143F726FC /* lan-send-app */ = {
+			isa = PBXGroup;
+			children = (
+				AFB14E6F28FE59A594AEFC6E /* main.mm */,
+				322B345950985C6B9426F8F7 /* bindings */,
+			);
+			path = "lan-send-app";
+			sourceTree = "<group>";
+		};
+		C7786DB4A480445547CBE3E4 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				EA0C2E4B82A7BD3D6E194E1E /* lan-send-app_iOS.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		CE06A7ED26B324B59F198112 /* platform */ = {
+			isa = PBXGroup;
+			children = (
+				30DE6C4DB119E81AA3D83AE7 /* desktop.rs */,
+				C0C5932595EEBE4868CFB3B3 /* ios.rs */,
+				9439FB3B6B5B8801844AB4B7 /* macos.rs */,
+				349E3062654A632EFC49CB7E /* mod.rs */,
+				7CCD505FC1D662967C25BD8C /* windows.rs */,
+			);
+			path = platform;
+			sourceTree = "<group>";
+		};
+		EF126E61B6706F669ABFDC79 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				AFADF8543088BBC143F726FC /* lan-send-app */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		3A4F825D08EE785ED589BC56 /* lan-send-app_iOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BA6F70B92F0C1B568BD94981 /* Build configuration list for PBXNativeTarget "lan-send-app_iOS" */;
+			buildPhases = (
+				01C1BBBAB62FDC4517F67B01 /* Build Rust Code */,
+				EF71A8C2B61A31B620355FE1 /* Sources */,
+				B11EE14CCC813E9937FF141F /* Resources */,
+				627D6E232C5B2CD332780740 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "lan-send-app_iOS";
+			packageProductDependencies = (
+			);
+			productName = "lan-send-app_iOS";
+			productReference = EA0C2E4B82A7BD3D6E194E1E /* lan-send-app_iOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		313122B2AF4189D993D329ED /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = 702BEAFE161ACA6EEF37AA4A /* Build configuration list for PBXProject "lan-send-app" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 69D9F16D64043F8E1805BC4F;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = C7786DB4A480445547CBE3E4 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				3A4F825D08EE785ED589BC56 /* lan-send-app_iOS */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		B11EE14CCC813E9937FF141F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C4EF22C41795B34F6C44614D /* Assets.xcassets in Resources */,
+				FCD2E6CE75A95B043ADC4A4B /* LaunchScreen.storyboard in Resources */,
+				2F407C34C1765D39E0A90095 /* assets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		01C1BBBAB62FDC4517F67B01 /* Build Rust Code */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Build Rust Code";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(SRCROOT)/Externals/x86_64/${CONFIGURATION}/libapp.a",
+				"$(SRCROOT)/Externals/arm64/${CONFIGURATION}/libapp.a",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "cargo tauri ios xcode-script -v --platform ${PLATFORM_DISPLAY_NAME:?} --sdk-root ${SDKROOT:?} --framework-search-paths \"${FRAMEWORK_SEARCH_PATHS:?}\" --header-search-paths \"${HEADER_SEARCH_PATHS:?}\" --gcc-preprocessor-definitions \"${GCC_PREPROCESSOR_DEFINITIONS:-}\" --configuration ${CONFIGURATION:?} ${FORCE_COLOR} ${ARCHS:?}";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		EF71A8C2B61A31B620355FE1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C12A3CE3E0AAF072E0082301 /* main.mm in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		07C8C56F41DE29C0DE41BA0E /* release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = release;
+		};
+		2776549C68BD858FBBC63BB1 /* debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ARCHS = (
+					arm64,
+				);
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "lan-send-app_iOS/lan-send-app_iOS.entitlements";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_BITCODE = NO;
+				"EXCLUDED_ARCHS[sdk=iphoneos*]" = x86_64;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\".\"",
+				);
+				INFOPLIST_FILE = "lan-send-app_iOS/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				"LIBRARY_SEARCH_PATHS[arch=arm64]" = "$(inherited) $(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
+				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = "$(inherited) $(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = dev.lansend.client;
+				PRODUCT_NAME = "lan-send";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALID_ARCHS = arm64;
+			};
+			name = debug;
+		};
+		576B099B5BB0264793D47DAB /* debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = debug;
+		};
+		BA561F682A63755DD476F3B7 /* release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ARCHS = (
+					arm64,
+				);
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "lan-send-app_iOS/lan-send-app_iOS.entitlements";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_BITCODE = NO;
+				"EXCLUDED_ARCHS[sdk=iphoneos*]" = x86_64;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\".\"",
+				);
+				INFOPLIST_FILE = "lan-send-app_iOS/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				"LIBRARY_SEARCH_PATHS[arch=arm64]" = "$(inherited) $(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
+				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = "$(inherited) $(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = dev.lansend.client;
+				PRODUCT_NAME = "lan-send";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALID_ARCHS = arm64;
+			};
+			name = release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		702BEAFE161ACA6EEF37AA4A /* Build configuration list for PBXProject "lan-send-app" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				576B099B5BB0264793D47DAB /* debug */,
+				07C8C56F41DE29C0DE41BA0E /* release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = debug;
+		};
+		BA6F70B92F0C1B568BD94981 /* Build configuration list for PBXNativeTarget "lan-send-app_iOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2776549C68BD858FBBC63BB1 /* debug */,
+				BA561F682A63755DD476F3B7 /* release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 313122B2AF4189D993D329ED /* Project object */;
+}

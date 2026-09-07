@@ -34,7 +34,12 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 cargo deny check            # 需要 cargo-deny
 cargo run -p lan-send-cli -- --help
+cd apps/app && pnpm install && pnpm build     # 前端（Vite + React）
+cargo tauri dev                                 # 在 apps/app 下：桌面应用开发模式
+cargo tauri build                               # 打包 .app/.dmg 或 .msi/.exe
 ```
+
+Linux 上 `--workspace` 要加 `--exclude lan-send-app`（Tauri 需要 GTK）。`Runtime` 在 `crates/core/src/runtime/`，Tauri 命令在 `apps/app/src-tauri/src/commands/`，前端类型镜像在 `apps/app/src/types.ts`。
 
 本机的 Rust 由 rustup 安装在 `~/.cargo/bin`，未写入 PATH；在命令前 `source ~/.cargo/env`。
 若 Xcode 已安装但许可证未接受，链接会失败，可临时 `export DEVELOPER_DIR=/Library/Developer/CommandLineTools`。
@@ -47,7 +52,7 @@ cargo run -p lan-send-cli -- --help
 1. `core::protocol` + `discovery` + `transport`，CLI 与官方 LocalSend 互传单文件 —— **完成**（2026-09-07，双向互测通过；IPv6、文件夹、断点续传留给里程碑 2）。
 2. 多文件、文件夹、校验、断点续传、历史 —— **完成**（2026-09-07：持久化、文件夹、分目录、历史与设备命令、断点续传、IPv6）。
 3. 剪贴板同步 —— **完成**（2026-09-07：配对、文本 / 图片 / 文件列表同步，macOS 与 Windows 后端，历史；iOS 不做）。
-4. 媒体层。
-5. Tauri 骨架与 IPC。
+4. 媒体层（等用户对 HEIC / AVIF / 缩略图缓存的决策；顺序上放到 5、6 之后）。
+5. Tauri 骨架与 IPC —— **完成**（2026-09-07：`core::runtime` 事件式运行时、`apps/app` Tauri 壳、托盘与快捷键、类型化 IPC；ADR-0013）。
 6. 前端（等 UI 方案，参考 `docs/ui-style-reference.md`）。
 7. 可选项。

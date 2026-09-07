@@ -23,11 +23,13 @@
 //! | [`transfer`]  | outgoing file collection, incoming placement       | 2         |
 //! | [`clipboard`] | clipboard model, backends, sync engine, wire      | 3         |
 //! | [`media`]     | MIME sniffing, thumbnails, audio metadata          | 4         |
+//! | [`runtime`]   | events-in / commands-out application runtime      | 5         |
 
 pub mod clipboard;
 pub mod discovery;
 pub mod media;
 pub mod protocol;
+pub mod runtime;
 pub mod store;
 pub mod transfer;
 pub mod transport;
