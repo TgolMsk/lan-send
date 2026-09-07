@@ -39,7 +39,7 @@ cargo run -p lan-send-cli -- --help
 
 ## 里程碑状态
 
-1. `core::protocol` + `discovery` + `transport`，CLI 与官方 LocalSend 互传单文件 —— **未开始**（等待接口清单第 10 节决策）。
+1. `core::protocol` + `discovery` + `transport`，CLI 与官方 LocalSend 互传单文件 —— **进行中**（决策见接口清单第 11 节）。
 2. 多文件、文件夹、校验、断点续传、历史。
 3. 剪贴板同步。
 4. 媒体层。

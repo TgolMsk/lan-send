@@ -234,3 +234,20 @@ CLI（里程碑 1 只需）：`lan-send discover`、`lan-send send <device> <fil
 9. 接收端**默认是否校验 sha256**（官方默认开；大文件会多一次全量哈希，但仍是流式，不占内存）。
 
 确认以上问题后我再开始写 ADR 与代码。
+
+---
+
+## 11. 决策记录（2026-09-07，用户确认）
+
+| # | 问题 | 决定 |
+|---|---|---|
+| 1 | Rust 工具链 | 已用 rustup 安装到 `~/.cargo`（stable） |
+| 2 | 是否复用官方 core crate | **自研**，官方源码只作行为参考；互操作测试用官方 CLI 二进制 |
+| 3 | 服务端客户端证书 | **默认强制、可在设置关闭**，与官方 1.18 一致 |
+| 4 | 能力声明字段 | `x-lanext`，放在 `info`、组播报文与 register 响应中 |
+| 5 | IPv6 | 里程碑 2 |
+| 6 | 默认身份 | 桌面 App `deviceType=desktop`，CLI `headless`；`deviceModel` 为操作系统名（macOS / Windows / iOS）；CLI 默认 alias 为主机名，App 默认 alias 随机生成，均可改 |
+| 7 | 应用标识 | 配置目录名 `lan-send` |
+| 8 | PIN 与校验和 | 照官方：同 IP 错 3 次 → 429；接收端默认校验 sha256 |
+| 9 | iOS 技术路线 | Tauri 2（与桌面同一工程） |
+| 10 | Xcode | 安装；用户已有付费开发者账号，可做真机与 TestFlight |
