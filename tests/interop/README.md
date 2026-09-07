@@ -15,7 +15,7 @@
 ```bash
 cargo build -p lan-send-cli
 python3 -m venv tests/interop/.venv
-tests/interop/.venv/bin/pip install pexpect
+tests/interop/.venv/bin/pip install pexpect pyte
 tests/interop/.venv/bin/python tests/interop/run.py        # 自动下载官方 CLI 到 .cache/
 tests/interop/.venv/bin/python tests/interop/run.py --only a --keep   # 只跑一个方向并保留临时目录
 ```

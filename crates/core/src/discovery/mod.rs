@@ -288,17 +288,23 @@ impl Discovery {
 
     /// Cheapest first: announce and probe `known` addresses; when nothing
     /// was confirmed within `grace` afterwards, scan the local `/24`
-    /// subnets. Returns once every stage finished.
+    /// subnets on the protocol's default port and, when different, on our
+    /// own port. Returns once every stage finished.
     pub async fn discover_staged(&self, known: Vec<Target>, grace: Duration) {
         let before = self.inner.confirmations.load(Ordering::Relaxed);
-        let port = self.inner.device.port;
+        let mut ports = vec![crate::protocol::DEFAULT_PORT];
+        if self.inner.device.port != crate::protocol::DEFAULT_PORT {
+            ports.push(self.inner.device.port);
+        }
         let escalate = async {
             self.probe_many(known).await;
             tokio::time::sleep(grace).await;
             if self.inner.confirmations.load(Ordering::Relaxed) == before {
-                let interfaces = multicast::local_ipv4_addresses();
-                for interface in interfaces {
-                    self.scan_subnet(interface, port, ProtocolType::Https).await;
+                for interface in multicast::local_ipv4_addresses() {
+                    for port in &ports {
+                        self.scan_subnet(interface, *port, ProtocolType::Https)
+                            .await;
+                    }
                 }
             }
         };

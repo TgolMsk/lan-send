@@ -38,7 +38,7 @@ cargo run -p lan-send-cli -- --help
 本机的 Rust 由 rustup 安装在 `~/.cargo/bin`，未写入 PATH；在命令前 `source ~/.cargo/env`。
 若 Xcode 已安装但许可证未接受，链接会失败，可临时 `export DEVELOPER_DIR=/Library/Developer/CommandLineTools`。
 
-互操作测试：`python3 -m venv tests/interop/.venv && tests/interop/.venv/bin/pip install pexpect`，
+互操作测试：`python3 -m venv tests/interop/.venv && tests/interop/.venv/bin/pip install pexpect pyte`，
 然后 `tests/interop/.venv/bin/python tests/interop/run.py`（自动下载官方 CLI 到 `tests/interop/.cache`）。
 
 ## 里程碑状态

@@ -100,6 +100,6 @@ jobs:
       - name: Build CLI
         run: cargo build -p lan-send-cli
       - name: Install pexpect
-        run: python3 -m pip install pexpect
+        run: python3 -m pip install pexpect pyte
       - name: Run interop tests
         run: python3 tests/interop/run.py --ours target/debug/lan-send

@@ -8,7 +8,7 @@ directory and HTTP port (the multicast port 53317 is shared):
   B. ours -> official   `lan-send send <alias>`             vs  `localsend-cli` (interactive, pre-paired)
 
 The official binary is downloaded from GitHub Releases into `.cache/` when
-`--official` is not given. Both directions drive the official TUI with `pexpect` (pip install pexpect).
+`--official` is not given. Both directions drive the official TUI with `pexpect` and inspect its screen with `pyte`\n(pip install pexpect pyte).
 """
 
 from __future__ import annotations
@@ -66,7 +66,7 @@ def ensure_official() -> Path:
         archive.rename(binary)
     else:
         with tarfile.open(archive) as tar:
-            tar.extractall(CACHE)
+            tar.extractall(CACHE, filter="data")
         candidates = [p for p in CACHE.rglob("localsend-cli*") if p.is_file() and p != archive]
         if not candidates:
             raise SystemExit("localsend-cli not found in the archive")
@@ -110,12 +110,36 @@ def wait_for_text(log: Path, needle: str, timeout: float) -> None:
 
 
 def terminate(process: subprocess.Popen) -> None:
+    """Stops our CLI: SIGINT first (graceful), then SIGKILL."""
+    import signal
+
     if process.poll() is None:
-        process.terminate()
         try:
+            process.send_signal(signal.SIGINT)
             process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
+        except (subprocess.TimeoutExpired, OSError):
             process.kill()
+            process.wait(timeout=5)
+
+
+def close_official(child) -> str:
+    """Stops the official TUI and returns its cleaned output tail."""
+    import pexpect  # type: ignore
+
+    tail = ""
+    try:
+        tail = strip_ansi(child.before or "")
+        if child.isalive():
+            child.sendintr()
+            child.expect(pexpect.EOF, timeout=10)
+            tail += strip_ansi(child.before or "")
+    except Exception:  # noqa: BLE001 - best effort shutdown
+        pass
+    try:
+        child.close(force=True)
+    except Exception:  # noqa: BLE001
+        pass
+    return tail[-1200:]
 
 
 def official_env(config_home: Path) -> dict:
@@ -126,6 +150,66 @@ def official_env(config_home: Path) -> dict:
 
 def strip_ansi(text: str) -> str:
     return re.sub(r"\x1b\[[0-9;?]*[A-Za-z]|\x1b\][^\x07]*\x07|\x1b[=>]", "", text)
+
+
+def our_fingerprint(ours: Path, config_dir: Path) -> str:
+    output = subprocess.run(
+        [str(ours), "--config-dir", str(config_dir), "identity"],
+        capture_output=True, text=True, check=True,
+    ).stdout
+    for line in output.splitlines():
+        if line.startswith("Fingerprint:"):
+            return line.split(":", 1)[1].strip()
+    raise AssertionError(f"no fingerprint in:\n{output}")
+
+
+def write_paired(config_home: Path, fingerprint: str, alias: str, channels: list) -> None:
+    """Writes the official CLI's `paired-v2.json`: paired devices are
+    auto-accepted and their channels are probed at startup."""
+    paired_dir = config_home / "localsend-cli"
+    paired_dir.mkdir(parents=True, exist_ok=True)
+    (paired_dir / "paired-v2.json").write_text(json.dumps({
+        "version": 1,
+        "devices": {fingerprint: {"alias": alias, "channels": channels}},
+    }))
+
+
+class TuiScreen:
+    """A terminal emulator fed with the official TUI's output, so the
+    rendered screen can be inspected. ratatui only redraws changed cells,
+    which makes pattern matching on the raw stream unreliable."""
+
+    def __init__(self, child, columns: int = 120, lines: int = 30) -> None:
+        import pyte  # type: ignore
+
+        self.child = child
+        self.screen = pyte.Screen(columns, lines)
+        self.stream = pyte.Stream(self.screen)
+
+    def pump(self, seconds: float) -> None:
+        import pexpect  # type: ignore
+
+        end = time.time() + seconds
+        while time.time() < end:
+            try:
+                self.stream.feed(self.child.read_nonblocking(4096, timeout=0.5))
+            except pexpect.TIMEOUT:
+                pass
+            except pexpect.EOF:
+                raise AssertionError("the official CLI exited:\n" + self.text())
+
+    def text(self) -> str:
+        return "\n".join(line.rstrip() for line in self.screen.display)
+
+    def wait_for(self, pattern: str, timeout: float):
+        regex = re.compile(pattern)
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            self.pump(0.5)
+            match = regex.search(self.text())
+            if match:
+                return match
+        raise AssertionError(f"pattern {pattern!r} not on the official screen within {timeout}s:\n" + self.text())
 
 
 def test_official_to_ours(ours: Path, official: Path, tmp: Path) -> None:
@@ -140,6 +224,12 @@ def test_official_to_ours(ours: Path, official: Path, tmp: Path) -> None:
     payload = tmp / "payload-a.bin"
     expected = make_payload(payload)
     log = tmp / "ours-receive.log"
+
+    # Pre-pair our receiver (with its address) on the official side: the
+    # official CLI probes paired addresses at startup, so it finds us even on
+    # networks without multicast (GitHub's macOS runners).
+    write_paired(official_cfg, our_fingerprint(ours, ours_cfg), "ours-recv",
+                 [{"host": "127.0.0.1", "port": OURS_PORT, "protocol": "HTTPS"}])
 
     with log.open("wb") as log_handle:
         receiver = subprocess.Popen(
@@ -156,42 +246,20 @@ def test_official_to_ours(ours: Path, official: Path, tmp: Path) -> None:
                  "-f", str(payload)],
                 env=official_env(official_cfg), encoding="utf-8", timeout=45, dimensions=(30, 120),
             )
-            child.expect(r"\[(\d)\] ours-recv")
-            number = child.match.group(1)
-            # `-f` opens the device list with the first entry selected; Enter
-            # sends to it. The digit hotkey only works on the main screen.
-            print(f"official lists ours-recv as [{number}]; pressing Enter")
+            # `-f` opens the device list with the first entry selected. Wait
+            # until our device is listed online (paired entries start as
+            # "(offline)" until the probe answers), then Enter sends to it.
+            tui = TuiScreen(child)
+            number = tui.wait_for(r"\[(\d)\] ours-recv \(", 60).group(1)
+            print(f"official lists ours-recv online as [{number}]; pressing Enter")
             child.send("\r")
-            try:
-                received = wait_for_file(inbox, payload.name, expected, 30)
-            except AssertionError:
-                print("no transfer after Enter; trying the digit hotkey")
-                child.send("\x1b")
-                time.sleep(0.5)
-                child.send(number)
-                received = wait_for_file(inbox, payload.name, expected, 30)
+            received = wait_for_file(inbox, payload.name, expected, 60)
             print(f"received {received} OK")
         finally:
-            if child is not None:
-                try:
-                    child.sendintr()
-                    child.expect(pexpect.EOF, timeout=10)
-                except Exception:  # noqa: BLE001 - best effort shutdown
-                    child.close(force=True)
-                print("official output tail:\n" + strip_ansi(child.before or "")[-800:])
             terminate(receiver)
-    print(log.read_text(errors="replace")[-1500:])
-
-
-def our_fingerprint(ours: Path, config_dir: Path) -> str:
-    output = subprocess.run(
-        [str(ours), "--config-dir", str(config_dir), "identity"],
-        capture_output=True, text=True, check=True,
-    ).stdout
-    for line in output.splitlines():
-        if line.startswith("Fingerprint:"):
-            return line.split(":", 1)[1].strip()
-    raise AssertionError(f"no fingerprint in:\n{output}")
+            if child is not None:
+                print("official output tail:\n" + close_official(child))
+    print("our receiver log tail:\n" + log.read_text(errors="replace")[-1500:])
 
 
 def test_ours_to_official(ours: Path, official: Path, tmp: Path) -> None:
@@ -204,13 +272,7 @@ def test_ours_to_official(ours: Path, official: Path, tmp: Path) -> None:
     expected = make_payload(payload)
 
     # Pre-pair our device on the official side so it auto-accepts.
-    fingerprint = our_fingerprint(ours, ours_cfg)
-    paired_dir = official_cfg / "localsend-cli"
-    paired_dir.mkdir(parents=True)
-    (paired_dir / "paired-v2.json").write_text(json.dumps({
-        "version": 1,
-        "devices": {fingerprint: {"alias": "ours-send", "channels": []}},
-    }))
+    write_paired(official_cfg, our_fingerprint(ours, ours_cfg), "ours-send", [])
 
     child = pexpect.spawn(
         str(official),
@@ -219,24 +281,25 @@ def test_ours_to_official(ours: Path, official: Path, tmp: Path) -> None:
     )
     try:
         time.sleep(3)  # let the official server and discovery come up
-        sender = subprocess.run(
-            [str(ours), "--config-dir", str(ours_cfg), "--alias", "ours-send", "--port", str(OURS_PORT),
-             "send", "official-b", str(payload), "--timeout", "20"],
-            capture_output=True, text=True, timeout=180,
-        )
-        print(sender.stdout[-2000:])
-        print(sender.stderr[-2000:])
-        if sender.returncode != 0:
-            raise AssertionError(f"lan-send send exited with {sender.returncode}")
+        # By alias first (multicast discovery); on networks without multicast
+        # fall back to the address, which exercises the direct probe.
+        for target in ("official-b", f"127.0.0.1:{OFFICIAL_PORT}"):
+            sender = subprocess.run(
+                [str(ours), "--config-dir", str(ours_cfg), "--alias", "ours-send", "--port", str(OURS_PORT),
+                 "send", target, str(payload), "--timeout", "15"],
+                capture_output=True, text=True, timeout=180,
+            )
+            print(sender.stdout[-2000:])
+            print(sender.stderr[-2000:])
+            if sender.returncode == 0:
+                break
+            print(f"send to {target} exited with {sender.returncode}")
+        else:
+            raise AssertionError("lan-send send failed for every target")
         received = wait_for_file(inbox, payload.name, expected, 30)
         print(f"received {received} OK")
     finally:
-        try:
-            child.sendintr()
-            child.expect(pexpect.EOF, timeout=10)
-        except Exception:  # noqa: BLE001 - best effort shutdown
-            child.close(force=True)
-        print("official output tail:\n" + strip_ansi(child.before or "")[-800:])
+        print("official output tail:\n" + close_official(child))
 
 
 def main() -> int:
