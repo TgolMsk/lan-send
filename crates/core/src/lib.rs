@@ -21,7 +21,7 @@
 //! | [`transport`] | TLS identity, HTTPS server and client               | 1–2       |
 //! | [`store`]     | app directories; settings, history, trust (SQLite) | 1–2       |
 //! | [`transfer`]  | outgoing file collection, incoming placement       | 2         |
-//! | [`clipboard`] | clipboard abstraction and sync engine              | 3         |
+//! | [`clipboard`] | clipboard model, backends, sync engine, wire      | 3         |
 //! | [`media`]     | MIME sniffing, thumbnails, audio metadata          | 4         |
 
 pub mod clipboard;

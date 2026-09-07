@@ -137,7 +137,16 @@ pub struct Extensions {
     /// Feature names, see the `FEATURE_*` constants.
     #[serde(default)]
     pub features: Vec<String>,
+
+    /// Why a transfer is sent, e.g. [`INTENT_CLIPBOARD`] for a file list
+    /// copied to the clipboard. Absent for ordinary transfers.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub intent: Option<String>,
 }
+
+/// Transfer intent: the files are the sender's clipboard content and should
+/// land in the receiver's clipboard once received.
+pub const INTENT_CLIPBOARD: &str = "clipboard";
 
 impl Extensions {
     /// The block this crate announces for the given features.
@@ -145,6 +154,7 @@ impl Extensions {
         Self {
             v: EXTENSION_VERSION,
             features: features.into_iter().map(Into::into).collect(),
+            intent: None,
         }
     }
 

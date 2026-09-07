@@ -66,8 +66,18 @@
 
 校验码 = `SHA-256(min(指纹A, 指纹B) ‖ max(指纹A, 指纹B))` 前 4 字节大端取整 mod 1 000 000，补足 6 位，两端各自计算、不经网络传输。私有端点（剪贴板等）只对已配对指纹开放，否则 403；无客户端证书一律 403。能力声明 `pairing`。
 
-### 2.4 剪贴板同步（里程碑 3）
+### 2.4 剪贴板同步（已实现，ADR-0011）
 
-- 端点 `POST /api/ext/v1/clipboard`，仅对已配对指纹开放，否则 403。
-- 请求体为 `ClipboardItem` JSON；图片 > 512 KB 走 multipart。
-- 详细语义在里程碑 3 的 ADR 中定义。
+前提：双方已配对（§2.3）；请求方证书指纹不在接收方的已配对集合内时 403。能力声明 `clipboard`。
+
+`POST /api/ext/v1/clipboard`
+
+| 内容 | 编码 |
+|---|---|
+| 文本、≤ 512 KB 的图片 | `application/json`：`{"id","originDevice","createdAt"(毫秒),"contentHash"(sha256 hex),"kind":"text"\|"image","text":{"plain","html?","rtf?"},"image":{"format":"png"\|"jpeg","width","height","data"(base64)},"sensitive"?}` |
+| > 512 KB 的图片 | `multipart/form-data`：`item` 部分为上面的 JSON（不含 `data`），`image` 部分为二进制 |
+| 文件列表 | 不走此端点：转为普通文件传输，`prepare-upload` 的 `info.x-lanext.intent = "clipboard"`，接收方收完后把文件列表写入剪贴板 |
+
+- 接收方校验 `contentHash`，按上限（文本 1 MB、图片 10 MB，可配）拒绝 413。
+- `sensitive` 是发送方的提示（密钥类文本），接收方据此不入历史；接收方自己也会再判定一次。
+- 回环防止：写入本地剪贴板前先记录哈希（环形 10 项），本地监听到同一哈希不再回推。

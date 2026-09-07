@@ -44,6 +44,7 @@ async fn start_responder(
         upload_idle_timeout: DEFAULT_UPLOAD_IDLE_TIMEOUT,
         ipv6: false,
         paired: HashSet::new(),
+        clipboard_limits: Default::default(),
         events: events_tx,
     })
     .await

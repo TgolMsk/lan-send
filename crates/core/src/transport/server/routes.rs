@@ -44,6 +44,10 @@ pub(super) fn router(state: Arc<AppState>) -> Router {
         .route(RESUME_PATH, get(resume_offset))
         .route(PAIR_PATH, post(pair))
         .route(UNPAIR_PATH, post(unpair))
+        .route(
+            crate::clipboard::CLIPBOARD_PATH,
+            post(clipboard).layer(DefaultBodyLimit::disable()),
+        )
         .fallback(not_found)
         .layer(DefaultBodyLimit::max(MAX_JSON_BODY))
         .with_state(state)
@@ -537,6 +541,111 @@ async fn unpair(
             .events
             .send(ServerEvent::Unpaired { peer: peer.clone() })
             .await;
+    }
+    Ok(StatusCode::OK.into_response())
+}
+
+/// Clipboard sync (ADR-0011): a paired device pushes an item, as JSON or as
+/// multipart with the image as a binary part.
+async fn clipboard(
+    State(state): State<Arc<AppState>>,
+    Extension(peer): Extension<Peer>,
+    headers: HeaderMap,
+    request: Request,
+) -> Result<Response, ApiError> {
+    use crate::clipboard::PayloadKind;
+    use crate::clipboard::wire::{ClipboardItemDto, decode};
+
+    if !state.is_paired(peer.cert_fingerprint.as_ref()) {
+        return Err(ApiError::new(StatusCode::FORBIDDEN, "Not paired"));
+    }
+    let limits = state.clipboard_limits;
+    let max_body = limits.text.max(limits.image) + 1024 * 1024;
+    let content_type = header_string(&headers, "content-type").unwrap_or_default();
+
+    let (dto, image): (ClipboardItemDto, Option<Bytes>) = if content_type.starts_with("multipart/")
+    {
+        let boundary = multer::parse_boundary(&content_type)
+            .map_err(|_| ApiError::bad_request("Invalid multipart boundary"))?;
+        let body = axum::body::to_bytes(request.into_body(), max_body)
+            .await
+            .map_err(|_| {
+                ApiError::new(StatusCode::PAYLOAD_TOO_LARGE, "Clipboard item too large")
+            })?;
+        let stream = futures_util::stream::once(async move { Ok::<Bytes, std::io::Error>(body) });
+        let mut multipart = multer::Multipart::new(stream, boundary);
+        let mut dto = None;
+        let mut image = None;
+        while let Some(field) = multipart
+            .next_field()
+            .await
+            .map_err(|err| ApiError::bad_request(format!("Invalid multipart body: {err}")))?
+        {
+            match field.name() {
+                Some("item") => {
+                    let text = field.text().await.map_err(|err| {
+                        ApiError::bad_request(format!("Invalid item part: {err}"))
+                    })?;
+                    dto = Some(
+                        serde_json::from_str::<ClipboardItemDto>(&text).map_err(|err| {
+                            ApiError::bad_request(format!("Invalid clipboard item: {err}"))
+                        })?,
+                    );
+                }
+                Some("image") => {
+                    image = Some(field.bytes().await.map_err(|err| {
+                        ApiError::bad_request(format!("Invalid image part: {err}"))
+                    })?);
+                }
+                _ => {}
+            }
+        }
+        (
+            dto.ok_or_else(|| ApiError::bad_request("Missing item part"))?,
+            image,
+        )
+    } else {
+        let body = axum::body::to_bytes(request.into_body(), max_body)
+            .await
+            .map_err(|_| {
+                ApiError::new(StatusCode::PAYLOAD_TOO_LARGE, "Clipboard item too large")
+            })?;
+        (
+            serde_json::from_slice(&body)
+                .map_err(|err| ApiError::bad_request(format!("Invalid clipboard item: {err}")))?,
+            None,
+        )
+    };
+
+    let (item, sensitive) =
+        decode(dto, image).map_err(|err| ApiError::bad_request(err.to_string()))?;
+    let limit = match item.payload.kind() {
+        PayloadKind::Text => limits.text,
+        PayloadKind::Image => limits.image,
+        PayloadKind::Files => 0,
+    };
+    if item.payload.size() > limit {
+        return Err(ApiError::new(
+            StatusCode::PAYLOAD_TOO_LARGE,
+            format!("Clipboard {} exceeds {limit} bytes", item.payload.kind()),
+        ));
+    }
+    tracing::info!(
+        "clipboard item from {}: {}",
+        peer.addr,
+        item.payload.describe()
+    );
+    if state
+        .events
+        .send(ServerEvent::ClipboardReceived {
+            peer: peer.clone(),
+            item,
+            sensitive,
+        })
+        .await
+        .is_err()
+    {
+        return Err(ApiError::internal());
     }
     Ok(StatusCode::OK.into_response())
 }

@@ -166,15 +166,30 @@ enum Command {
 
 #[derive(Subcommand)]
 enum ClipCommand {
-    /// Keep the clipboard in sync with a paired device
+    /// Keep the clipboard in sync with paired devices (all of them by default)
     Watch {
-        /// Paired device
-        device: String,
+        /// Paired devices to sync with
+        devices: Vec<String>,
     },
     /// Push the current clipboard content once
     Push {
         /// Paired device
         device: String,
+    },
+    /// Show the clipboard history
+    History {
+        /// Maximum number of entries to show
+        #[arg(long, default_value_t = 20)]
+        limit: usize,
+        /// Copy the entry with this id back to the clipboard
+        #[arg(long, value_name = "ID")]
+        copy: Option<String>,
+        /// Delete the entry with this id
+        #[arg(long, value_name = "ID")]
+        delete: Option<String>,
+        /// Delete the whole clipboard history
+        #[arg(long)]
+        clear: bool,
     },
 }
 
@@ -257,12 +272,14 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
             unpair,
         } => commands::devices::run(&app, favorite, unfavorite, forget, unpair).await,
         Command::Clip { command } => match command {
-            ClipCommand::Watch { device } => not_yet(&format!("clip watch {device}"), 3),
-            ClipCommand::Push { device } => not_yet(&format!("clip push {device}"), 3),
+            ClipCommand::Watch { devices } => commands::clip::watch(app, devices).await,
+            ClipCommand::Push { device } => commands::clip::push(app, device).await,
+            ClipCommand::History {
+                limit,
+                copy,
+                delete,
+                clear,
+            } => commands::clip::history(&app, limit, copy, delete, clear),
         },
     }
-}
-
-fn not_yet(command: &str, milestone: u8) -> anyhow::Result<()> {
-    anyhow::bail!("`lan-send {command}` is not implemented yet (planned for milestone {milestone})")
 }

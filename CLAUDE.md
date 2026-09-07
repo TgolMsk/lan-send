@@ -45,7 +45,7 @@ cargo run -p lan-send-cli -- --help
 
 1. `core::protocol` + `discovery` + `transport`，CLI 与官方 LocalSend 互传单文件 —— **完成**（2026-09-07，双向互测通过；IPv6、文件夹、断点续传留给里程碑 2）。
 2. 多文件、文件夹、校验、断点续传、历史 —— **完成**（2026-09-07：持久化、文件夹、分目录、历史与设备命令、断点续传、IPv6）。
-3. 剪贴板同步。
+3. 剪贴板同步 —— **进行中**：配对、文本与图片同步（macOS/Windows 后端）、历史已完成；文件列表同步待做。
 4. 媒体层。
 5. Tauri 骨架与 IPC。
 6. 前端（等 UI 方案，参考 `docs/ui-style-reference.md`）。

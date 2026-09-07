@@ -56,6 +56,7 @@ async fn start_receiver(
         upload_idle_timeout: std::time::Duration::from_secs(2),
         ipv6: false,
         paired: HashSet::new(),
+        clipboard_limits: Default::default(),
         events: events_tx,
     })
     .await

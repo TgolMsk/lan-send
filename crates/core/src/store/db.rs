@@ -8,7 +8,7 @@ use rusqlite::{Connection, OptionalExtension, params};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-const SCHEMA_VERSION: i64 = 1;
+const SCHEMA_VERSION: i64 = 2;
 
 const SCHEMA_V1: &str = "
 CREATE TABLE devices (
@@ -55,6 +55,26 @@ CREATE TABLE partial_uploads (
     updated_at         INTEGER NOT NULL
 );
 CREATE INDEX partial_uploads_sender ON partial_uploads (sender_fingerprint, sha256, size);
+";
+
+const SCHEMA_V2: &str = "
+CREATE TABLE clipboard_items (
+    id            TEXT PRIMARY KEY,
+    origin        TEXT NOT NULL,
+    created_at    INTEGER NOT NULL,
+    kind          TEXT NOT NULL,
+    content_hash  TEXT NOT NULL,
+    size          INTEGER NOT NULL,
+    text          TEXT,
+    html          TEXT,
+    rtf           TEXT,
+    image_format  TEXT,
+    image_width   INTEGER,
+    image_height  INTEGER,
+    image_path    TEXT,
+    file_paths    TEXT
+);
+CREATE INDEX clipboard_items_created_at ON clipboard_items (created_at DESC);
 ";
 
 /// Seconds since the Unix epoch, the timestamp format of every table.
@@ -167,6 +187,28 @@ impl KnownDevice {
     pub fn display_name(&self) -> &str {
         self.custom_alias.as_deref().unwrap_or(&self.alias)
     }
+}
+
+/// One clipboard history entry. Image bytes live in a file under the cache
+/// directory; the row only keeps its path.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ClipboardRecord {
+    pub id: String,
+    pub origin: String,
+    /// Unix time in milliseconds.
+    pub created_at: i64,
+    /// `text`, `image` or `files`.
+    pub kind: String,
+    pub content_hash: String,
+    pub size: u64,
+    pub text: Option<String>,
+    pub html: Option<String>,
+    pub rtf: Option<String>,
+    pub image_format: Option<String>,
+    pub image_width: Option<u32>,
+    pub image_height: Option<u32>,
+    pub image_path: Option<PathBuf>,
+    pub file_paths: Vec<String>,
 }
 
 /// An upload that did not complete; its `.part` file can be resumed.
@@ -480,6 +522,129 @@ impl Database {
     }
 }
 
+impl Database {
+    // ----- clipboard history -----
+
+    pub fn record_clipboard(&self, record: &ClipboardRecord) -> Result<(), StoreError> {
+        self.conn.lock().execute(
+            "INSERT OR REPLACE INTO clipboard_items
+             (id, origin, created_at, kind, content_hash, size, text, html, rtf, image_format,
+              image_width, image_height, image_path, file_paths)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
+            params![
+                record.id,
+                record.origin,
+                record.created_at,
+                record.kind,
+                record.content_hash,
+                to_i64(record.size),
+                record.text,
+                record.html,
+                record.rtf,
+                record.image_format,
+                record.image_width.map(i64::from),
+                record.image_height.map(i64::from),
+                record
+                    .image_path
+                    .as_ref()
+                    .map(|p| p.to_string_lossy().into_owned()),
+                serde_json::to_string(&record.file_paths).unwrap_or_else(|_| "[]".into()),
+            ],
+        )?;
+        Ok(())
+    }
+
+    /// The newest clipboard entries first.
+    pub fn list_clipboard(&self, limit: usize) -> Result<Vec<ClipboardRecord>, StoreError> {
+        let conn = self.conn.lock();
+        let mut statement = conn.prepare(&format!(
+            "{CLIPBOARD_SELECT} ORDER BY created_at DESC, rowid DESC LIMIT ?1"
+        ))?;
+        let rows = statement.query_map(params![to_i64(limit as u64)], clipboard_from_row)?;
+        rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
+    }
+
+    pub fn clipboard_item(&self, id: &str) -> Result<Option<ClipboardRecord>, StoreError> {
+        let conn = self.conn.lock();
+        let mut statement = conn.prepare(&format!("{CLIPBOARD_SELECT} WHERE id = ?1"))?;
+        statement
+            .query_row(params![id], clipboard_from_row)
+            .optional()
+            .map_err(Into::into)
+    }
+
+    /// Deletes an entry and returns it (so the caller can remove its image
+    /// file).
+    pub fn delete_clipboard(&self, id: &str) -> Result<Option<ClipboardRecord>, StoreError> {
+        let record = self.clipboard_item(id)?;
+        if record.is_some() {
+            self.conn
+                .lock()
+                .execute("DELETE FROM clipboard_items WHERE id = ?1", params![id])?;
+        }
+        Ok(record)
+    }
+
+    /// Deletes everything but the newest `keep` entries and returns the
+    /// removed ones.
+    pub fn prune_clipboard(&self, keep: usize) -> Result<Vec<ClipboardRecord>, StoreError> {
+        let conn = self.conn.lock();
+        let removed = {
+            let mut statement = conn.prepare(&format!(
+                "{CLIPBOARD_SELECT} WHERE id NOT IN
+                    (SELECT id FROM clipboard_items ORDER BY created_at DESC, rowid DESC LIMIT ?1)"
+            ))?;
+            let rows = statement.query_map(params![to_i64(keep as u64)], clipboard_from_row)?;
+            rows.collect::<Result<Vec<_>, _>>()?
+        };
+        conn.execute(
+            "DELETE FROM clipboard_items WHERE id NOT IN
+                (SELECT id FROM clipboard_items ORDER BY created_at DESC, rowid DESC LIMIT ?1)",
+            params![to_i64(keep as u64)],
+        )?;
+        Ok(removed)
+    }
+
+    /// Deletes every entry and returns them.
+    pub fn clear_clipboard(&self) -> Result<Vec<ClipboardRecord>, StoreError> {
+        let removed = self.list_clipboard(usize::MAX)?;
+        self.conn
+            .lock()
+            .execute("DELETE FROM clipboard_items", [])?;
+        Ok(removed)
+    }
+}
+
+const CLIPBOARD_SELECT: &str =
+    "SELECT id, origin, created_at, kind, content_hash, size, text, html,
+    rtf, image_format, image_width, image_height, image_path, file_paths FROM clipboard_items";
+
+fn clipboard_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<ClipboardRecord> {
+    Ok(ClipboardRecord {
+        id: row.get(0)?,
+        origin: row.get(1)?,
+        created_at: row.get(2)?,
+        kind: row.get(3)?,
+        content_hash: row.get(4)?,
+        size: to_u64(row.get(5)?),
+        text: row.get(6)?,
+        html: row.get(7)?,
+        rtf: row.get(8)?,
+        image_format: row.get(9)?,
+        image_width: row
+            .get::<_, Option<i64>>(10)?
+            .and_then(|value| u32::try_from(value).ok()),
+        image_height: row
+            .get::<_, Option<i64>>(11)?
+            .and_then(|value| u32::try_from(value).ok()),
+        image_path: row.get::<_, Option<String>>(12)?.map(PathBuf::from),
+        file_paths: row
+            .get::<_, Option<String>>(13)?
+            .and_then(|json| serde_json::from_str(&json).ok())
+            .unwrap_or_default(),
+    })
+}
+
 const DEVICE_SELECT: &str = "SELECT fingerprint, alias, custom_alias, device_type, device_model,
     version, host, port, protocol, favorite, paired, first_seen, last_seen FROM devices";
 
@@ -523,6 +688,11 @@ fn migrate(conn: &Connection) -> Result<(), StoreError> {
     let version: i64 = conn.query_row("PRAGMA user_version", [], |row| row.get(0))?;
     if version < 1 {
         conn.execute_batch(SCHEMA_V1)?;
+    }
+    if version < 2 {
+        conn.execute_batch(SCHEMA_V2)?;
+    }
+    if version < SCHEMA_VERSION {
         conn.pragma_update(None, "user_version", SCHEMA_VERSION)?;
     }
     Ok(())
@@ -609,6 +779,38 @@ mod tests {
         );
         assert!(db.remove_device("FP").unwrap());
         assert!(db.device("FP").unwrap().is_none());
+    }
+
+    #[test]
+    fn clipboard_history_round_trips_and_prunes() {
+        let db = Database::open_in_memory().unwrap();
+        for i in 0..3 {
+            db.record_clipboard(&ClipboardRecord {
+                id: format!("c{i}"),
+                origin: "FP".into(),
+                created_at: 1000 + i,
+                kind: "text".into(),
+                content_hash: "abc".into(),
+                size: 5,
+                text: Some(format!("hello {i}")),
+                html: None,
+                rtf: None,
+                image_format: None,
+                image_width: None,
+                image_height: None,
+                image_path: None,
+                file_paths: vec![],
+            })
+            .unwrap();
+        }
+        let listed = db.list_clipboard(10).unwrap();
+        assert_eq!(listed[0].id, "c2");
+        let pruned = db.prune_clipboard(2).unwrap();
+        assert_eq!(pruned.len(), 1);
+        assert_eq!(pruned[0].id, "c0");
+        assert!(db.delete_clipboard("c2").unwrap().is_some());
+        assert_eq!(db.clear_clipboard().unwrap().len(), 1);
+        assert!(db.list_clipboard(10).unwrap().is_empty());
     }
 
     #[test]

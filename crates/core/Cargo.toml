@@ -29,8 +29,9 @@ x509-parser = { version = "0.18", features = ["verify"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "tls12", "std"] }
 tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
 # HTTP
-reqwest = { version = "0.13", default-features = false, features = ["rustls-no-provider", "json", "query", "stream", "charset"] }
+reqwest = { version = "0.13", default-features = false, features = ["rustls-no-provider", "json", "query", "stream", "charset", "multipart"] }
 axum = "0.8"
+multer = "3"
 hyper = { version = "1", features = ["server", "http1"] }
 hyper-util = { version = "0.1", features = ["server", "server-auto", "tokio", "service"] }
 tower = { version = "0.5", features = ["util"] }
@@ -43,6 +44,19 @@ directories = "6"
 rusqlite = { version = "0.40", features = ["bundled"] }
 walkdir = "2"
 mime_guess = "2"
+base64 = "0.22"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# NSPasteboard access and TIFF <-> PNG conversion through AppKit (ADR-0011).
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSArray", "NSData", "NSDictionary", "NSURL", "NSObject", "NSEnumerator", "NSValue", "NSGeometry"] }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSPasteboard", "NSPasteboardItem", "NSImageRep", "NSBitmapImageRep", "NSGraphics"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+# Clipboard access with an AddClipboardFormatListener-based monitor, and
+# BMP <-> PNG conversion for CF_DIB (ADR-0011).
+clipboard-win = { version = "5.4", features = ["monitor", "std"] }
+image = { version = "0.25", default-features = false, features = ["png", "bmp", "jpeg"] }
 
 [dev-dependencies]
 tempfile = "3"

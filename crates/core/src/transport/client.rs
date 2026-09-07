@@ -80,6 +80,10 @@ pub enum ClientError {
     /// this one (resume extension).
     #[error("the receiver expects the upload to resume at byte {0}")]
     OffsetMismatch(u64),
+
+    /// The request could not be built from its input.
+    #[error("invalid request: {0}")]
+    Invalid(String),
 }
 
 fn format_message(message: &str) -> String {
@@ -356,6 +360,37 @@ impl Client {
             .await?;
         let response = ok_or_error(response).await?;
         Ok(response.json::<ResumeOffsetResponse>().await?.offset)
+    }
+
+    /// Clipboard sync (ADR-0011): pushes an item to a paired peer. Images
+    /// above the multipart threshold travel as a binary part.
+    pub async fn send_clipboard(
+        &self,
+        target: &Target,
+        item: &crate::clipboard::ClipboardItem,
+    ) -> Result<(), ClientError> {
+        use crate::clipboard::wire::{Encoded, encode};
+
+        let url = format!("{}{}", target.origin(), crate::clipboard::CLIPBOARD_PATH);
+        let encoded = encode(item, crate::clipboard::MULTIPART_THRESHOLD)
+            .map_err(|err| ClientError::Invalid(err.to_string()))?;
+        let request = match encoded {
+            Encoded::Json(dto) => self.http.post(url).json(&dto),
+            Encoded::Multipart { item, image, mime } => {
+                let form = reqwest::multipart::Form::new()
+                    .text("item", serde_json::to_string(&item)?)
+                    .part(
+                        "image",
+                        reqwest::multipart::Part::stream(reqwest::Body::from(image))
+                            .mime_str(mime)
+                            .map_err(ClientError::Http)?
+                            .file_name("clipboard"),
+                    );
+                self.http.post(url).multipart(form)
+            }
+        };
+        ok_or_error(request.send().await?).await?;
+        Ok(())
     }
 
     /// Pairing (ADR-0010): asks the peer to pair; blocks until its user

@@ -34,6 +34,7 @@ pub(super) struct AppState {
     pub paired: RwLock<HashSet<Fingerprint>>,
     /// Whether a pairing request is waiting for the user.
     pub pairing_pending: Mutex<bool>,
+    pub clipboard_limits: super::ClipboardLimits,
 }
 
 pub(super) enum SessionState {
@@ -116,6 +117,7 @@ impl AppState {
         verify_checksums: bool,
         upload_idle_timeout: Duration,
         paired: HashSet<Fingerprint>,
+        clipboard_limits: super::ClipboardLimits,
         events: mpsc::Sender<ServerEvent>,
     ) -> Self {
         Self {
@@ -128,6 +130,7 @@ impl AppState {
             pin_attempts: Mutex::new(HashMap::new()),
             paired: RwLock::new(paired),
             pairing_pending: Mutex::new(false),
+            clipboard_limits,
         }
     }
 
@@ -136,9 +139,8 @@ impl AppState {
         Fingerprint::parse(&self.device.read().fingerprint)
     }
 
-    /// Whether the peer presented a certificate of a paired device. Used by
-    /// the private endpoints (clipboard, milestone 3).
-    #[allow(dead_code)]
+    /// Whether the peer presented a certificate of a paired device; the
+    /// private endpoints require it.
     pub fn is_paired(&self, fingerprint: Option<&Fingerprint>) -> bool {
         fingerprint.is_some_and(|fingerprint| self.paired.read().contains(fingerprint))
     }

@@ -8,7 +8,7 @@ Rust 核心库 + Tauri 2 应用，目标平台 **macOS / Windows / iOS**。MIT �
 ## 特性（规划）
 
 - 与官方 LocalSend 互通：UDP 组播发现、HTTPS 传输、PIN、SHA-256 校验。
-- 私有扩展（官方客户端自动忽略）：断点续传（已实现）、剪贴板同步（文本 / 图片 / 文件列表）、媒体预览。
+- 私有扩展（官方客户端自动忽略）：断点续传、配对、剪贴板同步（文本 / 图片，文件列表进行中）、媒体预览（计划）。
 - 可靠性优先：流式传输不占内存、文件名净化、接收目录之外零写入、不收集遥测。
 
 ## 仓库布局
@@ -37,6 +37,9 @@ lan-send send "Nice Orange" a.jpg photos/ # 按别名、指纹前缀或 IP[:端�
 lan-send receive --organize device,type --on-conflict ask   # 按设备与类型分目录，同名时询问
 lan-send history --limit 20            # 传输历史（--delete <id>，--clear）
 lan-send pair "Nice Orange"            # 配对：两端显示同一校验码并确认（剪贴板同步的前提）
+lan-send clip watch                    # 与所有已配对设备双向同步剪贴板（文本、图片）
+lan-send clip push "Nice Orange"       # 把当前剪贴板推送一次
+lan-send clip history --copy <id>      # 剪贴板历史，可重新复制、删除、清空
 lan-send devices --favorite "Nice Orange"   # 已知设备、收藏、--unpair 解除配对
 lan-send identity                      # 本机别名、指纹、配置目录
 ```

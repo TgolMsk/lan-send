@@ -65,6 +65,37 @@ pub struct Settings {
     pub ipv6: bool,
     /// PIN senders must know; `None` disables the PIN.
     pub pin: Option<String>,
+    pub clipboard: ClipboardSettings,
+}
+
+/// Clipboard synchronisation preferences (ADR-0011).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct ClipboardSettings {
+    /// Largest text synchronised automatically, in bytes.
+    pub text_limit: usize,
+    /// Largest image synchronised automatically, in bytes.
+    pub image_limit: usize,
+    /// Clipboard history entries kept.
+    pub history_limit: usize,
+    /// How often the clipboard is checked for changes on platforms without
+    /// change notifications (macOS), in milliseconds.
+    pub poll_interval_ms: u64,
+    /// Never keep text items in the history (in addition to the secret
+    /// heuristic).
+    pub never_store_text: bool,
+}
+
+impl Default for ClipboardSettings {
+    fn default() -> Self {
+        Self {
+            text_limit: crate::clipboard::DEFAULT_TEXT_LIMIT,
+            image_limit: crate::clipboard::DEFAULT_IMAGE_LIMIT,
+            history_limit: 50,
+            poll_interval_ms: 300,
+            never_store_text: false,
+        }
+    }
 }
 
 impl Default for Settings {
@@ -84,6 +115,7 @@ impl Default for Settings {
             resume: true,
             ipv6: true,
             pin: None,
+            clipboard: ClipboardSettings::default(),
         }
     }
 }

@@ -2,12 +2,16 @@
 
 use crate::{ClientCerts, Globals};
 use anyhow::Context;
+use lan_send_core::clipboard::ClipboardItem;
+use lan_send_core::clipboard::PeerTarget;
 use lan_send_core::discovery::{Device, Discovery, DiscoveryConfig, DiscoveryEvent};
 use lan_send_core::protocol::{
-    DeviceInfo, DeviceType, Extensions, FEATURE_PAIRING, FEATURE_RESUME, Fingerprint,
-    PROTOCOL_VERSION, ProtocolType,
+    DeviceInfo, DeviceType, Extensions, FEATURE_CLIPBOARD, FEATURE_PAIRING, FEATURE_RESUME,
+    Fingerprint, PROTOCOL_VERSION, ProtocolType,
 };
-use lan_send_core::store::{AppPaths, Database, KnownDevice, Settings, TransferRecord};
+use lan_send_core::store::{
+    AppPaths, ClipboardRecord, Database, KnownDevice, Settings, TransferRecord,
+};
 use lan_send_core::transport::{
     ClientCertPolicy, Identity, Peer, ServerConfig, ServerEvent, ServerHandle, Target,
     UploadDecision, server,
@@ -90,7 +94,48 @@ impl App {
         if self.settings.resume {
             features.push(FEATURE_RESUME);
         }
+        if lan_send_core::clipboard::platform_backend().is_some() {
+            features.push(FEATURE_CLIPBOARD);
+        }
         features
+    }
+
+    /// Paired devices as push targets, at their last known addresses.
+    pub fn clipboard_peers(&self, only: &[String]) -> anyhow::Result<Vec<PeerTarget>> {
+        let devices = self.db.list_devices()?;
+        let mut peers = Vec::new();
+        for device in devices.iter().filter(|device| device.paired) {
+            let (Some(host), Some(port)) = (device.host.clone(), device.port) else {
+                continue;
+            };
+            peers.push(PeerTarget {
+                fingerprint: Fingerprint::parse(&device.fingerprint),
+                alias: device.display_name().to_string(),
+                target: Target {
+                    host,
+                    port,
+                    protocol: ProtocolType::Https,
+                },
+            });
+        }
+        if !only.is_empty() {
+            let mut selected = Vec::new();
+            for query in only {
+                let query = query.trim();
+                let found = peers.iter().find(|peer| {
+                    peer.alias.eq_ignore_ascii_case(query)
+                        || (query.len() >= 4 && peer.fingerprint.has_prefix(query))
+                });
+                match found {
+                    Some(peer) => selected.push(peer.clone()),
+                    None => anyhow::bail!(
+                        "'{query}' is not a paired device (run `lan-send pair` first)"
+                    ),
+                }
+            }
+            peers = selected;
+        }
+        Ok(peers)
     }
 
     /// Fingerprints of the devices paired so far.
@@ -174,6 +219,80 @@ impl App {
         let _ = decision.send(accept);
     }
 
+    /// Keeps a clipboard item in the history unless it is (or looks) secret.
+    /// Image bytes go to the cache directory. Returns whether it was stored.
+    pub fn record_clipboard(&self, item: &ClipboardItem, sensitive: bool) -> bool {
+        use lan_send_core::clipboard::{ClipboardPayload, sensitive::looks_sensitive};
+
+        let settings = &self.settings.clipboard;
+        let mut record = ClipboardRecord {
+            id: item.id.clone(),
+            origin: item.origin_device.to_string(),
+            created_at: item.created_at,
+            kind: item.payload.kind().to_string(),
+            content_hash: item.hash_hex(),
+            size: item.payload.size() as u64,
+            text: None,
+            html: None,
+            rtf: None,
+            image_format: None,
+            image_width: None,
+            image_height: None,
+            image_path: None,
+            file_paths: Vec::new(),
+        };
+        match &item.payload {
+            ClipboardPayload::Text { plain, html, rtf } => {
+                if sensitive || settings.never_store_text || looks_sensitive(plain) {
+                    return false;
+                }
+                record.text = Some(plain.clone());
+                record.html = html.clone();
+                record.rtf = rtf.clone();
+            }
+            ClipboardPayload::Image {
+                format,
+                bytes,
+                width,
+                height,
+            } => {
+                let dir = self.paths.cache_dir.join("clipboard");
+                let path = dir.join(format!("{}.{}", item.id, format.extension()));
+                if let Err(err) =
+                    std::fs::create_dir_all(&dir).and_then(|_| std::fs::write(&path, bytes))
+                {
+                    tracing::warn!("could not store the clipboard image: {err}");
+                    return false;
+                }
+                record.image_format = Some(format.extension().to_string());
+                record.image_width = Some(*width);
+                record.image_height = Some(*height);
+                record.image_path = Some(path);
+            }
+            ClipboardPayload::Files { paths } => {
+                record.file_paths = paths
+                    .iter()
+                    .map(|p| p.to_string_lossy().into_owned())
+                    .collect();
+            }
+        }
+        if let Err(err) = self.db.record_clipboard(&record) {
+            tracing::warn!("could not record the clipboard item: {err}");
+            return false;
+        }
+        match self.db.prune_clipboard(settings.history_limit) {
+            Ok(pruned) => {
+                for old in pruned {
+                    if let Some(path) = old.image_path {
+                        let _ = std::fs::remove_file(path);
+                    }
+                }
+            }
+            Err(err) => tracing::warn!("could not prune the clipboard history: {err}"),
+        }
+        true
+    }
+
     /// Removes partial uploads older than the resume window, files included.
     pub fn expire_partials(&self) {
         match self.db.expire_partials(RESUME_WINDOW) {
@@ -202,6 +321,10 @@ impl App {
             upload_idle_timeout: server::DEFAULT_UPLOAD_IDLE_TIMEOUT,
             ipv6: self.settings.ipv6,
             paired: self.paired_fingerprints(),
+            clipboard_limits: server::ClipboardLimits {
+                text: self.settings.clipboard.text_limit,
+                image: self.settings.clipboard.image_limit,
+            },
             events,
         })
         .await?;

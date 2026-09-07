@@ -50,12 +50,30 @@ pub struct ServerConfig {
     /// Fingerprints of the devices paired so far (ADR-0010). Kept up to
     /// date through [`ServerHandle::set_paired`] and friends.
     pub paired: HashSet<Fingerprint>,
+    /// Size limits of received clipboard items (ADR-0011).
+    pub clipboard_limits: ClipboardLimits,
     /// Where events for the application go.
     pub events: mpsc::Sender<ServerEvent>,
 }
 
 /// Thirty seconds without data on an upload counts as an interruption.
 pub const DEFAULT_UPLOAD_IDLE_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// Largest clipboard text and image accepted from peers, in bytes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ClipboardLimits {
+    pub text: usize,
+    pub image: usize,
+}
+
+impl Default for ClipboardLimits {
+    fn default() -> Self {
+        Self {
+            text: crate::clipboard::DEFAULT_TEXT_LIMIT,
+            image: crate::clipboard::DEFAULT_IMAGE_LIMIT,
+        }
+    }
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum ServerError {
@@ -189,6 +207,14 @@ pub enum ServerEvent {
 
     /// A paired device withdrew the pairing.
     Unpaired { peer: Peer },
+
+    /// A paired device pushed its clipboard (ADR-0011). `sensitive` is the
+    /// sender's hint not to keep the item in the history.
+    ClipboardReceived {
+        peer: Peer,
+        item: crate::clipboard::ClipboardItem,
+        sensitive: bool,
+    },
 }
 
 /// The application's answer to a `prepare-upload` request.
@@ -313,6 +339,7 @@ pub async fn start(config: ServerConfig) -> Result<ServerHandle, ServerError> {
         config.verify_checksums,
         config.upload_idle_timeout,
         config.paired,
+        config.clipboard_limits,
         config.events,
     ));
     let router = routes::router(state.clone());
