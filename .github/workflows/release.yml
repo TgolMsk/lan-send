@@ -171,14 +171,33 @@ jobs:
     runs-on: macos-latest
     env:
       VERSION: ${{ needs.version.outputs.version }}
-      # Tauri signs and notarizes on its own when these are present.
-      APPLE_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE_P12 }}
-      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
-      APPLE_ID: ${{ secrets.APPLE_ID }}
-      APPLE_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
-      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
     steps:
       - uses: actions/checkout@v7
+      # Tauri signs and notarizes on its own when APPLE_* are present, and an
+      # empty variable already counts as present, so export them only when the
+      # secrets are configured.
+      - name: Signing secrets
+        shell: bash
+        env:
+          P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          P12_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          ID: ${{ secrets.APPLE_ID }}
+          APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          TEAM: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -n "$P12" ]; then
+            { echo "APPLE_CERTIFICATE<<EOF"; echo "$P12"; echo "EOF"; } >> "$GITHUB_ENV"
+            echo "APPLE_CERTIFICATE_PASSWORD=$P12_PASSWORD" >> "$GITHUB_ENV"
+            echo "signing: certificate configured"
+          else
+            echo "signing: no certificate, the app will be unsigned"
+          fi
+          if [ -n "$ID" ] && [ -n "$APP_PASSWORD" ] && [ -n "$TEAM" ]; then
+            echo "APPLE_ID=$ID" >> "$GITHUB_ENV"
+            echo "APPLE_PASSWORD=$APP_PASSWORD" >> "$GITHUB_ENV"
+            echo "APPLE_TEAM_ID=$TEAM" >> "$GITHUB_ENV"
+            echo "notarization: configured"
+          fi
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-apple-darwin, x86_64-apple-darwin
