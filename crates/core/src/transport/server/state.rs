@@ -2,9 +2,9 @@
 
 use super::save::SaveOutcome;
 use super::{ServerEvent, SessionEndReason};
-use crate::protocol::{DeviceInfo, FileDto, PeerInfo};
+use crate::protocol::{DeviceInfo, FileDto, Fingerprint, PeerInfo};
 use parking_lot::{Mutex, RwLock};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::net::IpAddr;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
@@ -29,6 +29,11 @@ pub(super) struct AppState {
     pub events: mpsc::Sender<ServerEvent>,
     pub session: Mutex<Option<SessionState>>,
     pub pin_attempts: Mutex<HashMap<IpAddr, u32>>,
+    /// Fingerprints of paired devices; the private extension endpoints
+    /// require the caller's certificate to be one of them.
+    pub paired: RwLock<HashSet<Fingerprint>>,
+    /// Whether a pairing request is waiting for the user.
+    pub pairing_pending: Mutex<bool>,
 }
 
 pub(super) enum SessionState {
@@ -110,6 +115,7 @@ impl AppState {
         pin: Option<String>,
         verify_checksums: bool,
         upload_idle_timeout: Duration,
+        paired: HashSet<Fingerprint>,
         events: mpsc::Sender<ServerEvent>,
     ) -> Self {
         Self {
@@ -120,7 +126,35 @@ impl AppState {
             events,
             session: Mutex::new(None),
             pin_attempts: Mutex::new(HashMap::new()),
+            paired: RwLock::new(paired),
+            pairing_pending: Mutex::new(false),
         }
+    }
+
+    /// This device's own fingerprint.
+    pub fn own_fingerprint(&self) -> Fingerprint {
+        Fingerprint::parse(&self.device.read().fingerprint)
+    }
+
+    /// Whether the peer presented a certificate of a paired device. Used by
+    /// the private endpoints (clipboard, milestone 3).
+    #[allow(dead_code)]
+    pub fn is_paired(&self, fingerprint: Option<&Fingerprint>) -> bool {
+        fingerprint.is_some_and(|fingerprint| self.paired.read().contains(fingerprint))
+    }
+
+    /// Claims the single pairing slot; `false` when one is pending.
+    pub fn begin_pairing(&self) -> bool {
+        let mut pending = self.pairing_pending.lock();
+        if *pending {
+            return false;
+        }
+        *pending = true;
+        true
+    }
+
+    pub fn end_pairing(&self) {
+        *self.pairing_pending.lock() = false;
     }
 
     pub fn peer_info(&self) -> PeerInfo {

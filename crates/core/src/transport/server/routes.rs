@@ -4,9 +4,9 @@ use super::save::{self, SaveOptions, SaveOutcome, Timestamps};
 use super::state::{AppState, FileStatus, PinCheck, Session, SessionFile, UploadRefusal};
 use super::{Peer, ServerEvent, SessionEndReason, UploadDecision, UploadTarget};
 use crate::protocol::{
-    DeviceInfo, ErrorResponse, FEATURE_RESUME, PeerInfo, PrepareUploadRequest,
-    PrepareUploadResponse, RESUME_OFFSET_HEADER, RESUME_PATH, RESUME_TOKEN_HEADER,
-    ResumeOffsetResponse,
+    DeviceInfo, ErrorResponse, FEATURE_RESUME, PAIR_PATH, PairRequest, PairResponse, PeerInfo,
+    PrepareUploadRequest, PrepareUploadResponse, RESUME_OFFSET_HEADER, RESUME_PATH,
+    RESUME_TOKEN_HEADER, ResumeOffsetResponse, UNPAIR_PATH, verification_code,
 };
 use axum::Router;
 use axum::body::Bytes;
@@ -25,6 +25,8 @@ use uuid::Uuid;
 const MAX_JSON_BODY: usize = 32 * 1024 * 1024;
 /// Progress events are emitted at most every this many bytes.
 const PROGRESS_STEP: u64 = 1024 * 1024;
+/// How long a pairing request waits for the user before 408.
+const PAIRING_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(120);
 
 type Params = Query<HashMap<String, String>>;
 
@@ -40,6 +42,8 @@ pub(super) fn router(state: Arc<AppState>) -> Router {
         )
         .route("/api/localsend/v2/cancel", post(cancel))
         .route(RESUME_PATH, get(resume_offset))
+        .route(PAIR_PATH, post(pair))
+        .route(UNPAIR_PATH, post(unpair))
         .fallback(not_found)
         .layer(DefaultBodyLimit::max(MAX_JSON_BODY))
         .with_state(state)
@@ -463,6 +467,87 @@ async fn cancel(
     }
 
     Ok(StatusCode::OK.into_response())
+}
+
+/// Pairing (ADR-0010): the user confirms the verification code, then the
+/// caller's certificate is trusted for the private endpoints.
+async fn pair(
+    State(state): State<Arc<AppState>>,
+    Extension(peer): Extension<Peer>,
+    body: Bytes,
+) -> Result<Json<PairResponse>, ApiError> {
+    let Some(fingerprint) = peer.cert_fingerprint.clone() else {
+        return Err(ApiError::new(
+            StatusCode::FORBIDDEN,
+            "Client certificate required",
+        ));
+    };
+    let request: PairRequest = serde_json::from_slice(&body)
+        .map_err(|err| ApiError::bad_request(format!("Invalid body: {err}")))?;
+    if !state.begin_pairing() {
+        return Err(ApiError::new(
+            StatusCode::CONFLICT,
+            "Another pairing request is pending",
+        ));
+    }
+    let _guard = PairingGuard(state.clone());
+
+    let code = verification_code(&state.own_fingerprint(), &fingerprint);
+    let (decision_tx, decision_rx) = oneshot::channel();
+    let event = ServerEvent::PairRequest {
+        peer: peer.clone(),
+        alias: request.alias.clone(),
+        code,
+        decision: decision_tx,
+    };
+    if state.events.send(event).await.is_err() {
+        return Err(ApiError::internal());
+    }
+    let accepted = match tokio::time::timeout(PAIRING_TIMEOUT, decision_rx).await {
+        Ok(Ok(accepted)) => accepted,
+        Ok(Err(_)) => return Err(ApiError::internal()),
+        Err(_) => {
+            return Err(ApiError::new(
+                StatusCode::REQUEST_TIMEOUT,
+                "Pairing timed out",
+            ));
+        }
+    };
+    if !accepted {
+        return Err(ApiError::new(StatusCode::FORBIDDEN, "Rejected"));
+    }
+    state.paired.write().insert(fingerprint);
+    tracing::info!("paired with {} ({})", request.alias, peer.addr);
+    Ok(Json(PairResponse {
+        accepted: true,
+        alias: state.device.read().alias.clone(),
+    }))
+}
+
+/// A paired device withdraws the pairing.
+async fn unpair(
+    State(state): State<Arc<AppState>>,
+    Extension(peer): Extension<Peer>,
+) -> Result<Response, ApiError> {
+    if let Some(fingerprint) = &peer.cert_fingerprint
+        && state.paired.write().remove(fingerprint)
+    {
+        tracing::info!("unpaired by {}", peer.addr);
+        let _ = state
+            .events
+            .send(ServerEvent::Unpaired { peer: peer.clone() })
+            .await;
+    }
+    Ok(StatusCode::OK.into_response())
+}
+
+/// Frees the pairing slot when the request ends, however it ends.
+struct PairingGuard(Arc<AppState>);
+
+impl Drop for PairingGuard {
+    fn drop(&mut self) {
+        self.0.end_pairing();
+    }
 }
 
 fn header_string(headers: &HeaderMap, name: &str) -> Option<String> {

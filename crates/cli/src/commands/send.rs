@@ -415,7 +415,7 @@ async fn upload_with_retries(
     }
 }
 
-async fn wait_for_device(
+pub(crate) async fn wait_for_device(
     app: &App,
     discovery: &Discovery,
     events_rx: &mut mpsc::Receiver<ServerEvent>,
@@ -472,7 +472,7 @@ async fn wait_for_device(
 
 /// A query that is an address (`ip`, `ip:port`, `[v6%scope]:port`) is
 /// probed directly.
-fn direct_target(query: &str) -> Option<Target> {
+pub(crate) fn direct_target(query: &str) -> Option<Target> {
     let (host, port) = lan_send_core::discovery::parse_host_port(query)?;
     Some(Target {
         host,

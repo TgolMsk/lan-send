@@ -107,12 +107,26 @@ enum Command {
         /// Skip verifying sender-provided checksums
         #[arg(long)]
         no_verify: bool,
+        /// Accept pairing requests without asking (testing only)
+        #[arg(long)]
+        accept_pairing: bool,
         /// Sub-directories: comma list of device, date, type; or "none" [default: settings]
         #[arg(long, value_name = "RULES")]
         organize: Option<String>,
         /// What to do when a file already exists [default: settings, else rename]
         #[arg(long, value_enum)]
         on_conflict: Option<ConflictArg>,
+    },
+    /// Pair with a device: both sides show the same code and confirm it
+    Pair {
+        /// Device to pair with (alias, fingerprint prefix or IP[:port])
+        device: String,
+        /// How long to wait for the device to appear
+        #[arg(long, default_value_t = 10.0, value_name = "SECONDS")]
+        timeout: f64,
+        /// Skip the local confirmation of the code (testing only)
+        #[arg(long)]
+        yes: bool,
     },
     /// Show this device's identity (alias, fingerprint, config dir)
     Identity,
@@ -139,6 +153,9 @@ enum Command {
         /// Forget a device
         #[arg(long, value_name = "DEVICE")]
         forget: Option<String>,
+        /// Withdraw the pairing with a device
+        #[arg(long, value_name = "DEVICE")]
+        unpair: Option<String>,
     },
     /// Clipboard synchronisation with a paired device
     Clip {
@@ -199,6 +216,7 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
             pin,
             auto_accept,
             no_verify,
+            accept_pairing,
             organize,
             on_conflict,
         } => {
@@ -206,6 +224,7 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
                 dir: dir.or_else(|| app.settings.receive_dir.clone()),
                 pin: pin.or_else(|| app.settings.pin.clone()),
                 auto_accept,
+                accept_pairing,
                 verify_checksums: !no_verify && app.settings.verify_checksums,
                 organize: match organize {
                     Some(rules) => commands::receive::parse_organize(&rules)?,
@@ -220,6 +239,11 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
             };
             commands::receive::run(app, options).await
         }
+        Command::Pair {
+            device,
+            timeout,
+            yes,
+        } => commands::pair::run(app, device, Duration::from_secs_f64(timeout), yes).await,
         Command::Identity => commands::identity::run(&app),
         Command::History {
             limit,
@@ -230,7 +254,8 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
             favorite,
             unfavorite,
             forget,
-        } => commands::devices::run(&app, favorite, unfavorite, forget),
+            unpair,
+        } => commands::devices::run(&app, favorite, unfavorite, forget, unpair).await,
         Command::Clip { command } => match command {
             ClipCommand::Watch { device } => not_yet(&format!("clip watch {device}"), 3),
             ClipCommand::Push { device } => not_yet(&format!("clip push {device}"), 3),

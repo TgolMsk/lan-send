@@ -4,13 +4,15 @@ use crate::{ClientCerts, Globals};
 use anyhow::Context;
 use lan_send_core::discovery::{Device, Discovery, DiscoveryConfig, DiscoveryEvent};
 use lan_send_core::protocol::{
-    DeviceInfo, DeviceType, Extensions, FEATURE_RESUME, PROTOCOL_VERSION, ProtocolType,
+    DeviceInfo, DeviceType, Extensions, FEATURE_PAIRING, FEATURE_RESUME, Fingerprint,
+    PROTOCOL_VERSION, ProtocolType,
 };
 use lan_send_core::store::{AppPaths, Database, KnownDevice, Settings, TransferRecord};
 use lan_send_core::transport::{
-    ClientCertPolicy, Identity, ServerConfig, ServerEvent, ServerHandle, Target, UploadDecision,
-    server,
+    ClientCertPolicy, Identity, Peer, ServerConfig, ServerEvent, ServerHandle, Target,
+    UploadDecision, server,
 };
+use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc;
@@ -84,11 +86,92 @@ impl App {
 
     /// Extension features this device announces.
     pub fn features(&self) -> Vec<&'static str> {
-        let mut features = Vec::new();
+        let mut features = vec![FEATURE_PAIRING];
         if self.settings.resume {
             features.push(FEATURE_RESUME);
         }
         features
+    }
+
+    /// Fingerprints of the devices paired so far.
+    pub fn paired_fingerprints(&self) -> HashSet<Fingerprint> {
+        self.db
+            .list_devices()
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|device| device.paired)
+            .map(|device| Fingerprint::parse(&device.fingerprint))
+            .collect()
+    }
+
+    /// Persists a pairing decision for `peer`, creating the device record
+    /// when it is not known yet.
+    pub fn apply_pairing(&self, peer: &Peer, alias: &str, paired: bool) {
+        let Some(fingerprint) = &peer.cert_fingerprint else {
+            return;
+        };
+        let known = self
+            .db
+            .device(fingerprint.as_str())
+            .ok()
+            .flatten()
+            .is_some();
+        if !known {
+            let now = lan_send_core::store::unix_now();
+            let _ = self.db.upsert_device(&KnownDevice {
+                fingerprint: fingerprint.to_string(),
+                alias: alias.to_string(),
+                custom_alias: None,
+                device_type: None,
+                device_model: None,
+                version: None,
+                host: Some(peer.host()),
+                port: None,
+                protocol: Some("https".into()),
+                favorite: false,
+                paired: false,
+                first_seen: now,
+                last_seen: now,
+            });
+        }
+        if let Err(err) = self.db.set_paired(fingerprint.as_str(), paired) {
+            tracing::warn!("could not store the pairing: {err}");
+        }
+    }
+
+    /// Answers a pairing request: asks the user (or accepts when
+    /// `auto_accept`), persists the result and updates the server's set.
+    pub async fn answer_pair_request(
+        &self,
+        server: &ServerHandle,
+        auto_accept: bool,
+        peer: &Peer,
+        alias: &str,
+        code: &str,
+        decision: tokio::sync::oneshot::Sender<bool>,
+    ) {
+        let short = peer
+            .cert_fingerprint
+            .as_ref()
+            .map(|fingerprint| fingerprint.short().to_string())
+            .unwrap_or_default();
+        println!("\nPairing request from {alias} ({short}) at {}.", peer.addr);
+        println!("Verification code: {code}");
+        let accept = auto_accept
+            || crate::ui::prompt_line("Does the other device show the same code? [y/N] ")
+                .await
+                .map(|answer| matches!(answer.to_ascii_lowercase().as_str(), "y" | "yes"))
+                .unwrap_or(false);
+        if accept {
+            self.apply_pairing(peer, alias, true);
+            if let Some(fingerprint) = &peer.cert_fingerprint {
+                server.add_paired(fingerprint.clone());
+            }
+            println!("Paired with {alias}.");
+        } else {
+            println!("Pairing with {alias} declined.");
+        }
+        let _ = decision.send(accept);
     }
 
     /// Removes partial uploads older than the resume window, files included.
@@ -118,6 +201,7 @@ impl App {
             verify_checksums,
             upload_idle_timeout: server::DEFAULT_UPLOAD_IDLE_TIMEOUT,
             ipv6: self.settings.ipv6,
+            paired: self.paired_fingerprints(),
             events,
         })
         .await?;
@@ -190,6 +274,16 @@ impl App {
             }
             ServerEvent::PrepareUpload { decision, .. } => {
                 let _ = decision.send(UploadDecision::Decline);
+            }
+            ServerEvent::PairRequest {
+                decision, alias, ..
+            } => {
+                eprintln!("Pairing request from {alias} declined (not in receive mode).");
+                let _ = decision.send(false);
+            }
+            ServerEvent::Unpaired { peer } => {
+                self.apply_pairing(&peer, "", false);
+                eprintln!("{} withdrew the pairing.", peer.addr);
             }
             _ => {}
         }

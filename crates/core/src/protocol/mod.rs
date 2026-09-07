@@ -365,6 +365,42 @@ pub const RESUME_OFFSET_HEADER: &str = "x-resume-offset";
 /// Path of the resume query endpoint.
 pub const RESUME_PATH: &str = "/api/ext/v1/resume";
 
+/// Extension feature: device pairing (milestone 3).
+pub const FEATURE_PAIRING: &str = "pairing";
+
+/// Path of the pairing endpoint.
+pub const PAIR_PATH: &str = "/api/ext/v1/pair";
+
+/// Path of the unpairing notification endpoint.
+pub const UNPAIR_PATH: &str = "/api/ext/v1/unpair";
+
+/// Body of `POST /api/ext/v1/pair`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PairRequest {
+    /// The initiator's display name.
+    pub alias: String,
+}
+
+/// Response of `POST /api/ext/v1/pair`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PairResponse {
+    pub accepted: bool,
+    /// The responder's display name.
+    pub alias: String,
+}
+
+/// The six-digit verification code both devices derive from the pair of
+/// fingerprints and show to their users (ADR-0010). Symmetric in its
+/// arguments.
+pub fn verification_code(a: &Fingerprint, b: &Fingerprint) -> String {
+    use sha2::{Digest, Sha256};
+
+    let (first, second) = if a <= b { (a, b) } else { (b, a) };
+    let digest = Sha256::digest(format!("{first}{second}").as_bytes());
+    let number = u32::from_be_bytes([digest[0], digest[1], digest[2], digest[3]]);
+    format!("{:06}", number % 1_000_000)
+}
+
 /// Error body used by every route.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ErrorResponse {
@@ -458,6 +494,17 @@ mod tests {
             json,
             r#"{"id":"1","fileName":"a.txt","size":3,"fileType":"text/plain"}"#
         );
+    }
+
+    #[test]
+    fn verification_code_is_symmetric_and_six_digits() {
+        let a = Fingerprint::parse("ABCD");
+        let b = Fingerprint::parse("1234");
+        let code = verification_code(&a, &b);
+        assert_eq!(code.len(), 6);
+        assert!(code.chars().all(|c| c.is_ascii_digit()));
+        assert_eq!(code, verification_code(&b, &a));
+        assert_ne!(code, verification_code(&a, &Fingerprint::parse("5678")));
     }
 
     #[test]

@@ -19,6 +19,8 @@ pub struct ReceiveOptions {
     pub dir: Option<PathBuf>,
     pub pin: Option<String>,
     pub auto_accept: bool,
+    /// Accept pairing requests without asking (testing only).
+    pub accept_pairing: bool,
     pub verify_checksums: bool,
     pub organize: OrganizeRules,
     pub on_conflict: ConflictPolicy,
@@ -368,6 +370,22 @@ pub async fn run(app: App, options: ReceiveOptions) -> anyhow::Result<()> {
                 {
                     session = None;
                 }
+            }
+            ServerEvent::PairRequest {
+                peer,
+                alias,
+                code,
+                decision,
+            } => {
+                app.answer_pair_request(
+                    &server,
+                    options.accept_pairing,
+                    &peer,
+                    &alias,
+                    &code,
+                    decision,
+                )
+                .await;
             }
             other => app.handle_background_event(&discovery, other),
         }

@@ -2,9 +2,9 @@
 //! ADR-0008).
 
 use crate::protocol::{
-    API_PREFIX_V2, DeviceInfo, ErrorResponse, Fingerprint, PeerInfo, PrepareUploadRequest,
-    PrepareUploadResponse, ProtocolType, RESUME_OFFSET_HEADER, RESUME_PATH, RESUME_TOKEN_HEADER,
-    ResumeOffsetResponse,
+    API_PREFIX_V2, DeviceInfo, ErrorResponse, Fingerprint, PAIR_PATH, PairRequest, PairResponse,
+    PeerInfo, PrepareUploadRequest, PrepareUploadResponse, ProtocolType, RESUME_OFFSET_HEADER,
+    RESUME_PATH, RESUME_TOKEN_HEADER, ResumeOffsetResponse, UNPAIR_PATH,
 };
 use crate::transport::identity::Identity;
 use crate::transport::scoped_host;
@@ -356,6 +356,32 @@ impl Client {
             .await?;
         let response = ok_or_error(response).await?;
         Ok(response.json::<ResumeOffsetResponse>().await?.offset)
+    }
+
+    /// Pairing (ADR-0010): asks the peer to pair; blocks until its user
+    /// decided. A refusal surfaces as HTTP 403, no answer as 408.
+    pub async fn pair(&self, target: &Target, alias: &str) -> Result<PairResponse, ClientError> {
+        let response = self
+            .http
+            .post(format!("{}{PAIR_PATH}", target.origin()))
+            .json(&PairRequest {
+                alias: alias.to_string(),
+            })
+            .send()
+            .await?;
+        let response = ok_or_error(response).await?;
+        Ok(response.json().await?)
+    }
+
+    /// Tells a paired peer that the pairing is withdrawn (best effort).
+    pub async fn unpair(&self, target: &Target) -> Result<(), ClientError> {
+        let response = self
+            .http
+            .post(format!("{}{UNPAIR_PATH}", target.origin()))
+            .send()
+            .await?;
+        ok_or_error(response).await?;
+        Ok(())
     }
 
     /// `POST /cancel`. Without a session id it withdraws a pending

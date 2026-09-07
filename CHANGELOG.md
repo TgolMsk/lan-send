@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Added
+- 里程碑 3（第一部分）：设备配对——`POST /api/ext/v1/pair` / `unpair`，双方各自显示由指纹派生的 6 位校验码并确认；服务端维护已配对指纹集合供私有端点鉴权；CLI `pair <device>`、`receive` 处理配对请求、`devices --unpair`，设备列表标记 P。
 - 里程碑 2（第三部分）：IPv6——每个有 IPv6 的接口按索引加入 `ff12::fd3a:e420` 组播组，HTTP 服务同时监听 `[::]`（v6-only），链路本地地址带 scope 回拨（自定义 DNS 解析器编码 `fe80::1%3`），命令行目标支持 `[fe80::1%en1]:53317`；设置 `ipv6` 可关闭。
 - 里程碑 2（第二部分）：断点续传扩展——`x-resume-token` / `x-resume-offsets`、带 `Range` 的上传、`GET /api/ext/v1/resume` 断点查询、会话内与跨会话恢复、上传空闲超时（30 秒）与会话闲置回收（10 分钟）；进程内端到端测试覆盖中断后续传与官方式发送方的兼容路径。
 - 里程碑 2（第一部分）：`settings.json` 与 SQLite 持久化（传输历史默认 200 条、已知设备与收藏、断点记录表）；发送文件夹（递归、跳过符号链接与隐藏文件、保留相对路径、发送前汇总）；接收目录按设备 / 日期 / 类型分子目录，同名策略 rename / overwrite / ask；CLI 新增 `history`、`devices`，`send` 与 `receive` 读取设置并写入历史；发现阶段探测收藏与最近 7 天见过的设备地址。

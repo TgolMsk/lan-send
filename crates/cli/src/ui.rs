@@ -84,19 +84,25 @@ pub fn print_known_devices(devices: &[KnownDevice]) {
         println!("No known devices yet. Run `lan-send discover` first.");
         return;
     }
+    println!("(* favorite, P paired)");
     println!(
         "{:<26} {:<9} {:<10} {:<22} {:<12} FINGERPRINT",
         "NAME", "TYPE", "MODEL", "LAST ADDRESS", "LAST SEEN"
     );
     for device in devices {
-        let star = if device.favorite { "* " } else { "  " };
+        let star = match (device.favorite, device.paired) {
+            (true, true) => "*P",
+            (true, false) => "* ",
+            (false, true) => " P",
+            (false, false) => "  ",
+        };
         let address = match (&device.host, device.port) {
             (Some(host), Some(port)) => format!("{host}:{port}"),
             _ => "-".into(),
         };
         println!(
-            "{star}{:<24} {:<9} {:<10} {:<22} {:<12} {}",
-            truncate(device.display_name(), 24),
+            "{star} {:<23} {:<9} {:<10} {:<22} {:<12} {}",
+            truncate(device.display_name(), 23),
             device.device_type.as_deref().unwrap_or("-"),
             truncate(device.device_model.as_deref().unwrap_or("-"), 10),
             truncate(&address, 22),

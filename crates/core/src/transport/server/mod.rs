@@ -47,6 +47,9 @@ pub struct ServerConfig {
     /// interrupted (a sender that vanished without closing the connection).
     /// [`DEFAULT_UPLOAD_IDLE_TIMEOUT`] is a sensible value.
     pub upload_idle_timeout: Duration,
+    /// Fingerprints of the devices paired so far (ADR-0010). Kept up to
+    /// date through [`ServerHandle::set_paired`] and friends.
+    pub paired: HashSet<Fingerprint>,
     /// Where events for the application go.
     pub events: mpsc::Sender<ServerEvent>,
 }
@@ -172,6 +175,20 @@ pub enum ServerEvent {
     /// cancelling a transfer this application is *sending* to it. Verify
     /// that `peer` is the target of that send session before acting.
     CancelReceived { peer: Peer, session_id: String },
+
+    /// A device asks to pair (ADR-0010). Show `code` to the user; answer
+    /// `true` on `decision` when they confirm the other device shows the
+    /// same code. The server records the pairing itself; the application
+    /// persists it.
+    PairRequest {
+        peer: Peer,
+        alias: String,
+        code: String,
+        decision: oneshot::Sender<bool>,
+    },
+
+    /// A paired device withdrew the pairing.
+    Unpaired { peer: Peer },
 }
 
 /// The application's answer to a `prepare-upload` request.
@@ -237,6 +254,23 @@ impl ServerHandle {
         self.state.cancel_active(session_id, None)
     }
 
+    /// Replaces the set of paired devices.
+    pub fn set_paired(&self, paired: HashSet<Fingerprint>) {
+        *self.state.paired.write() = paired;
+    }
+
+    pub fn add_paired(&self, fingerprint: Fingerprint) {
+        self.state.paired.write().insert(fingerprint);
+    }
+
+    pub fn remove_paired(&self, fingerprint: &Fingerprint) {
+        self.state.paired.write().remove(fingerprint);
+    }
+
+    pub fn is_paired(&self, fingerprint: &Fingerprint) -> bool {
+        self.state.paired.read().contains(fingerprint)
+    }
+
     /// Stops accepting, drops every connection and waits for the tasks.
     pub async fn stop(&self) {
         self.cancel.cancel();
@@ -278,6 +312,7 @@ pub async fn start(config: ServerConfig) -> Result<ServerHandle, ServerError> {
         config.pin,
         config.verify_checksums,
         config.upload_idle_timeout,
+        config.paired,
         config.events,
     ));
     let router = routes::router(state.clone());

@@ -15,7 +15,7 @@ use lan_send_core::transport::{
     ServerEvent, Target, UploadDecision, UploadTarget,
 };
 use sha2::{Digest, Sha256};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::mpsc;
@@ -55,6 +55,7 @@ async fn start_receiver(
         // Short: the test's dying client does not close its connection.
         upload_idle_timeout: std::time::Duration::from_secs(2),
         ipv6: false,
+        paired: HashSet::new(),
         events: events_tx,
     })
     .await
