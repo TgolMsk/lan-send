@@ -54,6 +54,7 @@ async fn start_receiver(
         verify_checksums: true,
         // Short: the test's dying client does not close its connection.
         upload_idle_timeout: std::time::Duration::from_secs(2),
+        ipv6: false,
         events: events_tx,
     })
     .await

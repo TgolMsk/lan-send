@@ -61,6 +61,8 @@ pub struct Settings {
     pub history_limit: usize,
     /// Announce and use the resume extension with peers that support it.
     pub resume: bool,
+    /// Join the IPv6 multicast group and listen on IPv6 as well.
+    pub ipv6: bool,
     /// PIN senders must know; `None` disables the PIN.
     pub pin: Option<String>,
 }
@@ -80,6 +82,7 @@ impl Default for Settings {
             skip_hidden_files: true,
             history_limit: 200,
             resume: true,
+            ipv6: true,
             pin: None,
         }
     }

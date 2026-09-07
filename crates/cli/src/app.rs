@@ -117,6 +117,7 @@ impl App {
             pin,
             verify_checksums,
             upload_idle_timeout: server::DEFAULT_UPLOAD_IDLE_TIMEOUT,
+            ipv6: self.settings.ipv6,
             events,
         })
         .await?;
@@ -126,10 +127,11 @@ impl App {
     /// Starts discovery and keeps the database updated with every device
     /// it confirms.
     pub fn start_discovery(&self, port: u16) -> Discovery {
-        let discovery = Discovery::start(DiscoveryConfig::new(
-            self.identity.clone(),
-            self.device_info(port),
-        ));
+        let mut config = DiscoveryConfig::new(self.identity.clone(), self.device_info(port));
+        if !self.settings.ipv6 {
+            config.group_v6 = None;
+        }
+        let discovery = Discovery::start(config);
         let mut events = discovery.subscribe();
         let db = self.db.clone();
         tokio::spawn(async move {
@@ -184,7 +186,7 @@ impl App {
         match event {
             ServerEvent::Register { peer, info } => {
                 let fingerprint = peer.identity(&info.fingerprint);
-                discovery.add_confirmed(Device::from_info(peer.addr, &info, fingerprint));
+                discovery.add_confirmed(Device::from_info(&peer.host(), &info, fingerprint));
             }
             ServerEvent::PrepareUpload { decision, .. } => {
                 let _ = decision.send(UploadDecision::Decline);

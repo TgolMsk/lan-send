@@ -1,5 +1,6 @@
 //! Device discovery: UDP multicast announcements answered over HTTP, probing
-//! of known addresses, and the `/24` subnet scan fallback (ADR-0003).
+//! of known addresses, and the `/24` subnet scan fallback (ADR-0003,
+//! ADR-0009 for IPv6).
 //!
 //! [`Discovery::start`] binds the multicast sockets and answers other
 //! devices' announcements. Nothing is announced until
@@ -12,11 +13,11 @@ mod store;
 pub use store::Device;
 
 use crate::protocol::{DeviceInfo, Fingerprint, MulticastAnnouncement, ProtocolType};
-use crate::protocol::{MULTICAST_GROUP_V4, MULTICAST_PORT};
+use crate::protocol::{MULTICAST_GROUP_V4, MULTICAST_GROUP_V6, MULTICAST_PORT};
 use crate::transport::{Client, ClientError, Identity, Target};
 use futures_util::StreamExt;
 use std::collections::{HashMap, HashSet};
-use std::net::{IpAddr, Ipv4Addr};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
@@ -50,6 +51,8 @@ pub struct DiscoveryConfig {
     /// This device as announced and as sent in register requests.
     pub device: DeviceInfo,
     pub group: Ipv4Addr,
+    /// The IPv6 group to join as well; `None` disables IPv6 discovery.
+    pub group_v6: Option<Ipv6Addr>,
     pub multicast_port: u16,
     pub probe_timeout: Duration,
     /// Whether announcements of other devices are answered. Turn off when
@@ -64,6 +67,7 @@ impl DiscoveryConfig {
             identity,
             device,
             group: MULTICAST_GROUP_V4,
+            group_v6: Some(MULTICAST_GROUP_V6),
             multicast_port: MULTICAST_PORT,
             probe_timeout: DEFAULT_PROBE_TIMEOUT,
             answer_announcements: true,
@@ -107,7 +111,7 @@ impl Discovery {
     /// [`Discovery::multicast_error`] and HTTP-based discovery still works.
     pub fn start(config: DiscoveryConfig) -> Self {
         let (sockets, multicast_error) =
-            match multicast::bind_all(config.group, config.multicast_port) {
+            match multicast::bind_all(config.group, config.group_v6, config.multicast_port) {
                 Ok(sockets) => (sockets, None),
                 Err(err) => {
                     tracing::warn!("multicast discovery unavailable: {err}");
@@ -133,7 +137,7 @@ impl Discovery {
         for socket in &inner.sockets {
             tasks.spawn(receive_loop(
                 socket.socket.clone(),
-                socket.interface,
+                socket.description.clone(),
                 inner.clone(),
                 cancel.clone(),
             ));
@@ -150,13 +154,18 @@ impl Discovery {
         self.inner.multicast_error.as_deref()
     }
 
-    /// Interfaces the multicast sockets are bound to.
-    pub fn multicast_interfaces(&self) -> Vec<Ipv4Addr> {
+    /// Interfaces the multicast sockets are bound to, described for logs.
+    pub fn multicast_interfaces(&self) -> Vec<String> {
         self.inner
             .sockets
             .iter()
-            .map(|socket| socket.interface)
+            .map(|socket| socket.description.clone())
             .collect()
+    }
+
+    /// The index of a network interface by name (for `%en0` style scopes).
+    pub fn interface_index(name: &str) -> Option<u32> {
+        multicast::interface_index(name)
     }
 
     pub fn subscribe(&self) -> broadcast::Receiver<DiscoveryEvent> {
@@ -173,17 +182,12 @@ impl Discovery {
     }
 
     /// Finds a device by exact alias (case-insensitive), fingerprint prefix
-    /// (at least 4 characters), IP address or `ip:port`.
+    /// (at least 4 characters) or address (`ip`, `ip:port`, `[v6]:port`,
+    /// `[v6%scope]:port`).
     pub fn find(&self, query: &str) -> Option<Device> {
         let query = query.trim();
         let devices = self.devices();
-        let by_address = |device: &Device| match query.parse::<std::net::SocketAddr>() {
-            Ok(addr) => device.reachable_at(&addr.ip().to_string(), Some(addr.port())),
-            Err(_) => match query.parse::<IpAddr>() {
-                Ok(ip) => device.reachable_at(&ip.to_string(), None),
-                Err(_) => false,
-            },
-        };
+        let address = parse_host_port(query);
         devices
             .iter()
             .find(|device| device.alias.eq_ignore_ascii_case(query))
@@ -192,7 +196,12 @@ impl Discovery {
                     .iter()
                     .find(|device| query.len() >= 4 && device.fingerprint.has_prefix(query))
             })
-            .or_else(|| devices.iter().find(|device| by_address(device)))
+            .or_else(|| {
+                let (host, port) = address.as_ref()?;
+                devices
+                    .iter()
+                    .find(|device| device.reachable_at(host, *port))
+            })
             .cloned()
     }
 
@@ -232,10 +241,7 @@ impl Discovery {
             tracing::debug!("announcing via multicast");
             for socket in &self.inner.sockets {
                 if let Err(err) = socket.socket.send_to(&payload, socket.target).await {
-                    tracing::warn!(
-                        "could not announce on interface {}: {err}",
-                        socket.interface
-                    );
+                    tracing::warn!("could not announce on {}: {err}", socket.description);
                 }
             }
         }
@@ -331,6 +337,43 @@ impl Discovery {
     }
 }
 
+/// Splits an address query into host and optional port: `ip`, `ip:port`,
+/// `[v6]:port`, `[v6%scope]:port` or `v6%scope`. The scope may be an
+/// interface name, which is translated to its index.
+pub fn parse_host_port(query: &str) -> Option<(String, Option<u16>)> {
+    let query = query.trim();
+    let (host, port) = if let Some(rest) = query.strip_prefix('[') {
+        let (host, after) = rest.split_once(']')?;
+        let port = after
+            .strip_prefix(':')
+            .map(|port| port.parse::<u16>())
+            .transpose()
+            .ok()?;
+        (host.to_string(), port)
+    } else if let Ok(addr) = query.parse::<SocketAddr>() {
+        (addr.ip().to_string(), Some(addr.port()))
+    } else if query.parse::<IpAddr>().is_ok() || query.contains('%') {
+        (query.to_string(), None)
+    } else {
+        return None;
+    };
+    let host = match host.split_once('%') {
+        Some((ip, scope)) => {
+            ip.parse::<Ipv6Addr>().ok()?;
+            let scope = match scope.parse::<u32>() {
+                Ok(index) => index,
+                Err(_) => multicast::interface_index(scope)?,
+            };
+            format!("{ip}%{scope}")
+        }
+        None => {
+            host.parse::<IpAddr>().ok()?;
+            host
+        }
+    };
+    Some((host, port))
+}
+
 struct ScanGuard<'a> {
     inner: &'a Inner,
     interface: Ipv4Addr,
@@ -391,7 +434,7 @@ impl Inner {
 
 async fn receive_loop(
     socket: Arc<UdpSocket>,
-    interface: Ipv4Addr,
+    interface: String,
     inner: Arc<Inner>,
     cancel: CancellationToken,
 ) {
@@ -435,33 +478,34 @@ async fn receive_loop(
         if !inner.answering.load(Ordering::Relaxed) {
             continue;
         }
+        let host = source_host(source);
         let key = format!(
-            "{}|{}|{}",
+            "{}|{host}|{}",
             announcement.info.fingerprint.to_ascii_uppercase(),
-            source.ip(),
             announcement.info.port
         );
         if !inner.should_answer(key) {
             continue;
         }
-        tokio::spawn(answer_announcement(
-            inner.clone(),
-            source.ip(),
-            announcement,
-        ));
+        tokio::spawn(answer_announcement(inner.clone(), host, announcement));
+    }
+}
+
+/// The host to dial an announcing peer at: link-local IPv6 sources keep
+/// their scope.
+fn source_host(source: SocketAddr) -> String {
+    match source {
+        SocketAddr::V6(v6) if v6.scope_id() != 0 => format!("{}%{}", v6.ip(), v6.scope_id()),
+        other => other.ip().to_string(),
     }
 }
 
 /// Answers an announcement with a register request, as the protocol
 /// requires. The device enters the store only once that succeeded.
-async fn answer_announcement(
-    inner: Arc<Inner>,
-    source: IpAddr,
-    announcement: MulticastAnnouncement,
-) {
+async fn answer_announcement(inner: Arc<Inner>, host: String, announcement: MulticastAnnouncement) {
     let info = announcement.info;
     let target = Target {
-        host: source.to_string(),
+        host,
         port: info.port,
         protocol: info.protocol,
     };
@@ -493,5 +537,36 @@ async fn answer_announcement(
                 info.alias
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_address_queries() {
+        assert_eq!(
+            parse_host_port("192.168.1.2"),
+            Some(("192.168.1.2".into(), None))
+        );
+        assert_eq!(
+            parse_host_port("192.168.1.2:53400"),
+            Some(("192.168.1.2".into(), Some(53400)))
+        );
+        assert_eq!(
+            parse_host_port("[fd00::1]:1"),
+            Some(("fd00::1".into(), Some(1)))
+        );
+        assert_eq!(
+            parse_host_port("[fe80::1%7]:2"),
+            Some(("fe80::1%7".into(), Some(2)))
+        );
+        assert_eq!(
+            parse_host_port("fe80::1%7"),
+            Some(("fe80::1%7".into(), None))
+        );
+        assert_eq!(parse_host_port("Nice Orange"), None);
+        assert_eq!(parse_host_port("[fe80::1%no-such-interface]:2"), None);
     }
 }

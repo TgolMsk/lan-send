@@ -7,10 +7,12 @@ use crate::protocol::{
     ResumeOffsetResponse,
 };
 use crate::transport::identity::Identity;
+use crate::transport::scoped_host;
 use crate::transport::tls::{self, TlsError};
 use futures_util::StreamExt;
 use reqwest::StatusCode;
 use std::path::Path;
+use std::sync::Arc;
 use std::time::Duration;
 
 /// Where a request goes.
@@ -28,14 +30,15 @@ impl Target {
         format!("{}{API_PREFIX_V2}{path}", self.origin())
     }
 
-    /// `scheme://host:port`, with IPv6 hosts bracketed.
+    /// `scheme://host:port`, with IPv6 hosts bracketed and scoped
+    /// link-local addresses encoded for the client's resolver.
     pub fn origin(&self) -> String {
-        let host = if self.host.contains(':') && !self.host.starts_with('[') {
-            format!("[{}]", self.host)
-        } else {
-            self.host.clone()
-        };
-        format!("{}://{host}:{}", self.protocol.scheme(), self.port)
+        format!(
+            "{}://{}:{}",
+            self.protocol.scheme(),
+            scoped_host::url_host(&self.host),
+            self.port
+        )
     }
 }
 
@@ -166,6 +169,7 @@ impl Client {
             // the one verified.
             .no_proxy()
             .redirect(reqwest::redirect::Policy::none())
+            .dns_resolver(Arc::new(ScopedHostResolver))
             .connect_timeout(Duration::from_secs(5));
         if let Some(timeout) = timeout {
             builder = builder.timeout(timeout);
@@ -370,6 +374,25 @@ impl Client {
     }
 }
 
+/// Resolves the synthetic names of scoped IPv6 peers (see
+/// [`scoped_host`]); everything else goes to the system resolver.
+struct ScopedHostResolver;
+
+impl reqwest::dns::Resolve for ScopedHostResolver {
+    fn resolve(&self, name: reqwest::dns::Name) -> reqwest::dns::Resolving {
+        Box::pin(async move {
+            // The port is a placeholder; reqwest substitutes the URL's.
+            if let Some(addr) = scoped_host::decode(name.as_str(), 0) {
+                return Ok(Box::new(std::iter::once(addr)) as reqwest::dns::Addrs);
+            }
+            let addrs = tokio::net::lookup_host((name.as_str(), 0))
+                .await?
+                .collect::<Vec<_>>();
+            Ok(Box::new(addrs.into_iter()) as reqwest::dns::Addrs)
+        })
+    }
+}
+
 async fn ok_or_error(response: reqwest::Response) -> Result<reqwest::Response, ClientError> {
     let status = response.status();
     if status.is_success() {
@@ -415,5 +438,14 @@ mod tests {
         };
         assert_eq!(v6.url("/info"), "http://[fe80::1]:1/api/localsend/v2/info");
         assert_eq!(v6.origin(), "http://[fe80::1]:1");
+        let scoped = Target {
+            host: "fe80::1%3".into(),
+            port: 2,
+            protocol: ProtocolType::Https,
+        };
+        assert_eq!(
+            scoped.origin(),
+            "https://fe80--1s3.scoped.lan-send.internal:2"
+        );
     }
 }

@@ -1,8 +1,10 @@
-//! The multicast sockets: one per IPv4 interface address, following the
-//! recipe of the official implementation (see ADR-0003).
+//! The multicast sockets: one per IPv4 interface address and, when enabled,
+//! one per interface with IPv6, following the recipe of the official
+//! implementation (ADR-0003, ADR-0009).
 
 use socket2::{Domain, Protocol, Socket, Type};
-use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
+use std::collections::HashSet;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
 use std::sync::Arc;
 use tokio::net::UdpSocket;
 
@@ -18,7 +20,8 @@ pub enum MulticastError {
 /// A socket bound to one interface, with the group address it sends to.
 pub(super) struct BoundSocket {
     pub socket: Arc<UdpSocket>,
-    pub interface: Ipv4Addr,
+    /// `name (address)` or `name (v6, index n)`, for logs.
+    pub description: String,
     pub target: SocketAddr,
 }
 
@@ -40,38 +43,81 @@ pub(super) fn local_ipv4_addresses() -> Vec<Ipv4Addr> {
     addresses
 }
 
-/// Binds one socket per usable interface. Interfaces that fail are skipped;
-/// it is an error only when none could be bound.
-pub(super) fn bind_all(group: Ipv4Addr, port: u16) -> Result<Vec<BoundSocket>, MulticastError> {
+/// The index of the interface called `name` (e.g. `en0`), if any.
+pub fn interface_index(name: &str) -> Option<u32> {
+    if_addrs::get_if_addrs()
+        .ok()?
+        .into_iter()
+        .find(|interface| interface.name == name)
+        .and_then(|interface| interface.index)
+}
+
+/// Binds one IPv4 socket per usable interface address and, when `group_v6`
+/// is given, one IPv6 socket per interface that has IPv6. Interfaces that
+/// fail are skipped; it is an error only when none could be bound.
+pub(super) fn bind_all(
+    group: Ipv4Addr,
+    group_v6: Option<Ipv6Addr>,
+    port: u16,
+) -> Result<Vec<BoundSocket>, MulticastError> {
     let interfaces = if_addrs::get_if_addrs().map_err(MulticastError::Interfaces)?;
     let mut sockets = Vec::new();
     let mut failures = Vec::new();
-    let mut seen = std::collections::HashSet::new();
+    let mut seen_v4 = HashSet::new();
+    let mut seen_v6 = HashSet::new();
     for interface in interfaces {
         if interface.is_loopback() {
             continue;
         }
-        let IpAddr::V4(ip) = interface.ip() else {
-            continue;
-        };
-        if !seen.insert(ip) {
-            continue;
-        }
-        match bind_one(group, port, ip) {
-            Ok(socket) => {
-                tracing::debug!("multicast socket bound on {} ({ip})", interface.name);
-                sockets.push(BoundSocket {
-                    socket: Arc::new(socket),
-                    interface: ip,
-                    target: SocketAddr::new(group.into(), port),
-                });
+        match interface.ip() {
+            IpAddr::V4(ip) => {
+                if !seen_v4.insert(ip) {
+                    continue;
+                }
+                match bind_v4(group, port, ip) {
+                    Ok(socket) => {
+                        tracing::debug!("multicast socket bound on {} ({ip})", interface.name);
+                        sockets.push(BoundSocket {
+                            socket: Arc::new(socket),
+                            description: format!("{} ({ip})", interface.name),
+                            target: SocketAddr::new(group.into(), port),
+                        });
+                    }
+                    Err(err) => {
+                        tracing::warn!(
+                            "could not bind multicast socket on {} ({ip}): {err}",
+                            interface.name
+                        );
+                        failures.push(format!("{} ({ip}): {err}", interface.name));
+                    }
+                }
             }
-            Err(err) => {
-                tracing::warn!(
-                    "could not bind multicast socket on {} ({ip}): {err}",
-                    interface.name
-                );
-                failures.push(format!("{} ({ip}): {err}", interface.name));
+            IpAddr::V6(_) => {
+                let (Some(group_v6), Some(index)) = (group_v6, interface.index) else {
+                    continue;
+                };
+                if !seen_v6.insert(index) {
+                    continue;
+                }
+                match bind_v6(group_v6, port, index) {
+                    Ok(socket) => {
+                        tracing::debug!(
+                            "IPv6 multicast socket bound on {} (index {index})",
+                            interface.name
+                        );
+                        sockets.push(BoundSocket {
+                            socket: Arc::new(socket),
+                            description: format!("{} (v6, index {index})", interface.name),
+                            target: SocketAddr::V6(SocketAddrV6::new(group_v6, port, 0, index)),
+                        });
+                    }
+                    Err(err) => {
+                        tracing::debug!(
+                            "could not bind IPv6 multicast socket on {} (index {index}): {err}",
+                            interface.name
+                        );
+                    }
+                }
             }
         }
     }
@@ -79,7 +125,7 @@ pub(super) fn bind_all(group: Ipv4Addr, port: u16) -> Result<Vec<BoundSocket>, M
         return Err(MulticastError::NoInterface {
             port,
             details: if failures.is_empty() {
-                "no IPv4 interface".to_string()
+                "no usable interface".to_string()
             } else {
                 failures.join("; ")
             },
@@ -88,7 +134,7 @@ pub(super) fn bind_all(group: Ipv4Addr, port: u16) -> Result<Vec<BoundSocket>, M
     Ok(sockets)
 }
 
-fn bind_one(group: Ipv4Addr, port: u16, interface: Ipv4Addr) -> std::io::Result<UdpSocket> {
+fn bind_v4(group: Ipv4Addr, port: u16, interface: Ipv4Addr) -> std::io::Result<UdpSocket> {
     let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP))?;
     // All sockets (and other LocalSend instances on this host) share the port.
     socket.set_reuse_address(true)?;
@@ -104,6 +150,23 @@ fn bind_one(group: Ipv4Addr, port: u16, interface: Ipv4Addr) -> std::io::Result<
     // own datagrams are filtered by fingerprint.
     socket.set_multicast_loop_v4(true)?;
     socket.set_multicast_ttl_v4(1)?;
+    socket.set_nonblocking(true)?;
+    UdpSocket::from_std(socket.into())
+}
+
+/// Mirrors [`bind_v4`], joining the group by interface index.
+fn bind_v6(group: Ipv6Addr, port: u16, interface: u32) -> std::io::Result<UdpSocket> {
+    let socket = Socket::new(Domain::IPV6, Type::DGRAM, Some(Protocol::UDP))?;
+    // A dual-stack socket would clash with the IPv4 sockets on the same port.
+    socket.set_only_v6(true)?;
+    socket.set_reuse_address(true)?;
+    platform::set_reuse_port(&socket)?;
+    socket.bind(&SocketAddr::from(SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, port, 0, 0)).into())?;
+    socket.join_multicast_v6(&group, interface)?;
+    socket.set_multicast_if_v6(interface)?;
+    socket.set_multicast_loop_v6(true)?;
+    // Discovery is limited to the local link (the group's scope already is).
+    socket.set_multicast_hops_v6(1)?;
     socket.set_nonblocking(true)?;
     UdpSocket::from_std(socket.into())
 }

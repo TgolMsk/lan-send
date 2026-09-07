@@ -32,6 +32,11 @@ pub const MULTICAST_GROUP_V4: Ipv4Addr = Ipv4Addr::new(224, 0, 0, 167);
 /// Multicast port. Always this value, independent of the HTTP port.
 pub const MULTICAST_PORT: u16 = 53317;
 
+/// IPv6 multicast group, a LocalSend extension on top of v2.2: transient,
+/// link-local scope. IPv4 stays the baseline; IPv6 is announced in parallel.
+pub const MULTICAST_GROUP_V6: std::net::Ipv6Addr =
+    std::net::Ipv6Addr::new(0xff12, 0, 0, 0, 0, 0, 0xfd3a, 0xe420);
+
 /// Base path of the v2 HTTP API.
 pub const API_PREFIX_V2: &str = "/api/localsend/v2";
 

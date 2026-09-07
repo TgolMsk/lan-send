@@ -12,7 +12,6 @@ use lan_send_core::transport::{
 };
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
-use std::net::{IpAddr, SocketAddr};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -201,13 +200,16 @@ async fn send(
                     ServerEvent::CancelReceived {
                         peer,
                         session_id: cancelled,
-                    } if cancelled == session_id && peer.addr.to_string() == peer_host => {
+                    } if cancelled == session_id
+                        && peer.addr.to_string()
+                            == peer_host.split('%').next().unwrap_or(&peer_host) =>
+                    {
                         eprintln!("The receiver cancelled the transfer.");
                         cancel.cancel();
                     }
                     ServerEvent::Register { peer, info } => {
                         let fingerprint = peer.identity(&info.fingerprint);
-                        let device = Device::from_info(peer.addr, &info, fingerprint);
+                        let device = Device::from_info(&peer.host(), &info, fingerprint);
                         let _ = db.upsert_device(&lan_send_core::store::KnownDevice::from(&device));
                         discovery.add_confirmed(device);
                     }
@@ -468,18 +470,13 @@ async fn wait_for_device(
     })
 }
 
-/// A query that is an address (`ip` or `ip:port`) is probed directly.
+/// A query that is an address (`ip`, `ip:port`, `[v6%scope]:port`) is
+/// probed directly.
 fn direct_target(query: &str) -> Option<Target> {
-    if let Ok(addr) = query.parse::<SocketAddr>() {
-        return Some(Target {
-            host: addr.ip().to_string(),
-            port: addr.port(),
-            protocol: ProtocolType::Https,
-        });
-    }
-    query.parse::<IpAddr>().ok().map(|ip| Target {
-        host: ip.to_string(),
-        port: DEFAULT_PORT,
+    let (host, port) = lan_send_core::discovery::parse_host_port(query)?;
+    Some(Target {
+        host,
+        port: port.unwrap_or(DEFAULT_PORT),
         protocol: ProtocolType::Https,
     })
 }

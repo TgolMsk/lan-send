@@ -4,7 +4,6 @@ use crate::protocol::{DeviceInfo, DeviceType, Extensions, Fingerprint, PeerInfo,
 use crate::store::{KnownDevice, unix_now};
 use crate::transport::Target;
 use parking_lot::RwLock;
-use std::net::IpAddr;
 use std::time::SystemTime;
 
 /// A device that answered us at least once.
@@ -42,8 +41,9 @@ impl Device {
         self.ext.as_ref().is_some_and(|ext| ext.supports(feature))
     }
 
-    /// A device that registered with us from `host`.
-    pub fn from_info(host: IpAddr, info: &DeviceInfo, fingerprint: Fingerprint) -> Self {
+    /// A device that registered with us from `host` (`ip`, or `ip%scope`
+    /// for link-local IPv6).
+    pub fn from_info(host: &str, info: &DeviceInfo, fingerprint: Fingerprint) -> Self {
         Self {
             fingerprint,
             alias: info.alias.clone(),

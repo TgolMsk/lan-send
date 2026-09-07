@@ -133,7 +133,7 @@ pub async fn run(app: App, options: ReceiveOptions) -> anyhow::Result<()> {
                 decision,
             } => {
                 let sender = peer.identity(&info.fingerprint);
-                let device = Device::from_info(peer.addr, &info, sender.clone());
+                let device = Device::from_info(&peer.host(), &info, sender.clone());
                 discovery.add_confirmed(device.clone());
                 let _ = app.db.upsert_device(&KnownDevice::from(&device));
                 let resumable = app.settings.resume

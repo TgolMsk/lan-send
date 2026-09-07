@@ -13,7 +13,7 @@
 | 3 | register | HTTPS 下请求体 `fingerprint` 必须等于证书指纹，否则注册被静默丢弃（仍 200）。 |
 | 4 | UDP 回应 | 只发公告，不用 UDP 回应；回应一律走 HTTP `POST /register`。 |
 | 5 | 公告次数 | 每次 announce 发 3 个报文：+100 ms、+500 ms、+2000 ms。 |
-| 6 | IPv6 | 额外的 IPv6 组播组 `ff12::fd3a:e420`；HTTP 服务同时监听 v4/v6。 |
+| 6 | IPv6 | 额外的 IPv6 组播组 `ff12::fd3a:e420`；HTTP 服务同时监听 v4/v6。本项目同样实现（ADR-0009）。 |
 | 7 | v1 路由 | 仍提供 `GET /api/localsend/v1/info`（≤1.17 客户端探测用）。 |
 | 8 | upload 校验 | 来源 IP（含 IPv6 scope）必须等于 prepare-upload 的 IP；字节数必须等于 `size`。 |
 | 9 | 校验和 | `sha256` 小写 hex；不匹配 422，同 token 最多共 3 次尝试。 |

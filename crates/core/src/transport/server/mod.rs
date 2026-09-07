@@ -18,7 +18,7 @@ use hyper_util::rt::{TokioExecutor, TokioIo};
 use hyper_util::server::conn::auto::Builder;
 use hyper_util::service::TowerToHyperService;
 use std::collections::{HashMap, HashSet};
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -30,8 +30,11 @@ use tokio_util::task::TaskTracker;
 
 /// How the server is started.
 pub struct ServerConfig {
-    /// Port to bind on all IPv4 interfaces; `0` lets the OS pick one.
+    /// Port to bind on all interfaces; `0` lets the OS pick one.
     pub port: u16,
+    /// Also listen on IPv6 (`[::]`, v6-only). Failure to bind it is logged
+    /// and does not prevent the IPv4 listener.
+    pub ipv6: bool,
     pub identity: Arc<Identity>,
     pub client_cert_policy: ClientCertPolicy,
     /// This device as reported to peers. `port` is replaced by the bound port.
@@ -71,6 +74,9 @@ pub enum ServerError {
 #[derive(Clone, Debug)]
 pub struct Peer {
     pub addr: IpAddr,
+    /// The IPv6 scope (interface index) the connection arrived with; set for
+    /// link-local peers, which cannot be dialled back without it.
+    pub scope_id: Option<u32>,
     /// Fingerprint of the client certificate verified during the handshake.
     /// `None` when the peer presented none (only possible with
     /// [`ClientCertPolicy::Optional`]).
@@ -78,6 +84,27 @@ pub struct Peer {
 }
 
 impl Peer {
+    fn from_remote(addr: SocketAddr, cert_fingerprint: Option<Fingerprint>) -> Self {
+        let scope_id = match addr {
+            SocketAddr::V6(v6) if v6.scope_id() != 0 => Some(v6.scope_id()),
+            _ => None,
+        };
+        Self {
+            addr: addr.ip(),
+            scope_id,
+            cert_fingerprint,
+        }
+    }
+
+    /// The address to dial the peer back at: `ip`, or `ip%scope` for
+    /// link-local IPv6 peers.
+    pub fn host(&self) -> String {
+        match self.scope_id {
+            Some(scope) => format!("{}%{scope}", self.addr),
+            None => self.addr.to_string(),
+        }
+    }
+
     /// The peer's identity: the certificate fingerprint when there is one,
     /// otherwise the fingerprint it claimed in the request body.
     pub fn identity(&self, claimed: &str) -> Fingerprint {
@@ -233,6 +260,16 @@ pub async fn start(config: ServerConfig) -> Result<ServerHandle, ServerError> {
             source,
         })?;
     let port = listener.local_addr()?.port();
+    let ipv6_listener = match config.ipv6 {
+        true => match bind_ipv6_only(SocketAddr::new(Ipv6Addr::UNSPECIFIED.into(), port)) {
+            Ok(listener) => Some(listener),
+            Err(err) => {
+                tracing::warn!("could not listen on [::]:{port}: {err}");
+                None
+            }
+        },
+        false => None,
+    };
 
     let mut device = config.device;
     device.port = port;
@@ -249,7 +286,23 @@ pub async fn start(config: ServerConfig) -> Result<ServerHandle, ServerError> {
     let connections = TaskTracker::new();
     let acceptor = TlsAcceptor::from(tls_config);
 
-    tracing::info!("server listening on {addr} (port {port}, TLS)");
+    tracing::info!(
+        "server listening on {addr}{} (port {port}, TLS)",
+        if ipv6_listener.is_some() {
+            " and [::]"
+        } else {
+            ""
+        }
+    );
+    if let Some(ipv6_listener) = ipv6_listener {
+        connections.spawn(accept_loop(
+            ipv6_listener,
+            acceptor.clone(),
+            router.clone(),
+            cancel.clone(),
+            connections.clone(),
+        ));
+    }
     let task = tokio::spawn(accept_loop(
         listener,
         acceptor,
@@ -266,6 +319,23 @@ pub async fn start(config: ServerConfig) -> Result<ServerHandle, ServerError> {
         connections,
         task: parking_lot::Mutex::new(Some(task)),
     })
+}
+
+/// Binds an IPv6 listener with `IPV6_V6ONLY`: without it some systems
+/// (macOS) bind IPv6 wildcard sockets dual-stack, which conflicts with the
+/// separate IPv4 listener on the same port.
+fn bind_ipv6_only(addr: SocketAddr) -> std::io::Result<TcpListener> {
+    let socket = socket2::Socket::new(
+        socket2::Domain::IPV6,
+        socket2::Type::STREAM,
+        Some(socket2::Protocol::TCP),
+    )?;
+    socket.set_only_v6(true)?;
+    socket.set_reuse_address(true)?;
+    socket.set_nonblocking(true)?;
+    socket.bind(&addr.into())?;
+    socket.listen(1024)?;
+    TcpListener::from_std(socket.into())
 }
 
 /// Frees the session slot when a sender disappears without cancelling.
@@ -334,10 +404,7 @@ async fn serve_connection(
         let (_, connection) = tls_stream.get_ref();
         tls::peer_fingerprint(connection.peer_certificates())
     };
-    let peer = Peer {
-        addr: addr.ip(),
-        cert_fingerprint,
-    };
+    let peer = Peer::from_remote(addr, cert_fingerprint);
 
     let service = TowerToHyperService::new(router.layer(axum::Extension(peer)));
     let builder = Builder::new(TokioExecutor::new());

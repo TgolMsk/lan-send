@@ -6,6 +6,7 @@
 pub mod client;
 pub mod filename;
 pub mod identity;
+pub mod scoped_host;
 pub mod server;
 pub mod tls;
 
