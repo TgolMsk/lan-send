@@ -139,13 +139,15 @@ jobs:
       - name: Install cargo-wix
         run: cargo install cargo-wix --locked
       - name: MSI (x86_64)
+        # Run inside the package so the relative `wix\License.rtf` in main.wxs resolves.
         shell: bash
+        working-directory: crates/cli
         run: |
-          mkdir -p dist
-          cargo wix --package lan-send-cli --no-build --nocapture \
+          mkdir -p ../../dist
+          cargo wix --no-build --nocapture \
             --install-version "${VERSION%%-*}" \
             --target x86_64-pc-windows-msvc \
-            --output "dist/lan-send-${VERSION}-windows-x86_64.msi"
+            --output "../../dist/lan-send-${VERSION}-windows-x86_64.msi"
       - name: Zips
         shell: bash
         run: |
