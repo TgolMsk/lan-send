@@ -71,7 +71,8 @@ pub async fn cmd_app_settings_update(
     Ok(restart)
 }
 
-/// Opens the system file picker; `folders` picks directories instead.
+/// Opens the system file picker; `folders` picks directories instead
+/// (desktop only: iOS has no folder picker).
 #[tauri::command]
 pub async fn cmd_app_pick_files(app: AppHandle, folders: bool) -> CmdResult<Vec<PathBuf>> {
     let (tx, rx) = tokio::sync::oneshot::channel();
@@ -81,9 +82,15 @@ pub async fn cmd_app_pick_files(app: AppHandle, folders: bool) -> CmdResult<Vec<
         "Choose files to send"
     });
     if folders {
+        #[cfg(desktop)]
         dialog.pick_folders(move |paths| {
             let _ = tx.send(paths);
         });
+        #[cfg(mobile)]
+        {
+            drop((dialog, tx));
+            return Err("folder picking is not available on this platform".into());
+        }
     } else {
         dialog.pick_files(move |paths| {
             let _ = tx.send(paths);
@@ -97,21 +104,29 @@ pub async fn cmd_app_pick_files(app: AppHandle, folders: bool) -> CmdResult<Vec<
     Ok(paths)
 }
 
-/// Picks one directory (for the receive folder setting).
+/// Picks one directory for the receive folder setting (desktop only).
 #[tauri::command]
 pub async fn cmd_app_pick_folder(app: AppHandle) -> CmdResult<Option<PathBuf>> {
-    let (tx, rx) = tokio::sync::oneshot::channel();
-    app.dialog()
-        .file()
-        .set_title("Choose the receive folder")
-        .pick_folder(move |path| {
-            let _ = tx.send(path);
-        });
-    let picked = rx.await.map_err(|_| "the dialog was closed")?;
-    Ok(match picked {
-        Some(path) => Some(path.into_path()?),
-        None => None,
-    })
+    #[cfg(mobile)]
+    {
+        let _ = app;
+        Err("folder picking is not available on this platform".into())
+    }
+    #[cfg(desktop)]
+    {
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        app.dialog()
+            .file()
+            .set_title("Choose the receive folder")
+            .pick_folder(move |path| {
+                let _ = tx.send(path);
+            });
+        let picked = rx.await.map_err(|_| "the dialog was closed")?;
+        Ok(match picked {
+            Some(path) => Some(path.into_path()?),
+            None => None,
+        })
+    }
 }
 
 /// Opens a file or folder with its default application.
