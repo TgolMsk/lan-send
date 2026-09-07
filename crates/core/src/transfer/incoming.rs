@@ -234,12 +234,15 @@ mod tests {
             ConflictPolicy::Overwrite,
         )
         .unwrap();
+        // The device folder follows the platform's file name rules (`:` is
+        // legal on Linux, replaced on macOS and Windows).
         let placed = organized
             .place(&dto("a.png", "image/png"), "Nice: Orange", &taken)
             .unwrap();
+        let device_folder = sanitize_component("Nice: Orange", Rules::current());
         assert_eq!(
             placed,
-            Placement::New(organized.root().join("Nice_ Orange/Images/a.png"))
+            Placement::New(organized.root().join(device_folder).join("Images/a.png"))
         );
 
         std::fs::write(plain.root().join("dup.txt"), b"x").unwrap();
