@@ -24,6 +24,8 @@ confidence-threshold = 0.9
 [bans]
 multiple-versions = "warn"
 wildcards = "deny"
+# Workspace path dependencies (crates/cli -> crates/core) carry no version on purpose.
+allow-wildcard-paths = true
 
 [advisories]
 yanked = "deny"
