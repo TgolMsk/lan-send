@@ -92,6 +92,11 @@ impl AppPaths {
     }
 }
 
+/// The user's Downloads directory; platforms without one (iOS) fall back
+/// to the documents directory, which the Files app can show.
 fn download_dir() -> Option<PathBuf> {
-    UserDirs::new().and_then(|dirs| dirs.download_dir().map(Path::to_path_buf))
+    let dirs = UserDirs::new()?;
+    dirs.download_dir()
+        .or_else(|| dirs.document_dir())
+        .map(Path::to_path_buf)
 }
