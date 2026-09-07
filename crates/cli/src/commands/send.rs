@@ -93,12 +93,14 @@ async fn send(
     eprintln!("Looking for {}...", options.device);
     let device =
         wait_for_device(discovery, &mut events_rx, &options.device, options.timeout).await?;
+    // An address given by the user wins over whatever discovery saw last.
+    let target = direct_target(&options.device).unwrap_or_else(|| device.target());
     eprintln!(
         "Found {} ({}) at {}:{}",
         device.alias,
         device.fingerprint.short(),
-        device.host,
-        device.port
+        target.host,
+        target.port
     );
 
     if options.checksum {
@@ -108,8 +110,6 @@ async fn send(
     }
 
     let client = Client::new(&app.identity, Some(device.fingerprint.clone()), None)?;
-    // An address given by the user wins over whatever discovery saw last.
-    let target = direct_target(&options.device).unwrap_or_else(|| device.target());
     let request = PrepareUploadRequest {
         info: app.device_info(app.port),
         files: files
