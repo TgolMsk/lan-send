@@ -144,7 +144,7 @@ jobs:
         working-directory: crates/cli
         run: |
           mkdir -p ../../dist
-          cargo wix --no-build --nocapture \
+          cargo wix --package lan-send-cli --no-build --nocapture \
             --install-version "${VERSION%%-*}" \
             --target x86_64-pc-windows-msvc \
             --output "../../dist/lan-send-${VERSION}-windows-x86_64.msi"
