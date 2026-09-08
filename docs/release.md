@@ -60,6 +60,25 @@ git push origin v0.1.0
 
 局域网发现依赖 UDP 组播；iOS 14 起组播需要向 Apple 申请 `com.apple.developer.networking.multicast` 权限（[申请入口](https://developer.apple.com/contact/request/networking-multicast)）。没有这个权限时 iOS 端只能靠子网扫描和已知地址发现设备（仍可用，只是慢一些）；拿到权限后在 `gen/apple/lan-send-app_iOS/lan-send-app_iOS.entitlements` 加上该键即可。
 
+## Mac App Store（沙盒版，ADR-0014）
+
+`app-mas` 任务在下列 secrets 齐全时构建沙盒版、签名、打 `.pkg` 并上传 App Store Connect；缺任何一个就跳过。Mac 应用不经 Xcode 构建，无法用 API Key 云端签名，所以证书要在 Apple 后台创建：
+
+1. developer.apple.com › Certificates › ＋ › **Apple Distribution**（如已有可复用）；再 ＋ › **Mac Installer Distribution**。两者都需要用“钥匙串访问 › 证书助理 › 从证书颁发机构请求证书”生成 CSR 上传，下载 `.cer` 双击安装，再在钥匙串访问里右键“导出”为 `.p12` 并设置密码。
+2. developer.apple.com › Profiles › ＋ › Distribution › **Mac App Store Connect** › App ID `com.wangsheng.lansend` › 选 Apple Distribution 证书 › 名称 `Lan-Send Mac App Store` › 下载 `.provisionprofile`。
+3. App Store Connect › Lan-Send › 左上角 App 名称旁的“添加平台”› macOS。
+4. 写入 secrets：
+
+```bash
+gh secret set MAS_CERTIFICATE_P12 --repo TgolMsk/lan-send < <(base64 -i ~/Downloads/distribution.p12)
+gh secret set MAS_CERTIFICATE_PASSWORD --repo TgolMsk/lan-send --body '导出时设置的密码'
+gh secret set MAS_INSTALLER_CERTIFICATE_P12 --repo TgolMsk/lan-send < <(base64 -i ~/Downloads/installer.p12)
+gh secret set MAS_INSTALLER_CERTIFICATE_PASSWORD --repo TgolMsk/lan-send --body '导出时设置的密码'
+gh secret set MAS_PROVISIONING_PROFILE --repo TgolMsk/lan-send < <(base64 -i ~/Downloads/Lan_Send_Mac_App_Store.provisionprofile)
+```
+
+沙盒版与 `.dmg` 版的区别：配置目录在容器里（与命令行版不共享身份和历史）；自选接收目录通过安全作用域书签保持授权（`apps/app/src-tauri/src/platform/macos.rs`）。
+
 ## Windows 签名（未接入）
 
 `.msi` 目前未签名，SmartScreen 会提示"未知发布者"。需要时可加 Authenticode 证书步骤（`signtool`）。

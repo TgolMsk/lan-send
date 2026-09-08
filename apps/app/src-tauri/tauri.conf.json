@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "lan-send",
+  "productName": "Lan-Send",
   "version": "0.2.0",
   "identifier": "com.wangsheng.lansend",
   "build": {
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "lan-send",
+        "title": "Lan-Send",
         "width": 1120,
         "height": 740,
         "minWidth": 840,

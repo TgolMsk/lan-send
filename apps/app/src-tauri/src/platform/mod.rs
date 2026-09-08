@@ -27,10 +27,23 @@ pub fn setup(app: &AppHandle) -> anyhow::Result<()> {
 
 /// Called after the runtime started (or failed to), with settings loaded.
 pub async fn after_runtime_start(app: &AppHandle) {
+    #[cfg(target_os = "macos")]
+    macos::restore_receive_dir();
     #[cfg(desktop)]
     desktop::apply_shortcut_from_settings(app).await;
     #[cfg(mobile)]
     let _ = app;
+}
+
+/// The user chose a receive folder (`None` = back to the default).
+pub fn on_receive_dir_chosen(dir: Option<&std::path::Path>) {
+    #[cfg(target_os = "macos")]
+    match dir {
+        Some(dir) => macos::remember_receive_dir(dir),
+        None => macos::forget_receive_dir(),
+    }
+    #[cfg(not(target_os = "macos"))]
+    let _ = dir;
 }
 
 pub fn on_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {

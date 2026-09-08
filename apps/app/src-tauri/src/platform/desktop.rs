@@ -10,7 +10,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
 pub fn setup(app: &AppHandle) -> anyhow::Result<()> {
-    let show = MenuItem::with_id(app, "show", "Open lan-send", true, None::<&str>)?;
+    let show = MenuItem::with_id(app, "show", "Open Lan-Send", true, None::<&str>)?;
     let push = MenuItem::with_id(
         app,
         "push",
@@ -35,7 +35,7 @@ pub fn setup(app: &AppHandle) -> anyhow::Result<()> {
         .ok_or_else(|| anyhow::anyhow!("the bundle has no icon"))?;
     TrayIconBuilder::with_id("main")
         .icon(icon)
-        .tooltip("lan-send")
+        .tooltip("Lan-Send")
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {

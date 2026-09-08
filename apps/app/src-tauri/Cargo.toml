@@ -32,5 +32,10 @@ tracing-subscriber.workspace = true
 [target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
 tauri-plugin-global-shortcut = "2"
 
+[target.'cfg(target_os = "macos")'.dependencies]
+# Security-scoped bookmarks for the receive folder inside the App Sandbox (ADR-0014).
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSURL", "NSData", "NSError", "NSString", "NSArray", "NSDictionary", "NSObject"] }
+
 [lints]
 workspace = true

@@ -19,7 +19,7 @@
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>CFBundleDisplayName</key>
-	<string>lan-send</string>
+	<string>Lan-Send</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>lan-send finds other devices on your Wi‑Fi and sends files to them directly.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>

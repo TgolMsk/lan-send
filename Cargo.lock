@@ -2308,6 +2308,8 @@ version = "0.2.0"
 dependencies = [
  "anyhow",
  "lan-send-core",
+ "objc2",
+ "objc2-foundation",
  "serde",
  "serde_json",
  "tauri",

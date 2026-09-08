@@ -27,7 +27,7 @@ export function Layout({ children }: { children: ReactNode }) {
         {platform.os === "macos" && <div className="titlebar-space" data-tauri-drag-region />}
         <div className="brand" data-tauri-drag-region>
           <img className="brand-mark" src={logo} alt="" draggable={false} />
-          <span className="brand-name">lan-send</span>
+          <span className="brand-name">Lan-Send</span>
         </div>
         {visible.map((p) => (
           <button key={p.id} className={`nav-item ${page === p.id ? "active" : ""}`} onClick={() => navigate(p.id)}>

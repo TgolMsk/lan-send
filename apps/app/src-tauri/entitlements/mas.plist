@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Mac App Store build: sandboxed (ADR-0014). -->
+    <key>com.apple.security.app-sandbox</key>
+    <true/>
+    <!-- Outgoing connections to peers and the HTTPS server peers connect to. -->
+    <key>com.apple.security.network.client</key>
+    <true/>
+    <key>com.apple.security.network.server</key>
+    <true/>
+    <!-- Files the user picks to send, and the receive folder they choose. -->
+    <key>com.apple.security.files.user-selected.read-write</key>
+    <true/>
+    <!-- The default receive folder. -->
+    <key>com.apple.security.files.downloads.read-write</key>
+    <true/>
+    <!-- Keeps access to a chosen receive folder across launches. -->
+    <key>com.apple.security.files.bookmarks.app-scope</key>
+    <true/>
+</dict>
+</plist>

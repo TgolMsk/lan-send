@@ -4,7 +4,11 @@
 
 ## [Unreleased]
 
+### Added
+- Mac App Store 沙盒版（ADR-0014）：`entitlements/mas.plist`，接收目录的安全作用域书签，`app-mas` 发布任务（证书 secrets 齐全时签名、`productbuild`、上传 App Store Connect）。
+
 ### Changed
+- 显示名称改为 `Lan-Send`（窗口标题、Bundle 显示名、托盘、侧栏），macOS 应用包名 `Lan-Send.app`。
 - 三端统一图标：采用新的 Lan-Send 品牌标志（`docs/brand/logo.jpeg`），iOS / Windows 用满铺方形，macOS 按 Apple 圆角模板生成，应用侧栏的品牌标也换成它；隐私政策与支持页发布在 GitHub Pages（上架必填）；`docs/store-listing.md` 记录上架硬性要求。
 
 ### Fixed

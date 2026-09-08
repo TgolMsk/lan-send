@@ -60,6 +60,9 @@ pub async fn cmd_app_settings_update(
     settings: Settings,
 ) -> CmdResult<bool> {
     let runtime = state.runtime().await?;
+    if settings.receive_dir.is_none() {
+        crate::platform::on_receive_dir_chosen(None);
+    }
     let restart = runtime.update_settings(settings.clone())?;
     state
         .close_to_tray
@@ -122,10 +125,14 @@ pub async fn cmd_app_pick_folder(app: AppHandle) -> CmdResult<Option<PathBuf>> {
                 let _ = tx.send(path);
             });
         let picked = rx.await.map_err(|_| "the dialog was closed")?;
-        Ok(match picked {
+        let path = match picked {
             Some(path) => Some(path.into_path()?),
             None => None,
-        })
+        };
+        if let Some(path) = &path {
+            crate::platform::on_receive_dir_chosen(Some(path));
+        }
+        Ok(path)
     }
 }
 

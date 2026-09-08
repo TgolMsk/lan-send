@@ -220,7 +220,7 @@ jobs:
         run: |
           mkdir -p dist
           cp target/universal-apple-darwin/release/bundle/dmg/*.dmg "dist/lan-send-${VERSION}-macos-universal.dmg"
-          ditto -c -k --keepParent target/universal-apple-darwin/release/bundle/macos/lan-send.app "dist/lan-send-${VERSION}-macos-universal.app.zip"
+          ditto -c -k --keepParent target/universal-apple-darwin/release/bundle/macos/Lan-Send.app "dist/lan-send-${VERSION}-macos-universal.app.zip"
           ls -la dist
       - uses: actions/upload-artifact@v7
         with:
@@ -355,6 +355,99 @@ jobs:
           path: dist/*.ipa
           if-no-files-found: error
 
+  app-mas:
+    name: App bundle (Mac App Store)
+    needs: version
+    runs-on: macos-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      APPLE_API_ISSUER: ${{ secrets.APPSTORE_ISSUER_ID }}
+      APPLE_API_KEY: ${{ secrets.APPSTORE_KEY_ID }}
+      APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+      MAS_CERTIFICATE_P12: ${{ secrets.MAS_CERTIFICATE_P12 }}
+      MAS_CERTIFICATE_PASSWORD: ${{ secrets.MAS_CERTIFICATE_PASSWORD }}
+      MAS_INSTALLER_CERTIFICATE_P12: ${{ secrets.MAS_INSTALLER_CERTIFICATE_P12 }}
+      MAS_INSTALLER_CERTIFICATE_PASSWORD: ${{ secrets.MAS_INSTALLER_CERTIFICATE_PASSWORD }}
+      MAS_PROVISIONING_PROFILE: ${{ secrets.MAS_PROVISIONING_PROFILE }}
+    steps:
+      - name: Secrets present?
+        id: gate
+        shell: bash
+        run: |
+          if [ -n "$MAS_CERTIFICATE_P12" ] && [ -n "$MAS_INSTALLER_CERTIFICATE_P12" ] && [ -n "$MAS_PROVISIONING_PROFILE" ] && [ -n "$APPLE_API_KEY" ] && [ -n "$APPSTORE_PRIVATE_KEY" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::MAS_* secrets not configured; skipping the Mac App Store build (see docs/release.md)"
+          fi
+      - uses: actions/checkout@v7
+        if: steps.gate.outputs.ready == 'true'
+      - uses: dtolnay/rust-toolchain@stable
+        if: steps.gate.outputs.ready == 'true'
+        with:
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+        if: steps.gate.outputs.ready == 'true'
+      - uses: pnpm/action-setup@v4
+        if: steps.gate.outputs.ready == 'true'
+        with:
+          version: 11
+      - uses: actions/setup-node@v6
+        if: steps.gate.outputs.ready == 'true'
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: apps/app/pnpm-lock.yaml
+      - name: Frontend dependencies
+        if: steps.gate.outputs.ready == 'true'
+        working-directory: apps/app
+        run: pnpm install --frozen-lockfile
+      - name: Build the unsigned universal .app
+        if: steps.gate.outputs.ready == 'true'
+        working-directory: apps/app
+        run: pnpm tauri build --target universal-apple-darwin --bundles app --config "{\"version\":\"${VERSION%%-*}\",\"bundle\":{\"macOS\":{\"hardenedRuntime\":false}}}"
+      - name: Import certificates
+        if: steps.gate.outputs.ready == 'true'
+        shell: bash
+        run: |
+          KEYCHAIN=$RUNNER_TEMP/mas.keychain-db
+          security create-keychain -p actions "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p actions "$KEYCHAIN"
+          echo "$MAS_CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/app.p12"
+          echo "$MAS_INSTALLER_CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/installer.p12"
+          security import "$RUNNER_TEMP/app.p12" -P "$MAS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security import "$RUNNER_TEMP/installer.p12" -P "$MAS_INSTALLER_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security list-keychain -d user -s "$KEYCHAIN" login.keychain
+          security set-key-partition-list -S apple-tool:,apple: -s -k actions "$KEYCHAIN"
+          echo "APP_IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN" | grep -E 'Apple Distribution|3rd Party Mac Developer Application' | head -1 | sed -E 's/.*"(.*)".*/\1/')" >> "$GITHUB_ENV"
+          echo "INSTALLER_IDENTITY=$(security find-identity -v "$KEYCHAIN" | grep -E '3rd Party Mac Developer Installer|Mac Installer Distribution' | head -1 | sed -E 's/.*"(.*)".*/\1/')" >> "$GITHUB_ENV"
+      - name: Sign for the Mac App Store and build the .pkg
+        if: steps.gate.outputs.ready == 'true'
+        shell: bash
+        run: |
+          APP=target/universal-apple-darwin/release/bundle/macos/Lan-Send.app
+          echo "$MAS_PROVISIONING_PROFILE" | base64 --decode > "$APP/Contents/embedded.provisionprofile"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${GITHUB_RUN_NUMBER}" "$APP/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${VERSION%%-*}" "$APP/Contents/Info.plist"
+          codesign --force --sign "$APP_IDENTITY" --entitlements apps/app/src-tauri/entitlements/mas.plist "$APP"
+          codesign --verify --verbose=2 "$APP"
+          mkdir -p dist
+          productbuild --component "$APP" /Applications --sign "$INSTALLER_IDENTITY" "dist/Lan-Send-${VERSION}-mac-app-store.pkg"
+      - name: Upload to App Store Connect
+        if: steps.gate.outputs.ready == 'true'
+        shell: bash
+        run: |
+          mkdir -p "$HOME/.appstoreconnect/private_keys"
+          printf '%s' "$APPSTORE_PRIVATE_KEY" > "$HOME/.appstoreconnect/private_keys/AuthKey_${APPLE_API_KEY}.p8"
+          xcrun altool --upload-app --type macos --file "dist/Lan-Send-${VERSION}-mac-app-store.pkg" --apiKey "$APPLE_API_KEY" --apiIssuer "$APPLE_API_ISSUER"
+      - uses: actions/upload-artifact@v7
+        if: steps.gate.outputs.ready == 'true'
+        with:
+          name: app-mas
+          path: dist/*.pkg
+          if-no-files-found: error
+
   linux:
     name: CLI archive (Linux ${{ matrix.arch }})
     needs: version
@@ -391,7 +484,7 @@ jobs:
 
   publish:
     name: Publish release
-    needs: [version, app-macos, app-windows, ios-testflight, macos, windows, linux]
+    needs: [version, app-macos, app-windows, app-mas, ios-testflight, macos, windows, linux]
     if: startsWith(github.ref, 'refs/tags/v') || inputs.publish
     runs-on: ubuntu-latest
     env:
