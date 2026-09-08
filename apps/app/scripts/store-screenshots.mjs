@@ -9,8 +9,8 @@ import { resolve } from "node:path";
 const PORT = 1421;
 const OUT = resolve("store/screenshots");
 const devices = {
-  // iPhone 6.9" — 1320×2868
-  "iphone-6.9": { width: 440, height: 956, scale: 3, mobile: true, shots: [
+  // iPhone 6.5" slot — 1284×2778 (App Store Connect also uses it for 6.9")
+  "iphone-6.5": { width: 428, height: 926, scale: 3, mobile: true, shots: [
     ["1-devices", "platform=ios&page=devices"],
     ["2-incoming", "platform=ios&page=devices&demo=incoming"],
     ["3-transfer", "platform=ios&page=transfers&demo=transfer&freeze=1&delay=100"],
