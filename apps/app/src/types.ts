@@ -128,6 +128,19 @@ export interface TransferRecord {
   finishedAt: number | null;
 }
 
+/** Thumbnail and metadata of a local file (ADR-0015); every field may be absent. */
+export interface MediaInfo {
+  kind: "image" | "audio" | "video" | "other" | null;
+  mime: string;
+  thumbnail: string | null;
+  width: number | null;
+  height: number | null;
+  title: string | null;
+  artist: string | null;
+  album: string | null;
+  durationMs: number | null;
+}
+
 export interface OrganizeRules {
   byDevice: boolean;
   byDate: boolean;
@@ -204,6 +217,7 @@ export type RuntimeEvent =
   | { type: "clipboard-received"; item: ClipboardView }
   | { type: "clipboard-local"; item: ClipboardView }
   | { type: "clipboard-sync"; active: boolean; peers: string[]; message: string | null }
+  | { type: "media-ready"; path: string; media: MediaInfo }
   | { type: "error"; scope: string; message: string };
 
 export type EventName = RuntimeEvent["type"] | "runtime-state";

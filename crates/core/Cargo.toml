@@ -47,6 +47,12 @@ rusqlite = { version = "0.40", features = ["bundled"] }
 walkdir = "2"
 mime_guess = "2"
 base64 = "0.22"
+# media (ADR-0015): magic-byte sniffing, pure-Rust decoders for the common
+# formats, EXIF orientation, audio tags. HEIC / AVIF come from the OS decoders.
+infer = "0.22"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp", "bmp", "tiff"] }
+kamadak-exif = "0.6"
+lofty = "0.25"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # NSPasteboard access and TIFF <-> PNG conversion through AppKit (ADR-0011).
@@ -54,11 +60,18 @@ objc2 = "0.6"
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSArray", "NSData", "NSDictionary", "NSURL", "NSObject", "NSEnumerator", "NSValue", "NSGeometry"] }
 objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSPasteboard", "NSPasteboardItem", "NSImageRep", "NSBitmapImageRep", "NSGraphics"] }
 
+[target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies]
+# ImageIO decodes HEIC / AVIF / everything else the OS knows (ADR-0015).
+objc2-core-foundation = { version = "0.3", default-features = false, features = ["std", "CFBase", "CFString", "CFURL", "CFDictionary", "CFNumber", "CFData"] }
+objc2-core-graphics = { version = "0.3", default-features = false, features = ["std", "CGImage", "CGBitmapContext", "CGColorSpace", "CGContext", "CGGeometry", "CGDataProvider"] }
+objc2-image-io = { version = "0.3", default-features = false, features = ["std", "CGImageSource", "CGImageProperties", "objc2-core-graphics"] }
+
 [target.'cfg(target_os = "windows")'.dependencies]
 # Clipboard access with an AddClipboardFormatListener-based monitor, and
 # BMP <-> PNG conversion for CF_DIB (ADR-0011).
 clipboard-win = { version = "5.4", features = ["monitor", "std"] }
-image = { version = "0.25", default-features = false, features = ["png", "bmp", "jpeg"] }
+# WIC decodes HEIC / AVIF when the codec extensions are installed (ADR-0015).
+windows = { version = "0.62", features = ["Win32_Foundation", "Win32_System_Com", "Win32_Graphics_Imaging"] }
 
 [dev-dependencies]
 tempfile = "3"

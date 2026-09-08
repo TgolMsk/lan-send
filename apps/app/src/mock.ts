@@ -1,7 +1,7 @@
 // In-memory stand-in for the Rust runtime so the interface can be developed
 // and screenshotted in a plain browser. Never loaded inside Tauri.
 
-import type { DeviceView, IdentityView, RuntimeEvent, TransferView, Settings } from "./types";
+import type { DeviceView, IdentityView, MediaInfo, RuntimeEvent, TransferView, Settings } from "./types";
 
 type Listener = (payload: unknown) => void;
 const listeners = new Map<string, Set<Listener>>();
@@ -224,6 +224,36 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
           startedAt: Date.now() / 1000 - 3600,
           finishedAt: Date.now() / 1000 - 3590,
         },
+        {
+          id: "h2",
+          sessionId: "s2",
+          direction: "send",
+          peerFingerprint: devices[1]?.fingerprint ?? "",
+          peerAlias: "Work PC",
+          fileName: "Weightless.mp3",
+          path: "/Users/me/Music/Weightless.mp3",
+          size: 11_600_000,
+          mime: "audio/mpeg",
+          status: "finished",
+          error: null,
+          startedAt: Date.now() / 1000 - 7200,
+          finishedAt: Date.now() / 1000 - 7180,
+        },
+        {
+          id: "h3",
+          sessionId: "s3",
+          direction: "receive",
+          peerFingerprint: devices[0]?.fingerprint ?? "",
+          peerAlias: "Nice Orange",
+          fileName: "Q3 report.pdf",
+          path: "/Users/me/Downloads/Q3 report.pdf",
+          size: 8_000_000,
+          mime: "application/pdf",
+          status: "finished",
+          error: null,
+          startedAt: Date.now() / 1000 - 86400,
+          finishedAt: Date.now() / 1000 - 86390,
+        },
       ] as T;
     case "cmd_clipboard_history":
       return [
@@ -317,6 +347,31 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
     }
     case "cmd_transfer_dismiss":
       return true as T;
+    case "cmd_media_info": {
+      const path = String(args?.path ?? "");
+      const lower = path.toLowerCase();
+      const image = /\.(jpe?g|png|gif|webp|heic|heif|avif|bmp|tiff?)$/.test(lower);
+      const audio = /\.(mp3|m4a|aac|flac|wav|ogg|opus|aiff?)$/.test(lower);
+      const info: MediaInfo = {
+        kind: image ? "image" : audio ? "audio" : "other",
+        mime: image ? "image/jpeg" : audio ? "audio/mpeg" : "application/octet-stream",
+        thumbnail: image || audio ? mockThumbnail(path) : null,
+        width: image ? 4032 : null,
+        height: image ? 3024 : null,
+        title: audio ? "Weightless" : null,
+        artist: audio ? "Marconi Union" : null,
+        album: audio ? "Ambient Works" : null,
+        durationMs: audio ? 8 * 60_000 + 5_000 : null,
+      };
+      return info as T;
+    }
+    case "cmd_media_cache_size":
+      return (mockCacheBytes as number) as T;
+    case "cmd_media_cache_clear": {
+      const freed = mockCacheBytes;
+      mockCacheBytes = 0;
+      return freed as T;
+    }
     case "cmd_transfer_provide_pin":
     case "cmd_transfer_respond_conflict":
     case "cmd_devices_set_alias":
@@ -351,6 +406,17 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
     default:
       return undefined as T;
   }
+}
+
+let mockCacheBytes = 12_900_000;
+
+/** A deterministic gradient so screenshots have something in the thumbnail slot. */
+function mockThumbnail(path: string): string {
+  let hash = 0;
+  for (const ch of path) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  const hue = hash % 360;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="hsl(${hue},70%,55%)"/><stop offset="1" stop-color="hsl(${(hue + 60) % 360},70%,30%)"/></linearGradient></defs><rect width="256" height="256" fill="url(#g)"/><circle cx="190" cy="70" r="28" fill="rgba(255,255,255,0.6)"/></svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
 // ----- extra mock behaviour: pairing, incoming, demo triggers ----------------

@@ -18,6 +18,7 @@ pub use outgoing::SendRequest;
 
 use crate::clipboard::{ClipboardError, ClipboardSync, platform_backend};
 use crate::discovery::{Discovery, DiscoveryConfig};
+use crate::media::{self, MediaInfo, MediaKind, ThumbnailCache};
 use crate::protocol::{
     DeviceInfo, DeviceType, Extensions, FEATURE_CLIPBOARD, FEATURE_PAIRING, FEATURE_RESUME,
     Fingerprint, PROTOCOL_VERSION, ProtocolType,
@@ -33,7 +34,7 @@ use crate::transport::{
 };
 use parking_lot::{Mutex, RwLock};
 use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::{mpsc, oneshot};
@@ -167,6 +168,8 @@ pub(crate) struct Inner {
     pub active_discovery: bool,
     pub cancel: CancellationToken,
     pub tasks: TaskTracker,
+    /// Thumbnails and metadata for the history (ADR-0015).
+    pub thumbnails: ThumbnailCache,
 }
 
 /// A running application. Cheap to clone; all clones share one state.
@@ -233,6 +236,7 @@ impl Runtime {
         let discovery = Discovery::start(discovery_config);
         let discovery_events = discovery.subscribe();
         let sync_enabled = settings.clipboard.sync_enabled;
+        let thumbnails = ThumbnailCache::new(&paths.cache_dir);
 
         let inner = Arc::new(Inner {
             paths,
@@ -254,6 +258,7 @@ impl Runtime {
             active_discovery,
             cancel: CancellationToken::new(),
             tasks: TaskTracker::new(),
+            thumbnails,
         });
         inner.tasks.spawn(incoming::run(inner.clone(), server_rx));
         inner
@@ -483,6 +488,39 @@ impl Runtime {
 
     pub fn delete_history(&self, id: &str) -> Result<bool, RuntimeError> {
         Ok(self.inner.db.delete_transfer(id)?)
+    }
+
+    // ----- media (ADR-0015) -----
+
+    /// Thumbnail and metadata for a local file; generated on first use and
+    /// cached. Never fails: a file without a decoder just has no preview.
+    pub async fn media_info(&self, path: &Path) -> MediaInfo {
+        let cache = self.inner.thumbnails.clone();
+        let path = path.to_path_buf();
+        match tokio::task::spawn_blocking(move || media::probe(&path, &cache)).await {
+            Ok(info) => info,
+            Err(err) => {
+                tracing::warn!("media probe task failed: {err}");
+                MediaInfo::default()
+            }
+        }
+    }
+
+    /// Bytes used by the thumbnail cache.
+    pub async fn media_cache_size(&self) -> u64 {
+        let cache = self.inner.thumbnails.clone();
+        tokio::task::spawn_blocking(move || cache.size())
+            .await
+            .unwrap_or(0)
+    }
+
+    /// Deletes every cached thumbnail; returns the bytes freed.
+    pub async fn media_cache_clear(&self) -> Result<u64, RuntimeError> {
+        let cache = self.inner.thumbnails.clone();
+        tokio::task::spawn_blocking(move || cache.clear())
+            .await
+            .map_err(|err| RuntimeError::Invalid(err.to_string()))?
+            .map_err(|err| RuntimeError::Invalid(err.to_string()))
     }
 
     pub fn clear_history(&self) -> Result<usize, RuntimeError> {
@@ -719,8 +757,48 @@ impl Inner {
             Some(transfer.view.clone())
         });
         if let Some(Some(view)) = view {
+            if view.state == TransferState::Finished {
+                self.warm_media(&view);
+            }
             self.emit(RuntimeEvent::TransferCompleted { transfer: view });
         }
+    }
+
+    /// Generates thumbnails / metadata for the finished files of `view` in
+    /// the background and announces each with `media-ready`.
+    fn warm_media(&self, view: &TransferView) {
+        let paths: Vec<PathBuf> = view
+            .files
+            .iter()
+            .filter(|file| file.state == FileState::Finished)
+            .filter(|file| {
+                matches!(
+                    MediaKind::from_mime(&file.mime),
+                    MediaKind::Image | MediaKind::Audio
+                )
+            })
+            .filter_map(|file| file.path.clone())
+            .collect();
+        if paths.is_empty() {
+            return;
+        }
+        let cache = self.thumbnails.clone();
+        let events = self.events.clone();
+        let cancel = self.cancel.clone();
+        tokio::task::spawn_blocking(move || {
+            for path in paths {
+                if cancel.is_cancelled() {
+                    break;
+                }
+                let media = media::probe(&path, &cache);
+                if events
+                    .blocking_send(RuntimeEvent::MediaReady { path, media })
+                    .is_err()
+                {
+                    break;
+                }
+            }
+        });
     }
 
     pub(crate) fn fail_transfer(&self, id: &str, message: impl Into<String>) {

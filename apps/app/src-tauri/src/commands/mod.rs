@@ -4,5 +4,6 @@ pub mod app;
 pub mod clipboard;
 pub mod devices;
 pub mod history;
+pub mod media;
 pub mod pair;
 pub mod transfer;

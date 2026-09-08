@@ -15,6 +15,7 @@ import type {
   Settings,
   TransferRecord,
   TransferView,
+  MediaInfo,
 } from "./types";
 
 export interface Toast {
@@ -67,6 +68,8 @@ export interface State {
   clipboardSync: { active: boolean; peers: string[]; message: string | null };
   clipboardItems: ClipboardView[];
   history: TransferRecord[];
+  /** path -> thumbnail / metadata, filled lazily by `loadMedia`. */
+  media: Record<string, MediaInfo>;
   /** transferId -> bytes/s samples, newest last. */
   speeds: Record<string, number[]>;
   toasts: Toast[];
@@ -92,6 +95,7 @@ const initial: State = {
   clipboardSync: { active: false, peers: [], message: null },
   clipboardItems: [],
   history: [],
+  media: {},
   speeds: {},
   toasts: [],
   locale: getLocale(),
@@ -283,6 +287,9 @@ function handleEvent(event: RuntimeEvent) {
       break;
     case "clipboard-local":
       if (event.item.stored) set((s) => ({ clipboardItems: [event.item, ...s.clipboardItems.filter((i) => i.id !== event.item.id)].slice(0, 200) }));
+      break;
+    case "media-ready":
+      set((s) => ({ media: { ...s.media, [event.path]: event.media } }));
       break;
     case "clipboard-sync":
       set({ clipboardSync: { active: event.active, peers: event.peers, message: event.message } });
@@ -562,6 +569,38 @@ export async function loadHistory() {
     set({ history: await ipc.history.list(200) });
   } catch {
     // runtime not running
+  }
+}
+
+const mediaInFlight = new Set<string>();
+
+/** Fetches thumbnail / metadata for `path` once; results land in `state.media`. */
+export function loadMedia(path: string) {
+  if (!path || state.media[path] || mediaInFlight.has(path)) return;
+  mediaInFlight.add(path);
+  ipc.media
+    .info(path)
+    .then((media) => set((s) => ({ media: { ...s.media, [path]: media } })))
+    .catch(() => {})
+    .finally(() => mediaInFlight.delete(path));
+}
+
+export async function mediaCacheSize(): Promise<number> {
+  try {
+    return await ipc.media.cacheSize();
+  } catch {
+    return 0;
+  }
+}
+
+export async function mediaCacheClear(): Promise<number> {
+  try {
+    const freed = await ipc.media.cacheClear();
+    set({ media: {} });
+    return freed;
+  } catch (err) {
+    toast("error", String(err));
+    return 0;
   }
 }
 

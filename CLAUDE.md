@@ -52,7 +52,7 @@ Linux 上 `--workspace` 要加 `--exclude lan-send-app`（Tauri 需要 GTK）。
 1. `core::protocol` + `discovery` + `transport`，CLI 与官方 LocalSend 互传单文件 —— **完成**（2026-09-07，双向互测通过；IPv6、文件夹、断点续传留给里程碑 2）。
 2. 多文件、文件夹、校验、断点续传、历史 —— **完成**（2026-09-07：持久化、文件夹、分目录、历史与设备命令、断点续传、IPv6）。
 3. 剪贴板同步 —— **完成**（2026-09-07：配对、文本 / 图片 / 文件列表同步，macOS 与 Windows 后端，历史；iOS 不做）。
-4. 媒体层（等用户对 HEIC / AVIF / 缩略图缓存的决策；顺序上放到 5、6 之后）。
+4. 媒体层 —— **完成**（2026-09-08：`core::media` MIME 探测、系统解码器 + `image` 回退的缩略图、EXIF 方向、200 MB LRU 缓存、`lofty` 音频元数据；历史 / 传输页缩略图；ADR-0015。波形与 HEIC → JPEG 转换留在里程碑 7）。
 5. Tauri 骨架与 IPC —— **完成**（2026-09-07：`core::runtime` 事件式运行时、`apps/app` Tauri 壳、托盘与快捷键、类型化 IPC；ADR-0013）。
 6. 前端 —— **完成**（2026-09-07：五个页面与全部弹窗，桌面侧栏 / 移动端底部标签栏，中英文，深浅色；参考 `docs/ui-style-reference.md`）。
 7. 可选项。

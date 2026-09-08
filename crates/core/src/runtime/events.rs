@@ -4,6 +4,7 @@
 //! when the item is kept in the history.
 
 use crate::clipboard::{ClipboardItem, ClipboardPayload};
+use crate::media::MediaInfo;
 use crate::store::{ClipboardRecord, Direction};
 use serde::Serialize;
 use std::path::PathBuf;
@@ -372,6 +373,13 @@ pub enum RuntimeEvent {
         message: Option<String>,
     },
 
+    /// A thumbnail or metadata for a transferred file is now cached
+    /// (background warm-up after a transfer finishes).
+    MediaReady {
+        path: PathBuf,
+        media: MediaInfo,
+    },
+
     Error {
         scope: String,
         message: String,
@@ -399,6 +407,7 @@ impl RuntimeEvent {
             Self::ClipboardReceived { .. } => "clipboard-received",
             Self::ClipboardLocal { .. } => "clipboard-local",
             Self::ClipboardSync { .. } => "clipboard-sync",
+            Self::MediaReady { .. } => "media-ready",
             Self::Error { .. } => "error",
         }
     }

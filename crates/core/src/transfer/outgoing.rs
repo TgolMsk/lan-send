@@ -211,10 +211,7 @@ fn push_file(path: &Path, name: String, size: u64, outgoing: &mut Outgoing) {
         path: path.to_path_buf(),
         name,
         size,
-        mime: mime_guess::from_path(path)
-            .first_or_octet_stream()
-            .essence_str()
-            .to_string(),
+        mime: crate::media::sniff_mime(path),
         metadata: FileMetadata::from_path(path),
     });
 }

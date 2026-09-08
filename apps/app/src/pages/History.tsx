@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { PageHead } from "../components/Layout";
+import { FileThumb, useMediaCaption } from "../components/FileThumb";
 import { Icon } from "../components/icons";
 import { Badge, Button, Card, EmptyState, IconButton } from "../components/ui";
 import { ConfirmDialog } from "../dialogs/ConfirmDialog";
 import { formatBytes, formatTime } from "../format";
 import { t } from "../i18n";
 import { clearHistory, deleteHistory, loadHistory, openPath, revealPath, useStore } from "../store";
+import type { TransferRecord } from "../types";
 
 export function HistoryPage() {
   const history = useStore((s) => s.history);
@@ -43,33 +45,7 @@ export function HistoryPage() {
         ) : (
           <div className="list">
             {history.map((record) => (
-              <div key={record.id} className="list-row">
-                <div className="thumb">
-                  <Icon name={record.mime.startsWith("image/") ? "image" : record.direction === "send" ? "upload" : "download"} size={18} />
-                </div>
-                <div style={{ minWidth: 0 }}>
-                  <div className="primary">{record.fileName}</div>
-                  <div className="secondary">
-                    {record.direction === "send" ? `→ ${record.peerAlias}` : `← ${record.peerAlias}`} · {formatBytes(record.size)} · {formatTime(record.finishedAt ?? record.startedAt)}
-                    {record.status !== "finished" && (
-                      <>
-                        {" "}
-                        · <Badge tone={record.status === "failed" ? "danger" : "muted"}>{t(`history.status.${record.status}`)}</Badge>
-                      </>
-                    )}
-                    {record.error ? ` · ${record.error}` : ""}
-                  </div>
-                </div>
-                <div className="actions">
-                  {!platform.mobile && record.path && record.status === "finished" && (
-                    <>
-                      <IconButton label={t("app.open")} icon="open" onClick={() => void openPath(record.path as string)} />
-                      <IconButton label={t("app.reveal")} icon="folder" onClick={() => void revealPath(record.path as string)} />
-                    </>
-                  )}
-                  <IconButton label={t("app.delete")} icon="trash" onClick={() => void deleteHistory(record.id)} />
-                </div>
-              </div>
+              <HistoryRow key={record.id} record={record} mobile={platform.mobile} />
             ))}
           </div>
         )}
@@ -86,5 +62,41 @@ export function HistoryPage() {
         }}
       />
     </>
+  );
+}
+
+function HistoryRow({ record, mobile }: { record: TransferRecord; mobile: boolean }) {
+  const caption = useMediaCaption(record.status === "finished" ? record.path : null);
+  return (
+              <div className="list-row">
+                <FileThumb
+                  path={record.status === "finished" ? record.path : null}
+                  mime={record.mime}
+                  fallback={record.direction === "send" ? "upload" : "download"}
+                />
+                <div style={{ minWidth: 0 }}>
+                  <div className="primary">{record.fileName}</div>
+                  <div className="secondary">
+                    {record.direction === "send" ? `→ ${record.peerAlias}` : `← ${record.peerAlias}`} · {formatBytes(record.size)} · {formatTime(record.finishedAt ?? record.startedAt)}
+                    {caption ? ` · ${caption}` : ""}
+                    {record.status !== "finished" && (
+                      <>
+                        {" "}
+                        · <Badge tone={record.status === "failed" ? "danger" : "muted"}>{t(`history.status.${record.status}`)}</Badge>
+                      </>
+                    )}
+                    {record.error ? ` · ${record.error}` : ""}
+                  </div>
+                </div>
+                <div className="actions">
+                  {!mobile && record.path && record.status === "finished" && (
+                    <>
+                      <IconButton label={t("app.open")} icon="open" onClick={() => void openPath(record.path as string)} />
+                      <IconButton label={t("app.reveal")} icon="folder" onClick={() => void revealPath(record.path as string)} />
+                    </>
+                  )}
+                  <IconButton label={t("app.delete")} icon="trash" onClick={() => void deleteHistory(record.id)} />
+                </div>
+              </div>
   );
 }

@@ -33,3 +33,10 @@
 - 设备身份：自签名 RSA-2048 证书，指纹 = DER 的 SHA-256 大写 hex，首次启动生成并持久化。
 - 官方 LocalSend 1.18+ 强制客户端证书（mTLS），我们的客户端必须出示证书；服务端策略见接口清单第 10 节的决策项。
 - 任何写文件前必须确认最终路径位于接收目录内。
+
+## 媒体解码（ADR-0015）
+
+- macOS / iOS：ImageIO（`CGImageSource`）解码缩略图，HEIC / AVIF / WebP 原生支持；不使用 libheif。
+- Windows：WIC（`IWICImagingFactory`）。HEIC 需要系统安装"HEIF 图像扩展"（HEVC 解码另需"HEVC 视频扩展"），AVIF 需要"AV1 视频扩展"；没有时该文件无预览，传输不受影响。
+- 三端共用的纯 Rust 回退：`image`（PNG / JPEG / GIF / WebP / BMP / TIFF）。EXIF 方向统一由 `kamadak-exif` 读取后在像素上旋转。
+- 缩略图缓存：系统缓存目录下 `lan-send/thumbs`（macOS `~/Library/Caches/lan-send/thumbs`，沙盒版在容器内；Windows `%LOCALAPPDATA%\lan-send\cache\thumbs`；iOS 容器 `Library/Caches`），可随时清空。

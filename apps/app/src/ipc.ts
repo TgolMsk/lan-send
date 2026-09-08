@@ -7,6 +7,7 @@ import type {
   DeviceView,
   EventName,
   IdentityView,
+  MediaInfo,
   PairView,
   PlatformInfo,
   RuntimeEvent,
@@ -102,6 +103,11 @@ export const ipc = {
     list: (limit = 200) => invoke<TransferRecord[]>("cmd_history_list", { limit }),
     delete: (id: string) => invoke<boolean>("cmd_history_delete", { id }),
     clear: () => invoke<number>("cmd_history_clear"),
+  },
+  media: {
+    info: (path: string) => invoke<MediaInfo>("cmd_media_info", { path }),
+    cacheSize: () => invoke<number>("cmd_media_cache_size"),
+    cacheClear: () => invoke<number>("cmd_media_cache_clear"),
   },
   clipboard: {
     history: (limit = 50) => invoke<ClipboardView[]>("cmd_clipboard_history", { limit }),

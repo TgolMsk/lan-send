@@ -574,7 +574,12 @@ impl Inner {
                     }
                 })
         };
-        if let Some(record) = record {
+        if let Some(mut record) = record {
+            if crate::media::is_generic_mime(&record.mime) {
+                if let Some(path) = record.path.as_deref() {
+                    record.mime = crate::media::sniff_mime(path);
+                }
+            }
             self.record_transfer(&record);
         }
     }

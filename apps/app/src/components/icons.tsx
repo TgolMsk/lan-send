@@ -20,6 +20,7 @@ const paths: Record<string, string> = {
   check: "M5 12l5 5 9-10",
   folder: "M3 7h6l2 2h10v10H3z",
   file: "M6 3h8l4 4v14H6zM14 3v4h4",
+  audio: "M9 18V6l10-2v12M9 18a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0zM19 16a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z",
   image: "M4 5h16v14H4zM8 13l3-3 4 4 2-2 3 3M9 9h.01",
   plus: "M12 5v14M5 12h14",
   search: "M11 5a6 6 0 1 0 0 12 6 6 0 0 0 0-12zM20 20l-4.5-4.5",

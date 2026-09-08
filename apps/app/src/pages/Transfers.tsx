@@ -1,4 +1,5 @@
 import { PageHead } from "../components/Layout";
+import { FileThumb } from "../components/FileThumb";
 import { Icon } from "../components/icons";
 import { Badge, Button, Card, EmptyState, Progress, Sparkline, Stat } from "../components/ui";
 import { formatBytes, formatDuration, formatPercent, formatSpeed } from "../format";
@@ -129,7 +130,7 @@ function HeroTransfer({ transfer, speeds }: { transfer: TransferView; speeds: nu
       <div style={{ marginTop: 14 }}>
         {transfer.files.slice(0, 12).map((file) => (
           <div key={file.id} className="file-row">
-            <Icon name={file.mime.startsWith("image/") ? "image" : "file"} size={16} />
+            <FileThumb path={file.state === "finished" ? file.path : null} mime={file.mime} size="sm" />
             <div style={{ minWidth: 0 }}>
               <div className="name">{file.name}</div>
               {(file.state === "active" || file.state === "pending") && <Progress value={file.size ? file.done / file.size : 0} />}

@@ -611,6 +611,12 @@
   height: 100%;
   object-fit: cover;
 }
+.thumb.thumb-sm {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  flex: none;
+}
 .clip-text {
   white-space: pre-wrap;
   word-break: break-word;

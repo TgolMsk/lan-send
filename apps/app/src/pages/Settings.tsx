@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { PageHead } from "../components/Layout";
 import { Button, Card, Field, Select, TextInput, Toggle } from "../components/ui";
+import { formatBytes } from "../format";
 import { getLocale, t, type Locale } from "../i18n";
-import { pickFolder, saveSettings, switchLocale, useStore } from "../store";
+import { mediaCacheClear, mediaCacheSize, pickFolder, saveSettings, switchLocale, useStore } from "../store";
 import type { Settings } from "../types";
 
 const MB = 1024 * 1024;
@@ -14,6 +15,10 @@ export function SettingsPage() {
   const locale = useStore((s) => s.locale);
   const [draft, setDraft] = useState<Settings | null>(stored);
   useEffect(() => setDraft(stored), [stored]);
+  const [cacheSize, setCacheSize] = useState<number | null>(null);
+  useEffect(() => {
+    void mediaCacheSize().then(setCacheSize);
+  }, []);
   if (!draft) return <PageHead title={t("settings.title")} subtitle={t("app.loading")} />;
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(stored);
@@ -155,6 +160,22 @@ export function SettingsPage() {
           )}
           <Toggle checked={draft.app.autoAcceptPaired} onChange={(v) => patch((s) => ({ ...s, app: { ...s.app, autoAcceptPaired: v } }))} label={t("settings.autoAcceptPaired")} />
           <Toggle checked={draft.app.notifications} onChange={(v) => patch((s) => ({ ...s, app: { ...s.app, notifications: v } }))} label={t("settings.notifications")} />
+          <Field label={t("settings.thumbCache")} hint={t("settings.thumbCacheHint")}>
+            <div className="row">
+              <span className="mono muted">{cacheSize == null ? "…" : formatBytes(cacheSize)}</span>
+              <Button
+                size="sm"
+                variant="outline"
+                icon="trash"
+                disabled={!cacheSize}
+                onClick={() => {
+                  void mediaCacheClear().then(() => setCacheSize(0));
+                }}
+              >
+                {t("app.clear")}
+              </Button>
+            </div>
+          </Field>
           {identity && (
             <p className="muted breakable" style={{ margin: 0, fontSize: 12, userSelect: "text", WebkitUserSelect: "text" }}>
               {t("app.fingerprint")}: <span className="mono">{identity.fingerprint}</span>
