@@ -58,7 +58,17 @@ git push origin v0.1.0
 
 5. 之后推送 `v*` 标签或手动运行 Release（勾选 publish 与否都会上传 TestFlight）。上传后在 App Store Connect › TestFlight 里等处理完成（通常几分钟），加内部测试员即可安装。构建号取自 GitHub 的运行序号，每次自动递增。
 
-局域网发现依赖 UDP 组播；iOS 14 起组播需要向 Apple 申请 `com.apple.developer.networking.multicast` 权限（[申请入口](https://developer.apple.com/contact/request/networking-multicast)）。没有这个权限时 iOS 端只能靠子网扫描和已知地址发现设备（仍可用，只是慢一些）；拿到权限后在 `gen/apple/lan-send-app_iOS/lan-send-app_iOS.entitlements` 加上该键即可。
+局域网发现依赖 UDP 组播；iOS 14 起组播需要向 Apple 申请 `com.apple.developer.networking.multicast` 权限（[申请入口](https://developer.apple.com/contact/request/networking-multicast)，需登录开发者账号，填 App 名称、App Store Connect 的 Apple ID、类别、应用用途与为什么需要组播）。**已于 2026-09-08 提交申请，Request ID `HTFYV6DZUK`**，结果发到账号邮箱（通常几天到几周）。没有这个权限时 iOS 端只能靠子网扫描和已知地址发现设备（仍可用，只是慢一些）。批准后三步启用：
+
+1. developer.apple.com › Identifiers › `com.wangsheng.lansend` › Capabilities 勾选 **Multicast Networking** › Save（批准后该项才会出现）。
+2. `apps/app/src-tauri/gen/apple/lan-send-app_iOS/lan-send-app_iOS.entitlements` 加上：
+
+   ```xml
+   <key>com.apple.developer.networking.multicast</key>
+   <true/>
+   ```
+
+3. 重新跑 Release（云端自动签名会带上新权限）。批准前不要加这个键，否则签名会因描述文件缺少该权限而失败。
 
 ## Mac App Store（沙盒版，ADR-0014）
 
