@@ -156,7 +156,7 @@ export function SettingsPage() {
           <Toggle checked={draft.app.autoAcceptPaired} onChange={(v) => patch((s) => ({ ...s, app: { ...s.app, autoAcceptPaired: v } }))} label={t("settings.autoAcceptPaired")} />
           <Toggle checked={draft.app.notifications} onChange={(v) => patch((s) => ({ ...s, app: { ...s.app, notifications: v } }))} label={t("settings.notifications")} />
           {identity && (
-            <p className="muted" style={{ margin: 0, fontSize: 12, userSelect: "text", WebkitUserSelect: "text" }}>
+            <p className="muted breakable" style={{ margin: 0, fontSize: 12, userSelect: "text", WebkitUserSelect: "text" }}>
               {t("app.fingerprint")}: <span className="mono">{identity.fingerprint}</span>
               <br />
               lan-send {platform.version} · {identity.deviceModel} · {identity.configDir}

@@ -88,7 +88,8 @@
   font-variant-numeric: tabular-nums;
 }
 .content {
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   min-height: 0;
   min-width: 0;
   padding: 0 32px 40px;
@@ -185,6 +186,7 @@
 }
 /* Cards ------------------------------------------------------------------- */
 .card {
+  min-width: 0;
   background: var(--card);
   border: 1px solid var(--card-border);
   border-radius: var(--radius-lg);
@@ -216,6 +218,11 @@
 }
 .muted {
   color: var(--text-muted);
+}
+/* Long unbroken strings (fingerprints, paths) wrap instead of widening the page. */
+.breakable {
+  overflow-wrap: anywhere;
+  word-break: break-all;
 }
 .mono {
   font-variant-numeric: tabular-nums;
