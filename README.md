@@ -3,9 +3,30 @@
 局域网文件与剪贴板互传工具，兼容 [LocalSend](https://localsend.org) 协议 v2.2，可与官方客户端互相发现、互相收发。
 Rust 核心库 + Tauri 2 应用，目标平台 **macOS / Windows / iOS**。MIT 许可证。
 
-> 状态：里程碑 1–3 完成——命令行工具已能与官方 LocalSend 1.18 互相发现（IPv4/IPv6）、互传文件与文件夹，本项目之间还有断点续传、配对与剪贴板同步（macOS / Windows）。进度见 `CHANGELOG.md` 与 `CLAUDE.md`。
+> 状态：里程碑 1–3、5、6 完成——桌面应用（macOS / Windows）与命令行工具已在 Releases 发布；iOS 与 Mac App Store 沙盒版 0.2.0 已提交 App Store 审核。进度见 `CHANGELOG.md` 与 `CLAUDE.md`。
 
-## 特性（规划）
+## 界面
+
+<p align="center">
+  <img src="docs/screenshots/mac/1-devices.png" alt="macOS：设备页，列出同一局域网里的 LocalSend 设备" width="880">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/mac/2-transfer.png" alt="macOS：传输页，大数字进度与逐文件进度" width="430">
+  <img src="docs/screenshots/mac/3-clipboard.png" alt="macOS：剪贴板页，与配对设备同步剪贴板" width="430">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/iphone/1-devices.png" alt="iOS：设备页" width="170">
+  <img src="docs/screenshots/iphone/2-incoming.png" alt="iOS：接收请求" width="170">
+  <img src="docs/screenshots/iphone/3-transfer.png" alt="iOS：传输页" width="170">
+  <img src="docs/screenshots/iphone/4-history.png" alt="iOS：历史页" width="170">
+  <img src="docs/screenshots/iphone/5-settings.png" alt="iOS：设置页" width="170">
+</p>
+
+三端同一套界面：桌面端侧栏布局，iPhone 自动切换为底部标签栏，支持中英文与深浅色。更多截图（含 iPad、设置页）在 [`docs/screenshots/`](docs/screenshots/)，商店用的原尺寸截图由 `apps/app/scripts/store-screenshots.mjs` 生成。
+
+## 特性
 
 - 与官方 LocalSend 互通：UDP 组播发现、HTTPS 传输、PIN、SHA-256 校验。
 - 私有扩展（官方客户端自动忽略）：断点续传、配对、剪贴板同步（文本 / 图片 / 文件列表）、媒体预览（计划）。
@@ -30,7 +51,7 @@ tests/interop/  与官方 LocalSend 的互操作测试
 - 应用（带界面）：macOS `lan-send-<版本>-macos-universal.dmg`，Windows `lan-send-<版本>-windows-x86_64-setup.exe`
 - 命令行：macOS `lan-send-cli-<版本>-macos-universal.pkg`（装到 `/usr/local/bin`），Windows `lan-send-cli-<版本>-windows-x86_64.msi`（加入 PATH）
 - 免安装：对应平台的 `.zip` / `.tar.gz`，校验和在 `SHA256SUMS.txt`
-- iOS：暂未发布（需要证书后走 TestFlight）
+- iOS：App Store 审核中；内测通过 TestFlight 分发
 
 安装包由 GitHub Actions 构建（`.github/workflows/release.yml`），打标签、签名与公证的配置见 [`docs/release.md`](docs/release.md)。
 

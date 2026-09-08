@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Added
+- README 与 GitHub Pages 首页加入应用截图（`docs/screenshots/`，由商店截图缩小生成），并更新项目状态与 iOS 下载说明。
 - Mac App Store 沙盒版（ADR-0014）：`entitlements/mas.plist`，接收目录的安全作用域书签，`app-mas` 发布任务（证书 secrets 齐全时签名、`productbuild`、上传 App Store Connect）。
 
 ### Changed
