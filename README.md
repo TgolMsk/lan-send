@@ -12,16 +12,16 @@ Rust 核心库 + Tauri 2 应用，目标平台 **macOS / Windows / iOS**。MIT �
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/mac/2-transfer.png" alt="macOS：传输页，大数字进度与逐文件进度" width="430">
-  <img src="docs/screenshots/mac/3-clipboard.png" alt="macOS：剪贴板页，与配对设备同步剪贴板" width="430">
+  <img src="docs/screenshots/mac/2-transfer.png" alt="macOS：传输页，大数字进度与逐文件进度" width="350">
+  <img src="docs/screenshots/mac/3-clipboard.png" alt="macOS：剪贴板页，与配对设备同步剪贴板" width="350">
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/iphone/1-devices.png" alt="iOS：设备页" width="170">
-  <img src="docs/screenshots/iphone/2-incoming.png" alt="iOS：接收请求" width="170">
-  <img src="docs/screenshots/iphone/3-transfer.png" alt="iOS：传输页" width="170">
-  <img src="docs/screenshots/iphone/4-history.png" alt="iOS：历史页" width="170">
-  <img src="docs/screenshots/iphone/5-settings.png" alt="iOS：设置页" width="170">
+  <img src="docs/screenshots/iphone/1-devices.png" alt="iOS：设备页" width="140">
+  <img src="docs/screenshots/iphone/2-incoming.png" alt="iOS：接收请求" width="140">
+  <img src="docs/screenshots/iphone/3-transfer.png" alt="iOS：传输页" width="140">
+  <img src="docs/screenshots/iphone/4-history.png" alt="iOS：历史页" width="140">
+  <img src="docs/screenshots/iphone/5-settings.png" alt="iOS：设置页" width="140">
 </p>
 
 三端同一套界面：桌面端侧栏布局，iPhone 自动切换为底部标签栏，支持中英文与深浅色。更多截图（含 iPad、设置页）在 [`docs/screenshots/`](docs/screenshots/)，商店用的原尺寸截图由 `apps/app/scripts/store-screenshots.mjs` 生成。
