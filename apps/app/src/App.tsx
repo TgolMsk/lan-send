@@ -13,7 +13,7 @@ import { DevicesPage } from "./pages/Devices";
 import { HistoryPage } from "./pages/History";
 import { SettingsPage } from "./pages/Settings";
 import { TransfersPage } from "./pages/Transfers";
-import { bootstrap, retryRuntime, useStore } from "./store";
+import { bootstrap, navigate, retryRuntime, useStore, type Page } from "./store";
 
 export default function App() {
   const page = useStore((s) => s.page);
@@ -22,6 +22,8 @@ export default function App() {
   useStore((s) => s.locale);
   useEffect(() => {
     void bootstrap();
+    const wanted = new URLSearchParams(window.location.search).get("page");
+    if (wanted && ["devices", "transfers", "clipboard", "history", "settings"].includes(wanted)) navigate(wanted as Page);
   }, []);
   return (
     <>

@@ -118,12 +118,14 @@ const transfers: TransferView[] = [];
 export async function mockInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
   await new Promise((resolve) => setTimeout(resolve, 60));
   switch (command) {
-    case "cmd_app_platform":
-      return { os: "macos", mobile: false, version: "0.1.0" } as T;
+    case "cmd_app_platform": {
+      const platform = new URLSearchParams(location.search).get("platform");
+      return { os: platform === "ios" ? "ios" : platform === "windows" ? "windows" : "macos", mobile: platform === "ios", version: "0.2.0" } as T;
+    }
     case "cmd_app_runtime_state":
       return { running: true, message: null } as T;
     case "cmd_app_identity":
-      return identity as T;
+      return { ...identity, alias: new URLSearchParams(location.search).get("platform") === "ios" ? "iPhone" : identity.alias, deviceModel: new URLSearchParams(location.search).get("platform") === "ios" ? "iOS" : identity.deviceModel } as T;
     case "cmd_app_settings_get":
       return settings as T;
     case "cmd_app_settings_update":
@@ -190,6 +192,10 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
           totalDone: transfer.doneSize,
           totalSize: transfer.totalSize,
         });
+        if (new URLSearchParams(location.search).get("freeze") && tick >= 9) {
+          clearInterval(timer);
+          return;
+        }
         if (tick >= 20) {
           clearInterval(timer);
           transfer.state = "finished";
@@ -423,4 +429,20 @@ export function mockPairConfirm(fingerprint: string, matches: boolean) {
     () => emit({ type: "pair-result", fingerprint, alias: device?.displayName ?? "device", paired: matches, message: matches ? null : "the codes did not match" }),
     300,
   );
+}
+
+// ?demo=incoming|transfer|pair|clipboard&delay=ms — for screenshots.
+{
+  const params = new URLSearchParams(location.search);
+  const demo = params.get("demo");
+  if (demo) {
+    window.setTimeout(() => {
+      if (demo === "incoming") window.lanSendDemo?.incoming();
+      else if (demo === "pair") window.lanSendDemo?.pairRequest();
+      else if (demo === "clipboard") window.lanSendDemo?.clipboard();
+      else if (demo === "transfer") {
+        void mockInvoke("cmd_transfer_send", { request: { device: devices[0]?.fingerprint, paths: ["/Users/me/Pictures/IMG_2041.HEIC", "/Users/me/Documents/Q3 report.pdf", "/Users/me/Movies/clip.mov"] } });
+      }
+    }, Number(params.get("delay") ?? 600));
+  }
 }
