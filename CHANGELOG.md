@@ -12,6 +12,7 @@
 - 三端统一图标：采用新的 Lan-Send 品牌标志（`docs/brand/logo.jpeg`），iOS / Windows 用满铺方形，macOS 按 Apple 圆角模板生成，应用侧栏的品牌标也换成它；隐私政策与支持页发布在 GitHub Pages（上架必填）；`docs/store-listing.md` 记录上架硬性要求。
 - 应用标识符改为 `com.wangsheng.lansend`（与 Apple 开发者账号里已注册的 App ID 一致；0.2.0 的 macOS 应用用的是旧标识符，升级后设置目录不变，但系统权限记录会重新询问）。
 - `docs/release.md`：Mac App Store 证书改为用 `openssl` 生成 CSR / 合成 `.p12`（含 WWDR G3 链，`-legacy`），并写明 secrets 命令与到期续期。
+- `docs/store-listing.md`：Mac App Store 技术改动标记完成，记录提交审核时的注意事项（“需要登录”默认勾选、出口合规声明、沙盒说明、替换构建）。
 
 ### Fixed
 - macOS 应用的 Info.plist 补上出口合规声明（`ITSAppUsesNonExemptEncryption=false`，否则 App Store Connect 标记“缺少出口合规证明”）与本地网络用途说明（macOS 15 起会询问）。

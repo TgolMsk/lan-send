@@ -29,12 +29,18 @@
 
 **待决定**：是否上架中国大陆。上 → 需要你以个人身份办 App 备案（买域名 + 最便宜的包年包月内地云服务器 + 人脸核验，约 1–4 周）；不上 → 现在就可以提交全球商店。
 
-## 三、Mac App Store 的技术改动（待做）
+## 三、Mac App Store 的技术改动（已完成，2026-09-08）
 
-- 开启 App Sandbox：`com.apple.security.app-sandbox`、`network.client`、`network.server`、`files.user-selected.read-write`、`files.downloads.read-write`。
-- 接收目录改为用户选择后保存安全作用域书签（security-scoped bookmark），否则重启后无权限写入。
-- 沙盒后配置目录在容器内，与命令行版不再共享同一份身份和历史。
-- 用 `3rd Party Mac Developer Application` 证书签名，`productbuild` 生成 `.pkg`，`altool --type macos` 上传。需要你在 Apple 账号里创建 Mac App Distribution / Mac Installer Distribution 证书并导出 `.p12`（私钥，你自己保管并写入 secrets）。
+- App Sandbox 已开启（`apps/app/src-tauri/entitlements/mas.plist`，ADR-0014）：`network.client/server`、`files.user-selected.read-write`、`files.downloads.read-write`、`files.bookmarks.app-scope`，外加 `com.apple.application-identifier` / `team-identifier`（缺了 altool 会警告该构建不能用于 macOS TestFlight）。
+- 自选接收目录用安全作用域书签保存（`platform/macos.rs`）。
+- 证书、描述文件与 `app-mas` 任务见 `docs/release.md`；签名用 `Apple Distribution` + `3rd Party Mac Developer Installer`，`productbuild` 打 `.pkg`，`altool --type macos` 上传。
+
+## 三点五、提交时踩过的坑（iOS 与 macOS 0.2.0 均已于 2026-09-08 提交审核）
+
+- **审核信息里“需要登录”默认勾选**：不取消会因“用户名/密码为必填”而无法“添加以供审核”。应用没有账号，取消勾选即可。
+- **出口合规**：Info.plist 里声明 `ITSAppUsesNonExemptEncryption=false`（iOS 在 `Info.ios.plist`，macOS 在 `Info.plist`），App Store Connect 就不再问加密问题。若走手动申报，选“标准加密算法”后会追问“是否在法国分发”，答“是”需上传法国的加密申报文件——直接用 plist 声明可避开。
+- **macOS 沙盒说明**（版本页“App 沙盒信息”，可不填）：已为 `network.server`、`network.client`、`files.downloads.read-write`、`files.user-selected.read-write` 各写一句用途，方便审核员理解为何要监听端口。
+- **构建版本替换**：版本页里点构建行的“删除”再“添加构建版本”；上传后要等处理完（TestFlight 页出现“准备提交”）才会出现在列表里。
 
 ## 四、参考
 
