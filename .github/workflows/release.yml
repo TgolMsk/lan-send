@@ -324,22 +324,16 @@ jobs:
           mkdir -p "$HOME/.appstoreconnect/private_keys"
           printf '%s' "$APPSTORE_PRIVATE_KEY" > "$HOME/.appstoreconnect/private_keys/AuthKey_${APPLE_API_KEY}.p8"
           echo "APPLE_API_KEY_PATH=$HOME/.appstoreconnect/private_keys/AuthKey_${APPLE_API_KEY}.p8" >> "$GITHUB_ENV"
-      - name: Version and build number
-        if: steps.gate.outputs.ready == 'true'
-        shell: bash
-        run: |
-          PLIST=apps/app/src-tauri/gen/apple/lan-send-app_iOS/Info.plist
-          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${VERSION%%-*}" "$PLIST"
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${GITHUB_RUN_NUMBER}" "$PLIST"
-          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" -c "Print :CFBundleVersion" "$PLIST"
       - name: Build the .ipa (App Store Connect export)
         if: steps.gate.outputs.ready == 'true'
         working-directory: apps/app
         shell: bash
         run: |
+          # version → CFBundleShortVersionString, bundleVersion → CFBundleVersion (unique per upload)
           cargo tauri ios build --ci --export-method app-store-connect \
-            --config "{\"version\":\"${VERSION%%-*}\",\"bundle\":{\"iOS\":{\"developmentTeam\":\"${APPLE_TEAM_ID}\"}}}"
+            --config "{\"version\":\"${VERSION%%-*}\",\"bundle\":{\"iOS\":{\"developmentTeam\":\"${APPLE_TEAM_ID}\",\"bundleVersion\":\"${GITHUB_RUN_NUMBER}\"}}}"
           ls -la src-tauri/gen/apple/build/arm64/
+          plutil -p src-tauri/gen/apple/build/lan-send-app_iOS.xcarchive/Products/Applications/*.app/Info.plist | grep -E "DisplayName|ShortVersion|CFBundleVersion|NSLocalNetwork" || true
       - name: Upload to TestFlight
         if: steps.gate.outputs.ready == 'true'
         working-directory: apps/app
