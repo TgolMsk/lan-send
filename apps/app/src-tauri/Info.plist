@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Merged into the generated macOS Info.plist by `tauri build` (iOS uses Info.ios.plist). -->
+    <!-- Only standard TLS (rustls) is used: exempt from export documentation. -->
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
+    <!-- macOS 15+ asks before an app may talk to the local network. -->
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>Lan-Send finds other devices on your Wi‑Fi and sends files to them directly.</string>
+</dict>
+</plist>
