@@ -2,6 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- Required for TestFlight on macOS: must match the embedded provisioning profile. -->
+	<key>com.apple.application-identifier</key>
+	<string>VVB976RN4W.com.wangsheng.lansend</string>
+	<key>com.apple.developer.team-identifier</key>
+	<string>VVB976RN4W</string>
     <!-- Mac App Store build: sandboxed (ADR-0014). -->
     <key>com.apple.security.app-sandbox</key>
     <true/>

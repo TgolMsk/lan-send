@@ -14,6 +14,7 @@
 - `docs/release.md`：Mac App Store 证书改为用 `openssl` 生成 CSR / 合成 `.p12`（含 WWDR G3 链，`-legacy`），并写明 secrets 命令与到期续期。
 
 ### Fixed
+- Mac App Store 沙盒版签名补上 `com.apple.application-identifier` / `team-identifier`（与描述文件一致），否则 altool 警告该构建不能用于 macOS TestFlight。
 - 设置页底部的指纹与目录路径过长时把页面撑宽、iOS 上可以横向拖动：长字符串按字符换行，内容区不再横向滚动。
 
 ## [0.2.0] - 2026-09-07
