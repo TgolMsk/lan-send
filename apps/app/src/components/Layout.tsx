@@ -4,6 +4,7 @@ import { t } from "../i18n";
 import { navigate, useStore, type Page } from "../store";
 import { shortFingerprint } from "../format";
 import { Avatar } from "./ui";
+import logo from "../assets/logo.png";
 
 const pages: { id: Page; icon: IconName; label: () => string }[] = [
   { id: "devices", icon: "devices", label: () => t("nav.devices") },
@@ -25,9 +26,7 @@ export function Layout({ children }: { children: ReactNode }) {
       <aside className="sidebar">
         {platform.os === "macos" && <div className="titlebar-space" data-tauri-drag-region />}
         <div className="brand" data-tauri-drag-region>
-          <div className="brand-mark">
-            <Icon name="send" size={16} />
-          </div>
+          <img className="brand-mark" src={logo} alt="" draggable={false} />
           <span className="brand-name">lan-send</span>
         </div>
         {visible.map((p) => (

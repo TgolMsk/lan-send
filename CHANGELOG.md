@@ -4,6 +4,9 @@
 
 ## [Unreleased]
 
+### Changed
+- 三端统一图标：采用新的 Lan-Send 品牌标志（`docs/brand/logo.jpeg`），iOS / Windows 用满铺方形，macOS 按 Apple 圆角模板生成，应用侧栏的品牌标也换成它；隐私政策与支持页发布在 GitHub Pages（上架必填）；`docs/store-listing.md` 记录上架硬性要求。
+
 ### Fixed
 - 设置页底部的指纹与目录路径过长时把页面撑宽、iOS 上可以横向拖动：长字符串按字符换行，内容区不再横向滚动。
 
