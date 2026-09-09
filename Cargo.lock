@@ -2386,7 +2386,7 @@ dependencies = [
 
 [[package]]
 name = "lan-send-app"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "lan-send-core",
@@ -2406,7 +2406,7 @@ dependencies = [
 
 [[package]]
 name = "lan-send-cli"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "bytes",
@@ -2427,7 +2427,7 @@ dependencies = [
 
 [[package]]
 name = "lan-send-core"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "axum",
  "base64 0.22.1",

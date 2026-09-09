@@ -18,7 +18,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-lan-send-core = { path = "../../../crates/core", version = "0.2.0" }
+lan-send-core = { path = "../../../crates/core", version = "0.3.0" }
 # 2.11 for `data-tauri-drag-region="deep"` (the window has no title bar on macOS).
 tauri = { version = "2.11", features = ["protocol-asset", "tray-icon"] }
 tauri-plugin-dialog = "2"
