@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Added
+- `docs/store-listing.md`：记录 macOS 版因 `com.apple.security.network.server` 被自动分析判定"无对应功能"而被拒（2.4.5）的原因与处理流程（备注说明 + 回复审核 + 更新审核后重新提交，无需换构建）。
 - 里程碑 4：媒体层（ADR-0015）。`core::media`：按 magic bytes 探测 MIME（`infer`，退回扩展名）并写入协议 `fileType`，接收到通用类型时落盘后重新探测；256 px 缩略图（JPEG 85，透明合成中性灰，EXIF 方向统一用 `kamadak-exif` 处理），解码先走系统解码器——macOS / iOS 用 ImageIO（HEIC / AVIF 原生），Windows 用 WIC（HEIC / AVIF 需系统扩展）——再退回纯 Rust 的 `image`；缩略图缓存在系统缓存目录 `lan-send/thumbs`，上限 200 MB 按最近使用淘汰；音频用 `lofty` 读标题 / 艺术家 / 专辑 / 时长 / 封面。运行时新增 `media_info`、`media_cache_size`、`media_cache_clear` 与事件 `media-ready`（传输完成后后台预热）；Tauri 命令 `cmd_media_*`；历史与传输页显示缩略图与尺寸 / 时长，设置页可查看并清空缩略图缓存。不引入 libheif / libdav1d（LGPL / 系统 C 库）。
 - README 与 GitHub Pages 首页加入应用截图（`docs/screenshots/`，由商店截图缩小生成），并更新项目状态与 iOS 下载说明。
 - Mac App Store 沙盒版（ADR-0014）：`entitlements/mas.plist`，接收目录的安全作用域书签，`app-mas` 发布任务（证书 secrets 齐全时签名、`productbuild`、上传 App Store Connect）。

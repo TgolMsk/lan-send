@@ -41,6 +41,10 @@
 - **出口合规**：Info.plist 里声明 `ITSAppUsesNonExemptEncryption=false`（iOS 在 `Info.ios.plist`，macOS 在 `Info.plist`），App Store Connect 就不再问加密问题。若走手动申报，选“标准加密算法”后会追问“是否在法国分发”，答“是”需上传法国的加密申报文件——直接用 plist 声明可避开。
 - **macOS 沙盒说明**（版本页“App 沙盒信息”，可不填）：已为 `network.server`、`network.client`、`files.downloads.read-write`、`files.user-selected.read-write` 各写一句用途，方便审核员理解为何要监听端口。
 - **构建版本替换**：版本页里点构建行的“删除”再“添加构建版本”；上传后要等处理完（TestFlight 页出现“准备提交”）才会出现在列表里。
+- **被拒：2.4.5 Performance: Hardware Compatibility（macOS，2026-09-08 中招）**。苹果的自动分析认为 App 带了 `com.apple.security.network.server` 权限却"没有对应功能"，提交被拒。原因是我们的监听 socket 写在 Rust 里（`std::net` / `tokio::TcpListener`，走 BSD socket 的 bind/listen/accept），不是 Network.framework / NSNetService / CFSocket，静态扫描认不出来。**这个权限必须保留**——LocalSend 协议是对称的，不监听就完全收不到文件。处理办法（苹果消息里给的第二条）：
+  1. 在 App 审核信息的"备注"里写清楚为什么需要该权限：TCP 53317 跑 HTTPS 服务器接收 prepare-upload / upload，UDP 53317 加入组播组 224.0.0.167 应答设备发现；并说明扫描认不出来的原因和验证方法（另一台设备装 Lan-Send 或官方 LocalSend 互传，或 `nc -vz <ip> 53317`）。
+  2. 在被拒提交页点"回复 App 审核"，把同样的说明发给审核团队。
+  3. 回到版本页点"更新审核"（此时提交项目变成"可供审核"），再回提交页点"重新提交至 App 审核"。不需要重新打包上传，构建版本不变。
 
 ## 四、参考
 
