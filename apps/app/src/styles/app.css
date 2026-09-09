@@ -150,11 +150,13 @@
   .sidebar {
     display: none;
   }
+  /* The top inset lives on the scroll container, so whatever comes first —
+     the page header or the runtime banner — clears the status bar. */
   .content {
-    padding: 0 16px calc(24px + env(safe-area-inset-bottom));
+    padding: env(safe-area-inset-top) 16px calc(24px + env(safe-area-inset-bottom));
   }
   .page-head {
-    padding: calc(18px + env(safe-area-inset-top)) 0 14px;
+    padding: 18px 0 14px;
     flex-direction: column;
     align-items: stretch;
   }

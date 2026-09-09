@@ -226,7 +226,6 @@ impl Inner {
             auto_accepted,
         };
         self.insert_transfer(view, Some(peer.host()));
-        self.emit(RuntimeEvent::IncomingRequest { request });
 
         let pending = PendingIncoming {
             session_id,
@@ -237,13 +236,25 @@ impl Inner {
             intent,
             decision,
         };
-        if auto_accepted {
-            self.accept_incoming(pending);
+        // Register the decision *before* announcing it. A consumer that answers
+        // as soon as it sees `IncomingRequest` would otherwise be able to call
+        // `respond_incoming` before the request is stored and get
+        // `NothingPending` (pairing registers first for the same reason).
+        let mut auto = None;
+        let previous = if auto_accepted {
+            auto = Some(pending);
+            None
         } else {
-            let previous = self.pending.lock().incoming.replace(pending);
-            if let Some(previous) = previous {
-                self.decline_incoming(previous);
-            }
+            self.pending.lock().incoming.replace(pending)
+        };
+
+        self.emit(RuntimeEvent::IncomingRequest { request });
+
+        if let Some(pending) = auto {
+            self.accept_incoming(pending);
+        }
+        if let Some(previous) = previous {
+            self.decline_incoming(previous);
         }
     }
 
