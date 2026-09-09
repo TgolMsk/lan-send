@@ -132,7 +132,11 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       Object.assign(settings, args?.settings as Settings);
       return false as T;
     case "cmd_app_pick_files":
-      return ["/Users/me/Pictures/IMG_2041.HEIC", "/Users/me/Documents/report.pdf"] as T;
+      return (args?.kind === "media"
+        ? ["/Users/me/Pictures/IMG_2041.HEIC", "/Users/me/Pictures/IMG_2042.HEIC"]
+        : args?.kind === "folders"
+          ? ["/Users/me/Documents/photos"]
+          : ["/Users/me/Pictures/IMG_2041.HEIC", "/Users/me/Documents/report.pdf"]) as T;
     case "cmd_app_pick_folder":
       return "/Users/me/Downloads/lan-send" as T;
     case "cmd_devices_list":

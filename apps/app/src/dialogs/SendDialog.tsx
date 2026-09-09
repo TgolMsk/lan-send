@@ -48,11 +48,16 @@ export function SendDialog() {
         </div>
       )}
       <div className="row" style={{ marginBottom: 12 }}>
-        <Button variant="outline" icon="file" onClick={async () => addPaths(await pickFiles(false))}>
+        {platform.mobile && (
+          <Button variant="outline" icon="image" onClick={async () => addPaths(await pickFiles("media"))}>
+            {t("send.pickMedia")}
+          </Button>
+        )}
+        <Button variant="outline" icon="file" onClick={async () => addPaths(await pickFiles("files"))}>
           {t("send.pick")}
         </Button>
         {!platform.mobile && (
-          <Button variant="outline" icon="folder" onClick={async () => addPaths(await pickFiles(true))}>
+          <Button variant="outline" icon="folder" onClick={async () => addPaths(await pickFiles("folders"))}>
             {t("send.pickFolder")}
           </Button>
         )}

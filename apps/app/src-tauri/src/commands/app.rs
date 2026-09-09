@@ -10,6 +10,8 @@ use std::path::PathBuf;
 use std::sync::atomic::Ordering;
 use tauri::{AppHandle, State};
 use tauri_plugin_dialog::DialogExt;
+#[cfg(mobile)]
+use tauri_plugin_dialog::PickerMode;
 use tauri_plugin_opener::OpenerExt;
 
 #[derive(Clone, Debug, serde::Serialize)]
@@ -75,29 +77,57 @@ pub async fn cmd_app_settings_update(
 }
 
 /// Opens the system file picker; `folders` picks directories instead
-/// (desktop only: iOS has no folder picker).
+/// What the user is picking. `Media` opens the iOS photo library; the others
+/// open the file browser. Folders are desktop only.
+#[derive(Clone, Copy, Debug, Default, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PickKind {
+    #[default]
+    Files,
+    Folders,
+    Media,
+}
+
+/// Picks files, folders or photos to send. Photos come from the system photo
+/// library (iOS `PHPicker`), which copies each chosen item into the app's
+/// temporary directory and hands back a normal path, so the send path is the
+/// same for all three.
 #[tauri::command]
-pub async fn cmd_app_pick_files(app: AppHandle, folders: bool) -> CmdResult<Vec<PathBuf>> {
+pub async fn cmd_app_pick_files(app: AppHandle, kind: PickKind) -> CmdResult<Vec<PathBuf>> {
     let (tx, rx) = tokio::sync::oneshot::channel();
-    let dialog = app.dialog().file().set_title(if folders {
-        "Choose folders to send"
-    } else {
-        "Choose files to send"
+    let dialog = app.dialog().file().set_title(match kind {
+        PickKind::Files => "Choose files to send",
+        PickKind::Folders => "Choose folders to send",
+        PickKind::Media => "Choose photos or videos to send",
     });
-    if folders {
-        #[cfg(desktop)]
-        dialog.pick_folders(move |paths| {
-            let _ = tx.send(paths);
-        });
-        #[cfg(mobile)]
-        {
-            drop((dialog, tx));
-            return Err("folder picking is not available on this platform".into());
+    match kind {
+        PickKind::Folders => {
+            #[cfg(desktop)]
+            dialog.pick_folders(move |paths| {
+                let _ = tx.send(paths);
+            });
+            #[cfg(mobile)]
+            {
+                drop((dialog, tx));
+                return Err("folder picking is not available on this platform".into());
+            }
         }
-    } else {
-        dialog.pick_files(move |paths| {
+        PickKind::Media => {
+            #[cfg(mobile)]
+            dialog
+                .set_picker_mode(PickerMode::Media)
+                .pick_files(move |paths| {
+                    let _ = tx.send(paths);
+                });
+            #[cfg(desktop)]
+            {
+                drop((dialog, tx));
+                return Err("the photo library is only available on mobile".into());
+            }
+        }
+        PickKind::Files => dialog.pick_files(move |paths| {
             let _ = tx.send(paths);
-        });
+        }),
     }
     let picked = rx.await.map_err(|_| "the dialog was closed")?;
     let mut paths = Vec::new();

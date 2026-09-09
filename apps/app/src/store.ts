@@ -16,6 +16,7 @@ import type {
   TransferRecord,
   TransferView,
   MediaInfo,
+  PickKind,
 } from "./types";
 
 export interface Toast {
@@ -418,9 +419,9 @@ export function closeSend() {
   set({ sendDraft: null });
 }
 
-export async function pickFiles(folders = false): Promise<string[]> {
+export async function pickFiles(kind: PickKind = "files"): Promise<string[]> {
   try {
-    return await ipc.app.pickFiles(folders);
+    return await ipc.app.pickFiles(kind);
   } catch (err) {
     toast("error", String(err instanceof Error ? err.message : err));
     return [];

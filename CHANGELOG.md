@@ -4,6 +4,9 @@
 
 ## [Unreleased]
 
+### Added
+- iOS 发送时可以直接从相册选图片和视频：发送弹窗在移动端多一个“相册”按钮，走系统照片选择器（`PHPicker`），选中的项目由系统复制到应用临时目录后按普通文件发送，不需要先存进“文件”App。选择类型从布尔的 `folders` 改为 `files / folders / media`；`Info.ios.plist` 补上 `NSPhotoLibraryUsageDescription`。
+
 ## [0.3.0] - 2026-09-08
 
 媒体层（里程碑 4）与 macOS 窗口拖动修复。

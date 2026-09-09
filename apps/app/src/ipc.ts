@@ -9,6 +9,7 @@ import type {
   IdentityView,
   MediaInfo,
   PairView,
+  PickKind,
   PlatformInfo,
   RuntimeEvent,
   RuntimeStateView,
@@ -64,7 +65,7 @@ export const ipc = {
     settingsGet: () => invoke<Settings>("cmd_app_settings_get"),
     settingsUpdate: (settings: Settings) =>
       invoke<boolean>("cmd_app_settings_update", { settings }),
-    pickFiles: (folders = false) => invoke<string[]>("cmd_app_pick_files", { folders }),
+    pickFiles: (kind: PickKind = "files") => invoke<string[]>("cmd_app_pick_files", { kind }),
     pickFolder: () => invoke<string | null>("cmd_app_pick_folder"),
     openPath: (path: string) => invoke<void>("cmd_app_open_path", { path }),
     revealPath: (path: string) => invoke<void>("cmd_app_reveal_path", { path }),

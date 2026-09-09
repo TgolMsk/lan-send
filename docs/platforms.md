@@ -54,3 +54,9 @@
 - `directories` crate 对 iOS 直接套用 macOS 的布局（源码里是 `cfg(any(target_os = "macos", target_os = "ios"))`），所以 `UserDirs::download_dir()` 在 iOS 上返回 `<容器>/Downloads` —— 一个建不出来的路径。接收文件因此全部失败。默认接收目录在 iOS 上必须用 `Documents`（`crates/core/src/store/paths.rs` 的 `pick_download_dir`），它本来就存在、可写，且 `UIFileSharingEnabled` 会把它显示在“文件”App 里。
 - **模拟器复现不了这个问题**：模拟器的容器根目录只是 Mac 上的普通目录，权限正常，`Downloads` 建得出来。凡是涉及沙盒权限、文件系统布局的改动，必须在真机上验证。
 - 配置、数据、缓存目录走的是 `$HOME/Library/...`，在 iOS 上正常可写，不受影响。
+
+## iOS 选取文件与相册
+
+- `cmd_app_pick_files` 的 `kind` 有三种：`files` 走文件浏览器（`UIDocumentPickerViewController`），`media` 走系统照片选择器（`PHPicker`），`folders` 仅桌面端。
+- 相册用 `tauri-plugin-dialog` 的 `set_picker_mode(PickerMode::Media)`。`PHPicker` 在应用进程外运行，只把用户选中的项目交回来，因此不需要相册读取授权；插件会把每一项复制到应用临时目录并返回普通路径，发送逻辑与选普通文件完全一致。`NSPhotoLibraryUsageDescription` 仍然写在 `Info.ios.plist` 里备用。
+- 照片以原格式发送（HEIC 保持 HEIC，不转码），接收端的缩略图由媒体层用系统解码器生成（ADR-0015）。

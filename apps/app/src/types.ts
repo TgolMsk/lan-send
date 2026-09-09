@@ -129,6 +129,9 @@ export interface TransferRecord {
 }
 
 /** Thumbnail and metadata of a local file (ADR-0015); every field may be absent. */
+/** What the file dialog should offer; `media` is the iOS photo library. */
+export type PickKind = "files" | "folders" | "media";
+
 export interface MediaInfo {
   kind: "image" | "audio" | "video" | "other" | null;
   mime: string;
