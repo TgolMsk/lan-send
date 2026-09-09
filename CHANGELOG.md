@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-08
+
+媒体层（里程碑 4）与 macOS 窗口拖动修复。
+
 ### Added
 - `docs/store-listing.md`：记录 iOS 因 2.1 Information Needed 被拒（新账号例行补充资料）需要的六项内容与备注字段 4000 字符上限。
 - `docs/store-listing.md`：记录 macOS 版因 `com.apple.security.network.server` 被自动分析判定"无对应功能"而被拒（2.4.5）的原因与处理流程（备注说明 + 回复审核 + 更新审核后重新提交，无需换构建）。
@@ -56,6 +60,7 @@
 - 文档：开发简报、LocalSend v2.2 接口核对清单、协议差异与扩展、三端平台约束、UI 视觉参考、ADR-0001 仓库布局。
 - CI：macOS / Windows / Linux 格式与 clippy 与测试，iOS 交叉检查，Windows 与 macOS CLI 产物，cargo-deny 许可证检查，标签发布。
 
-[Unreleased]: https://github.com/TgolMsk/lan-send/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/TgolMsk/lan-send/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/TgolMsk/lan-send/releases/tag/v0.3.0
 [0.2.0]: https://github.com/TgolMsk/lan-send/releases/tag/v0.2.0
 [0.1.0]: https://github.com/TgolMsk/lan-send/releases/tag/v0.1.0
