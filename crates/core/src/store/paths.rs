@@ -92,11 +92,65 @@ impl AppPaths {
     }
 }
 
-/// The user's Downloads directory; platforms without one (iOS) fall back
-/// to the documents directory, which the Files app can show.
+/// Where received files go by default.
+///
+/// iOS has no Downloads directory. The `directories` crate answers with the
+/// macOS layout there (`$HOME/Downloads`), which inside an app container is a
+/// path the sandbox refuses to create — the container root is read-only, so
+/// every transfer failed with `Operation not permitted`. The simulator does
+/// not reproduce it because its container root is an ordinary directory.
+/// Documents is the right answer on iOS: it exists, it is writable, and
+/// `UIFileSharingEnabled` exposes it in the Files app.
 fn download_dir() -> Option<PathBuf> {
     let dirs = UserDirs::new()?;
-    dirs.download_dir()
-        .or_else(|| dirs.document_dir())
-        .map(Path::to_path_buf)
+    pick_download_dir(
+        dirs.download_dir(),
+        dirs.document_dir(),
+        cfg!(target_os = "ios"),
+    )
+}
+
+/// The choice behind [`download_dir`], separated so it can be tested on any
+/// platform.
+fn pick_download_dir(
+    download: Option<&Path>,
+    document: Option<&Path>,
+    is_ios: bool,
+) -> Option<PathBuf> {
+    if is_ios {
+        return document.map(Path::to_path_buf);
+    }
+    download.or(document).map(Path::to_path_buf)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ios_receives_into_documents_not_downloads() {
+        let downloads = PathBuf::from("/container/Downloads");
+        let documents = PathBuf::from("/container/Documents");
+        // The container root is read-only on iOS, so `Downloads` must not win
+        // even though the `directories` crate offers it.
+        assert_eq!(
+            pick_download_dir(Some(&downloads), Some(&documents), true),
+            Some(documents.clone())
+        );
+        assert_eq!(
+            pick_download_dir(Some(&downloads), Some(&documents), false),
+            Some(downloads)
+        );
+    }
+
+    #[test]
+    fn falls_back_to_documents_then_nothing() {
+        let documents = PathBuf::from("/home/me/Documents");
+        assert_eq!(
+            pick_download_dir(None, Some(&documents), false),
+            Some(documents)
+        );
+        assert_eq!(pick_download_dir(None, None, false), None);
+        assert_eq!(pick_download_dir(None, None, true), None);
+    }
 }

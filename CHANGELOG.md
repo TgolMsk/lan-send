@@ -24,6 +24,7 @@
 - `docs/release.md`：记录 iOS 组播权限申请（2026-09-08，Request ID HTFYV6DZUK）与批准后的启用步骤。
 
 ### Fixed
+- iOS 真机上接收文件全部失败（`cannot use <容器>/Downloads: Operation not permitted`）。`directories` crate 在 iOS 上套用 macOS 布局，把默认接收目录指到容器根下的 `Downloads`，而 iOS 容器根不可写。默认接收目录在 iOS 上改用 `Documents`（本就可写，且在“文件”App 里可见）。模拟器容器根是普通目录，复现不了，只有真机能测出来。
 - 收到传输请求时 `IncomingRequest` 事件先于待决请求登记发出，界面若在收到事件的瞬间就应答会拿到 `NothingPending`（CI 上偶发的 `decline_and_pairing_round_trip` 失败即由此而来）。改为先登记再发事件，与配对请求的做法一致。
 - iOS：运行时启动失败时顶部的红色提示条会钻到状态栏和灵动岛下面。安全区上边距从页头移到内容容器，页头或提示条谁在最前面都能避开状态栏。
 - macOS 窗口几乎拖不动：窗口没有原生标题栏，拖动区却是用 `-webkit-app-region` 写的，而 WKWebView 根本不支持这个属性，实际只有侧栏顶部 22 px 的空条能拖。改用 Tauri 的 `data-tauri-drag-region="deep"`（tauri ≥ 2.11）标在侧栏与页头上，整个侧栏（含品牌标、身份卡、空白处）和内容区顶部都能拖动窗口；导航按钮、搜索框与卡片按钮由 Tauri 自动排除，仍然可点。

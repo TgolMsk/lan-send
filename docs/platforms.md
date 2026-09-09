@@ -47,3 +47,10 @@
 - 拖动区只能用 Tauri 的 `data-tauri-drag-region`：**WKWebView 不支持 `-webkit-app-region`**，写了也没用（实测 CSS 声明的拖动区完全不生效）。
 - 用 `data-tauri-drag-region="deep"`（需要 tauri ≥ 2.11）标在侧栏和页头上，子元素点哪儿都能拖；Tauri 自己会跳过 `button`、`a`、`input`、`select`、`textarea`、`label` 以及带 `role`/`tabindex` 的元素，所以导航按钮、搜索框、卡片上的按钮都不受影响，不需要再手工加 `no-drag`。
 - 双击拖动区会缩放窗口，这是 Tauri 内置行为。
+
+## iOS 容器路径（2026-09-08 真机踩坑）
+
+- **容器根目录不可写**。iOS 应用容器里只有 `Documents/`、`Library/`、`tmp/` 可写，在根目录下新建目录会得到 `Operation not permitted (os error 1)`。
+- `directories` crate 对 iOS 直接套用 macOS 的布局（源码里是 `cfg(any(target_os = "macos", target_os = "ios"))`），所以 `UserDirs::download_dir()` 在 iOS 上返回 `<容器>/Downloads` —— 一个建不出来的路径。接收文件因此全部失败。默认接收目录在 iOS 上必须用 `Documents`（`crates/core/src/store/paths.rs` 的 `pick_download_dir`），它本来就存在、可写，且 `UIFileSharingEnabled` 会把它显示在“文件”App 里。
+- **模拟器复现不了这个问题**：模拟器的容器根目录只是 Mac 上的普通目录，权限正常，`Downloads` 建得出来。凡是涉及沙盒权限、文件系统布局的改动，必须在真机上验证。
+- 配置、数据、缓存目录走的是 `$HOME/Library/...`，在 iOS 上正常可写，不受影响。
