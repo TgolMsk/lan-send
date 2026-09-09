@@ -36,56 +36,60 @@ pub(super) fn decode_thumbnail(path: &Path, max_px: u32) -> Option<Decoded> {
 }
 
 unsafe fn decode_inner(path: &Path, max_px: u32) -> Option<Decoded> {
-    let factory: IWICImagingFactory =
-        CoCreateInstance(&CLSID_WICImagingFactory, None, CLSCTX_INPROC_SERVER).ok()?;
-    let file = HSTRING::from(path.as_os_str());
-    let decoder = factory
-        .CreateDecoderFromFilename(
-            PCWSTR(file.as_ptr()),
-            None,
-            GENERIC_READ,
-            WICDecodeMetadataCacheOnDemand,
-        )
-        .ok()?;
-    let frame = decoder.GetFrame(0).ok()?;
-    let (mut source_width, mut source_height) = (0u32, 0u32);
-    frame.GetSize(&mut source_width, &mut source_height).ok()?;
-    if source_width == 0 || source_height == 0 {
-        return None;
-    }
-    let (width, height) = fit(source_width, source_height, max_px);
-
-    let source: IWICBitmapSource = if (width, height) != (source_width, source_height) {
-        let scaler = factory.CreateBitmapScaler().ok()?;
-        scaler
-            .Initialize(&frame, width, height, WICBitmapInterpolationModeFant)
+    // SAFETY: every call below is a COM call on interfaces this function
+    // created itself; `buffer` is exactly `stride * height` bytes.
+    unsafe {
+        let factory: IWICImagingFactory =
+            CoCreateInstance(&CLSID_WICImagingFactory, None, CLSCTX_INPROC_SERVER).ok()?;
+        let file = HSTRING::from(path.as_os_str());
+        let decoder = factory
+            .CreateDecoderFromFilename(
+                PCWSTR(file.as_ptr()),
+                None,
+                GENERIC_READ,
+                WICDecodeMetadataCacheOnDemand,
+            )
             .ok()?;
-        scaler.into()
-    } else {
-        frame.into()
-    };
-    let converter = factory.CreateFormatConverter().ok()?;
-    converter
-        .Initialize(
-            &source,
-            &GUID_WICPixelFormat32bppRGBA,
-            WICBitmapDitherTypeNone,
-            None,
-            0.0,
-            WICBitmapPaletteTypeCustom,
-        )
-        .ok()?;
-    let stride = width.checked_mul(4)?;
-    let mut buffer = vec![
-        0u8;
-        usize::try_from(stride)
-            .ok()?
-            .checked_mul(usize::try_from(height).ok()?)?
-    ];
-    converter
-        .CopyPixels(std::ptr::null(), stride, &mut buffer)
-        .ok()?;
-    Decoded::from_rgba(width, height, buffer, source_width, source_height)
+        let frame = decoder.GetFrame(0).ok()?;
+        let (mut source_width, mut source_height) = (0u32, 0u32);
+        frame.GetSize(&mut source_width, &mut source_height).ok()?;
+        if source_width == 0 || source_height == 0 {
+            return None;
+        }
+        let (width, height) = fit(source_width, source_height, max_px);
+
+        let source: IWICBitmapSource = if (width, height) != (source_width, source_height) {
+            let scaler = factory.CreateBitmapScaler().ok()?;
+            scaler
+                .Initialize(&frame, width, height, WICBitmapInterpolationModeFant)
+                .ok()?;
+            scaler.into()
+        } else {
+            frame.into()
+        };
+        let converter = factory.CreateFormatConverter().ok()?;
+        converter
+            .Initialize(
+                &source,
+                &GUID_WICPixelFormat32bppRGBA,
+                WICBitmapDitherTypeNone,
+                None,
+                0.0,
+                WICBitmapPaletteTypeCustom,
+            )
+            .ok()?;
+        let stride = width.checked_mul(4)?;
+        let mut buffer = vec![
+            0u8;
+            usize::try_from(stride)
+                .ok()?
+                .checked_mul(usize::try_from(height).ok()?)?
+        ];
+        converter
+            .CopyPixels(std::ptr::null(), stride, &mut buffer)
+            .ok()?;
+        Decoded::from_rgba(width, height, buffer, source_width, source_height)
+    }
 }
 
 /// Scales `(w, h)` so the long side is at most `max_px`, never upscaling.

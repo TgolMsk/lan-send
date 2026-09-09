@@ -5,7 +5,7 @@
 use super::platform;
 use image::imageops::FilterType;
 use image::metadata::Orientation;
-use image::{DynamicImage, ImageReader, RgbImage, RgbaImage};
+use image::{DynamicImage, ImageReader, RgbImage};
 use std::fs::File;
 use std::io::{BufReader, Cursor, Seek, SeekFrom};
 use std::path::Path;
@@ -62,7 +62,9 @@ pub(super) struct Decoded {
 }
 
 impl Decoded {
-    /// Builds from raw RGBA8 rows (platform decoders).
+    /// Builds from raw RGBA8 rows (platform decoders; no platform decoder,
+    /// and therefore no caller, on other systems).
+    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "windows"))]
     pub(super) fn from_rgba(
         width: u32,
         height: u32,
@@ -70,7 +72,7 @@ impl Decoded {
         source_width: u32,
         source_height: u32,
     ) -> Option<Self> {
-        let image = RgbaImage::from_raw(width, height, rgba)?;
+        let image = image::RgbaImage::from_raw(width, height, rgba)?;
         Some(Self {
             image: DynamicImage::ImageRgba8(image),
             source_width,
