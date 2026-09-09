@@ -19,6 +19,7 @@
 - `docs/release.md`：记录 iOS 组播权限申请（2026-09-08，Request ID HTFYV6DZUK）与批准后的启用步骤。
 
 ### Fixed
+- macOS 窗口几乎拖不动：窗口没有原生标题栏，拖动区却是用 `-webkit-app-region` 写的，而 WKWebView 根本不支持这个属性，实际只有侧栏顶部 22 px 的空条能拖。改用 Tauri 的 `data-tauri-drag-region="deep"`（tauri ≥ 2.11）标在侧栏与页头上，整个侧栏（含品牌标、身份卡、空白处）和内容区顶部都能拖动窗口；导航按钮、搜索框与卡片按钮由 Tauri 自动排除，仍然可点。
 - macOS 应用的 Info.plist 补上出口合规声明（`ITSAppUsesNonExemptEncryption=false`，否则 App Store Connect 标记“缺少出口合规证明”）与本地网络用途说明（macOS 15 起会询问）。
 - Mac App Store 沙盒版签名补上 `com.apple.application-identifier` / `team-identifier`（与描述文件一致），否则 altool 警告该构建不能用于 macOS TestFlight。
 - 设置页底部的指纹与目录路径过长时把页面撑宽、iOS 上可以横向拖动：长字符串按字符换行，内容区不再横向滚动。

@@ -4,7 +4,14 @@ import { t } from "../i18n";
 import { navigate, useStore, type Page } from "../store";
 import { shortFingerprint } from "../format";
 import { Avatar } from "./ui";
+import type { PlatformInfo } from "../types";
 import logo from "../assets/logo.png";
+
+/** The window has no title bar on macOS, so chrome areas move the window
+ *  instead. Desktop only: dragging is meaningless on iOS. */
+function dragRegion(platform: PlatformInfo) {
+  return platform.mobile ? {} : { "data-tauri-drag-region": "deep" };
+}
 
 const pages: { id: Page; icon: IconName; label: () => string }[] = [
   { id: "devices", icon: "devices", label: () => t("nav.devices") },
@@ -23,9 +30,11 @@ export function Layout({ children }: { children: ReactNode }) {
   const visible = pages.filter((p) => !(platform.mobile && p.id === "clipboard"));
   return (
     <div className="shell">
-      <aside className="sidebar">
-        {platform.os === "macos" && <div className="titlebar-space" data-tauri-drag-region />}
-        <div className="brand" data-tauri-drag-region>
+      {/* `deep` drags from anywhere in the subtree; Tauri excludes buttons and
+          links on its own, so the navigation stays clickable. */}
+      <aside className="sidebar" {...dragRegion(platform)}>
+        {platform.os === "macos" && <div className="titlebar-space" />}
+        <div className="brand">
           <img className="brand-mark" src={logo} alt="" draggable={false} />
           <span className="brand-name">Lan-Send</span>
         </div>
@@ -64,8 +73,9 @@ export function Layout({ children }: { children: ReactNode }) {
 }
 
 export function PageHead({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: ReactNode }) {
+  const platform = useStore((s) => s.platform);
   return (
-    <header className="page-head">
+    <header className="page-head" {...dragRegion(platform)}>
       <div>
         <h1 className="page-title">{title}</h1>
         {subtitle && <p className="page-subtitle">{subtitle}</p>}

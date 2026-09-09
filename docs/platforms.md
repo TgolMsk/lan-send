@@ -40,3 +40,10 @@
 - Windows：WIC（`IWICImagingFactory`）。HEIC 需要系统安装"HEIF 图像扩展"（HEVC 解码另需"HEVC 视频扩展"），AVIF 需要"AV1 视频扩展"；没有时该文件无预览，传输不受影响。
 - 三端共用的纯 Rust 回退：`image`（PNG / JPEG / GIF / WebP / BMP / TIFF）。EXIF 方向统一由 `kamadak-exif` 读取后在像素上旋转。
 - 缩略图缓存：系统缓存目录下 `lan-send/thumbs`（macOS `~/Library/Caches/lan-send/thumbs`，沙盒版在容器内；Windows `%LOCALAPPDATA%\lan-send\cache\thumbs`；iOS 容器 `Library/Caches`），可随时清空。
+
+## macOS 窗口外观与拖动区（2026-09-08）
+
+- 窗口用 `titleBarStyle: "Overlay"` + `hiddenTitle`，没有原生标题栏，红绿灯浮在内容上，所以拖动区必须由前端提供。侧栏顶部留 `.titlebar-space`（22 px）给红绿灯让位。
+- 拖动区只能用 Tauri 的 `data-tauri-drag-region`：**WKWebView 不支持 `-webkit-app-region`**，写了也没用（实测 CSS 声明的拖动区完全不生效）。
+- 用 `data-tauri-drag-region="deep"`（需要 tauri ≥ 2.11）标在侧栏和页头上，子元素点哪儿都能拖；Tauri 自己会跳过 `button`、`a`、`input`、`select`、`textarea`、`label` 以及带 `role`/`tabindex` 的元素，所以导航按钮、搜索框、卡片上的按钮都不受影响，不需要再手工加 `no-drag`。
+- 双击拖动区会缩放窗口，这是 Tauri 内置行为。
