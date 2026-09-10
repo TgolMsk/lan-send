@@ -35,13 +35,13 @@
 - 自选接收目录用安全作用域书签保存（`platform/macos.rs`）。
 - 证书、描述文件与 `app-mas` 任务见 `docs/release.md`；签名用 `Apple Distribution` + `3rd Party Mac Developer Installer`，`productbuild` 打 `.pkg`，`altool --type macos` 上传。
 
-## 三点五、提交时踩过的坑（iOS 与 macOS 0.2.0 均已于 2026-09-08 提交审核）
+## 三点五、提交时踩过的坑（每次被拒都记在这里；提交前照 `docs/store-checklist.md` 逐项过）
 
 - **审核信息里“需要登录”默认勾选**：不取消会因“用户名/密码为必填”而无法“添加以供审核”。应用没有账号，取消勾选即可。
 - **出口合规**：Info.plist 里声明 `ITSAppUsesNonExemptEncryption=false`（iOS 在 `Info.ios.plist`，macOS 在 `Info.plist`），App Store Connect 就不再问加密问题。若走手动申报，选“标准加密算法”后会追问“是否在法国分发”，答“是”需上传法国的加密申报文件——直接用 plist 声明可避开。
 - **macOS 沙盒说明**（版本页“App 沙盒信息”，可不填）：已为 `network.server`、`network.client`、`files.downloads.read-write`、`files.user-selected.read-write` 各写一句用途，方便审核员理解为何要监听端口。
 - **构建版本替换**：版本页里点构建行的“删除”再“添加构建版本”；上传后要等处理完（TestFlight 页出现“准备提交”）才会出现在列表里。
-- **被拒：2.4.5(i) `com.apple.security.files.downloads.read-write` 无对应功能（macOS 0.3.0 构建 19，2026-09-10 中招）**。与 network.server 那次同一个根源：苹果的自动分析只认 `NSFileManager` / `NSOpenPanel` 这类 Apple API 的调用，看不见 Rust 的 `std::fs`。实测沙盒容器里 `Data/Downloads` 是指向真实 `~/Downloads` 的符号链接（每个容器都会建，与权限无关；权限只决定写入是否被允许，没有它写入报 EPERM），所以构建 19 其实一直在往真实下载目录写，权限并非没用。不过 `$HOME`、`NSHomeDirectory()`、`NSHomeDirectoryForUser()`、`FileManager .downloadsDirectory` 在沙盒里**全部**返回容器路径，`directories` crate 算出的默认接收目录字面上是容器路径，设置页显示出来也难看。修法见 `crates/core/src/store/platform/macos.rs`：用 `getpwuid_r` 取真实主目录（唯一不被重定向的查询），默认接收目录显式为 `<真实主目录>/Downloads`，`scripts/mas-sandbox-check.sh` 在临时签名的沙盒 bundle 里验证。**教训**：Rust 应用的每一个沙盒权限都会被静态扫描判成"无对应功能"，所以提交前就把每个权限"在哪用、怎么验证、为什么扫描看不到"写进 App 审核信息的备注和 App 沙盒信息，不要等被拒再解释。
+- **被拒：2.4.5(i) `com.apple.security.files.downloads.read-write` 无对应功能（macOS 0.3.0 构建 19，2026-09-10 中招）**。与 network.server 那次同一个根源：苹果的自动分析只认 `NSFileManager` / `NSOpenPanel` 这类 Apple API 的调用，看不见 Rust 的 `std::fs`。实测沙盒容器里 `Data/Downloads` 是指向真实 `~/Downloads` 的符号链接（每个容器都会建，与权限无关；权限只决定写入是否被允许，没有它写入报 EPERM），所以构建 19 其实一直在往真实下载目录写，权限并非没用。不过 `$HOME`、`NSHomeDirectory()`、`NSHomeDirectoryForUser()`、`FileManager .downloadsDirectory` 在沙盒里**全部**返回容器路径，`directories` crate 算出的默认接收目录字面上是容器路径，设置页显示出来也难看。修法见 `crates/core/src/store/platform/macos.rs`：用 `getpwuid_r` 取真实主目录（唯一不被重定向的查询），默认接收目录显式为 `<真实主目录>/Downloads`，`scripts/mas-sandbox-check.sh` 在临时签名的沙盒 bundle 里验证。**教训**：Rust 应用的每一个沙盒权限都会被静态扫描判成"无对应功能"，所以提交前就把每个权限"在哪用、怎么验证、为什么扫描看不到"写进 App 审核信息的备注和 App 沙盒信息，不要等被拒再解释。**处理记录（2026-09-10）**：构建 20（bfbb4bc，含 `getpwuid_r` 修法、版权串、`NSDownloadsFolderUsageDescription`、iOS `PrivacyInfo.xcprivacy`）上传后在版本页直接删掉构建 19、添加构建 20 并保存；审核备注补齐六个权限的用途 / 验证方法 / 扫描看不见的原因；在同一提交串里"回复 App 审核"贴同样的说明（2626 字符）；版本页"更新审核" → 提交页"重新提交至 App 审核"，状态回到"等待审核"。iOS 0.3.0（构建 19）未受影响，仍在排队。
 - **被拒：1.5 Safety 支持网址不合格（macOS 0.3.0，2026-09-10 同一封信）**。支持页只放了 GitHub issues 链接（要账号）和 FAQ，苹果认为用户没有"提问和请求支持"的途径。修法：页面顶部放**电子邮件**（`mailto:` 链接）并写明回复时限，issues 作为补充；页面标题用商店里的名字 `Lan-Send`。改的是 `docs/support.md`，GitHub Pages 推送后几分钟生效，无需新构建。**教训**：支持页至少要有一个不需要注册就能用的联系方式，隐私页同理要能直接打开。
 - **被拒：2.1 Information Needed（iOS，2026-09-08 中招）**。新开发者账号审核记录少，苹果要求补交六项资料，并要求同时写进"App 审核信息 › 备注"。这不是功能缺陷，是例行尽调。备注字段**上限 4000 字符**，写超了保存会报"此栏过长"。六项分别是：
   1. **在真机上录的屏幕录像**（模拟器不算），从启动应用开始，覆盖典型流程；有账号注册 / 登录 / 注销、用户生成内容、付费内容的都要录进去（本应用三者都没有，在备注里写明）。
