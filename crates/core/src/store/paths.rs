@@ -107,8 +107,14 @@ fn download_dir() -> Option<PathBuf> {
     // it. Ask the system for the real home instead; the sandboxed build
     // reaches it through `com.apple.security.files.downloads.read-write`.
     #[cfg(target_os = "macos")]
-    if let Some(home) = super::platform::macos::real_home_dir() {
-        return Some(home.join("Downloads"));
+    match super::platform::macos::real_home_dir() {
+        Some(home) => return Some(home.join("Downloads")),
+        // Never fall back silently: inside the sandbox the generic lookup
+        // yields a container path, which is exactly the situation App Review
+        // flagged. Say so, then let the generic lookup answer.
+        None => {
+            tracing::warn!("could not resolve the account home directory; falling back to $HOME")
+        }
     }
     let dirs = UserDirs::new()?;
     pick_download_dir(

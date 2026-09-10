@@ -20,9 +20,10 @@ use std::path::PathBuf;
 ///
 /// The sandbox redirects `$HOME` (and every Foundation home lookup) into
 /// `~/Library/Containers/<bundle id>/Data`. Inside that container the sandbox
-/// creates `Downloads` as a symlink to the real `~/Downloads` (that symlink
-/// exists *because* of `com.apple.security.files.downloads.read-write`), so
-/// writes through the container path did reach the real folder — but the
+/// creates `Downloads` as a symlink to the real `~/Downloads` (in every
+/// container; `com.apple.security.files.downloads.read-write` only decides
+/// whether writing through it is allowed), so writes through the container
+/// path did reach the real folder — but the
 /// path the app computed, stored and showed in Settings was the container
 /// one, and App Review's static scan cannot see Rust `std::fs` writes at all.
 /// The passwd database is not redirected, so resolving the home here makes
