@@ -3,8 +3,10 @@
 # entitlements as the Mac App Store build (minus the two Apple-restricted
 # identifiers an ad-hoc signature cannot carry) and prints where it would put
 # received files. Use it before every Mac App Store submission: the sandbox
-# redirects $HOME into the container, which once made
-# com.apple.security.files.downloads.read-write look unused to App Review.
+# redirects $HOME into the container, so a naive lookup yields a container
+# path (it works only through a sandbox-created symlink), and App Review's
+# static scan flags com.apple.security.files.downloads.read-write as unused
+# whenever the code does not make the real ~/Downloads explicit.
 set -eu
 cd "$(dirname "$0")/.."
 . "$HOME/.cargo/env" 2>/dev/null || true

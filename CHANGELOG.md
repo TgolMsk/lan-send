@@ -5,7 +5,7 @@
 ## [Unreleased]
 
 ### Fixed
-- Mac App Store 沙盒版收到的文件落在容器里的 `Downloads` 而不是用户的"下载"文件夹：沙盒把 `$HOME` 及所有 Foundation 主目录查询都重定向到容器，`directories` crate 跟着错。macOS 上改用 `getpwuid_r` 取真实主目录，默认接收目录为 `<真实主目录>/Downloads`；这也是 `com.apple.security.files.downloads.read-write` 权限真正的用途（App Review 2.4.5(i) 曾判定该权限无对应功能）。
+- Mac App Store 沙盒版的默认接收目录显式指向真实的 `~/Downloads`：沙盒把 `$HOME` 及所有 Foundation 主目录查询都重定向到容器，`directories` crate 算出的是容器路径（只靠沙盒创建的符号链接才写到真实目录，设置页显示的也是容器路径）。macOS 上改用 `getpwuid_r` 取真实主目录。App Review 2.4.5(i) 的静态扫描看不见 Rust `std::fs` 的写入，曾判定 `com.apple.security.files.downloads.read-write` 无对应功能；显式路径加上审核备注里的说明是应对办法。
 - 支持页（`docs/support.md`）补上电子邮件联系方式与更完整的 FAQ；App Review 按 1.5 认为只有 GitHub issues 链接不算可用的支持渠道。
 
 ### Changed

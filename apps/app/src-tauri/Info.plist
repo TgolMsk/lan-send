@@ -4,9 +4,14 @@
 <dict>
     <!-- Merged into the generated macOS Info.plist by `tauri build` (iOS uses Info.ios.plist). -->
     <!-- Only standard TLS (rustls) is used: exempt from export documentation. -->
+    <key>NSHumanReadableCopyright</key>
+    <string>© 2026 Wang Sheng</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
     <!-- macOS 15+ asks before an app may talk to the local network. -->
+    <!-- Shown by macOS the first time the sandboxed app writes a received file into ~/Downloads. -->
+    <key>NSDownloadsFolderUsageDescription</key>
+    <string>Lan-Send saves files received from your other devices to your Downloads folder. You can pick a different folder in Settings.</string>
     <key>NSLocalNetworkUsageDescription</key>
     <string>Lan-Send finds other devices on your Wi‑Fi and sends files to them directly.</string>
 </dict>

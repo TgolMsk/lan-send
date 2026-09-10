@@ -180,7 +180,7 @@ export function SettingsPage() {
             <p className="muted breakable" style={{ margin: 0, fontSize: 12, userSelect: "text", WebkitUserSelect: "text" }}>
               {t("app.fingerprint")}: <span className="mono">{identity.fingerprint}</span>
               <br />
-              lan-send {platform.version} · {identity.deviceModel} · {identity.configDir}
+              Lan-Send {platform.version} · {identity.deviceModel} · {identity.configDir}
             </p>
           )}
         </Card>

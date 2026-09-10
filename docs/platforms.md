@@ -73,6 +73,6 @@
 | `FileManager.url(for: .downloadsDirectory)` | 容器 `Data/Downloads` |
 | `getpwuid(getuid())->pw_dir` | **真实主目录** |
 
-`directories` crate 走 `$HOME`，所以沙盒版默认接收目录曾落在容器里。`store/platform/macos.rs` 用 `getpwuid_r` 取真实主目录，默认接收目录为 `<真实主目录>/Downloads`，由 `com.apple.security.files.downloads.read-write` 授权写入（同一测试里写入成功）。非沙盒版与 CLI 行为不变（passwd 主目录与 `$HOME` 一致）。
+`directories` crate 走 `$HOME`，所以沙盒版算出的默认接收目录是容器路径；容器里的 `Downloads` 是沙盒创建的、指向真实 `~/Downloads` 的符号链接（有 downloads 权限才会创建），文件其实写到了真实目录，但路径字面上是容器，设置页显示也是容器路径。`store/platform/macos.rs` 用 `getpwuid_r` 取真实主目录，默认接收目录为 `<真实主目录>/Downloads`，由 `com.apple.security.files.downloads.read-write` 授权写入（同一测试里写入成功）。非沙盒版与 CLI 行为不变（passwd 主目录与 `$HOME` 一致）。
 
 用临时签名验证沙盒行为时，权限文件里不能带 `com.apple.application-identifier` / `team-identifier`（受限权限，签不上会被内核 SIGKILL，exit 137）；其余沙盒权限可以照抄。
