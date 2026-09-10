@@ -2442,6 +2442,7 @@ dependencies = [
  "image",
  "infer 0.22.0",
  "kamadak-exif",
+ "libc",
  "lofty",
  "mime_guess",
  "multer",

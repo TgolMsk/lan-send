@@ -60,3 +60,19 @@
 - `cmd_app_pick_files` 的 `kind` 有三种：`files` 走文件浏览器（`UIDocumentPickerViewController`），`media` 走系统照片选择器（`PHPicker`），`folders` 仅桌面端。
 - 相册用 `tauri-plugin-dialog` 的 `set_picker_mode(PickerMode::Media)`。`PHPicker` 在应用进程外运行，只把用户选中的项目交回来，因此不需要相册读取授权；插件会把每一项复制到应用临时目录并返回普通路径，发送逻辑与选普通文件完全一致。`NSPhotoLibraryUsageDescription` 仍然写在 `Info.ios.plist` 里备用。
 - 照片以原格式发送（HEIC 保持 HEIC，不转码），接收端的缩略图由媒体层用系统解码器生成（ADR-0015）。
+
+## macOS 沙盒里的主目录（2026-09-10 实测）
+
+临时签名的沙盒 bundle 里各种"主目录"查询的结果：
+
+| 查询 | 沙盒内返回 |
+|---|---|
+| `$HOME` | 容器 `Data` |
+| `NSHomeDirectory()` | 容器 `Data` |
+| `NSHomeDirectoryForUser(NSUserName())` | 容器 `Data` |
+| `FileManager.url(for: .downloadsDirectory)` | 容器 `Data/Downloads` |
+| `getpwuid(getuid())->pw_dir` | **真实主目录** |
+
+`directories` crate 走 `$HOME`，所以沙盒版默认接收目录曾落在容器里。`store/platform/macos.rs` 用 `getpwuid_r` 取真实主目录，默认接收目录为 `<真实主目录>/Downloads`，由 `com.apple.security.files.downloads.read-write` 授权写入（同一测试里写入成功）。非沙盒版与 CLI 行为不变（passwd 主目录与 `$HOME` 一致）。
+
+用临时签名验证沙盒行为时，权限文件里不能带 `com.apple.application-identifier` / `team-identifier`（受限权限，签不上会被内核 SIGKILL，exit 137）；其余沙盒权限可以照抄。

@@ -59,6 +59,9 @@ lofty = "0.25"
 objc2 = "0.6"
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSArray", "NSData", "NSDictionary", "NSURL", "NSObject", "NSEnumerator", "NSValue", "NSGeometry"] }
 objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSPasteboard", "NSPasteboardItem", "NSImageRep", "NSBitmapImageRep", "NSGraphics"] }
+# The sandbox redirects $HOME; the passwd database is the only lookup that
+# still answers with the real home (store/platform/macos.rs).
+libc = "0.2"
 
 [target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies]
 # ImageIO decodes HEIC / AVIF / everything else the OS knows (ADR-0015).

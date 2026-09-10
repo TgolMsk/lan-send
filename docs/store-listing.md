@@ -41,6 +41,8 @@
 - **出口合规**：Info.plist 里声明 `ITSAppUsesNonExemptEncryption=false`（iOS 在 `Info.ios.plist`，macOS 在 `Info.plist`），App Store Connect 就不再问加密问题。若走手动申报，选“标准加密算法”后会追问“是否在法国分发”，答“是”需上传法国的加密申报文件——直接用 plist 声明可避开。
 - **macOS 沙盒说明**（版本页“App 沙盒信息”，可不填）：已为 `network.server`、`network.client`、`files.downloads.read-write`、`files.user-selected.read-write` 各写一句用途，方便审核员理解为何要监听端口。
 - **构建版本替换**：版本页里点构建行的“删除”再“添加构建版本”；上传后要等处理完（TestFlight 页出现“准备提交”）才会出现在列表里。
+- **被拒：2.4.5(i) `com.apple.security.files.downloads.read-write` 无对应功能（macOS 0.3.0 构建 19，2026-09-10 中招）**。这次苹果说得对，不是误判：沙盒把 `$HOME`、`NSHomeDirectory()`、`NSHomeDirectoryForUser()`、`FileManager .downloadsDirectory` **全部**重定向到 `~/Library/Containers/<bundle id>/Data`，`directories` crate 于是把默认接收目录指到容器里的 `Downloads`，真正的 `~/Downloads` 从未被访问，权限自然"没有对应功能"。唯一不被重定向的是 passwd 数据库：`getpwuid(getuid())->pw_dir`。修法见 `crates/core/src/store/platform/macos.rs`：macOS 上默认接收目录改为 `<passwd 主目录>/Downloads`，这样权限有了实实在在的用途；在临时签名的沙盒 app 里实测写入真实 `~/Downloads` 成功。**教训**：沙盒版每一个文件类权限都要用真机（或临时签名的沙盒 bundle）验证代码真的碰到了对应目录，不能只看代码意图。
+- **被拒：1.5 Safety 支持网址不合格（macOS 0.3.0，2026-09-10 同一封信）**。支持页只放了 GitHub issues 链接（要账号）和 FAQ，苹果认为用户没有"提问和请求支持"的途径。修法：页面顶部放**电子邮件**（`mailto:` 链接）并写明回复时限，issues 作为补充；页面标题用商店里的名字 `Lan-Send`。改的是 `docs/support.md`，GitHub Pages 推送后几分钟生效，无需新构建。**教训**：支持页至少要有一个不需要注册就能用的联系方式，隐私页同理要能直接打开。
 - **被拒：2.1 Information Needed（iOS，2026-09-08 中招）**。新开发者账号审核记录少，苹果要求补交六项资料，并要求同时写进"App 审核信息 › 备注"。这不是功能缺陷，是例行尽调。备注字段**上限 4000 字符**，写超了保存会报"此栏过长"。六项分别是：
   1. **在真机上录的屏幕录像**（模拟器不算），从启动应用开始，覆盖典型流程；有账号注册 / 登录 / 注销、用户生成内容、付费内容的都要录进去（本应用三者都没有，在备注里写明）。
   2. 应用用途与目标用户，解决什么问题、提供什么价值。

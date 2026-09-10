@@ -4,6 +4,7 @@
 
 mod db;
 mod paths;
+mod platform;
 mod secure_file;
 mod settings;
 

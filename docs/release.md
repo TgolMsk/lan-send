@@ -116,6 +116,14 @@ gh secret set MAS_PROVISIONING_PROFILE --repo TgolMsk/lan-send < <(base64 -i Lan
 
 沙盒版与 `.dmg` 版的区别：配置目录在容器里（与命令行版不共享身份和历史）；自选接收目录通过安全作用域书签保持授权（`apps/app/src-tauri/src/platform/macos.rs`）。
 
+### 提交 Mac App Store 前必跑
+
+```bash
+scripts/mas-sandbox-check.sh   # 在临时签名的沙盒 bundle 里跑 CLI，确认接收目录是真实 ~/Downloads
+```
+
+沙盒会把 `$HOME` 重定向进容器，`files.downloads.read-write` 权限只有在代码真的写真实 `~/Downloads` 时才算"有对应功能"，否则 App Review 按 2.4.5 拒（2026-09-10 中过一次）。脚本输出 `FAIL` 就不要提交。
+
 ## Windows 签名（未接入）
 
 `.msi` 目前未签名，SmartScreen 会提示"未知发布者"。需要时可加 Authenticode 证书步骤（`signtool`）。

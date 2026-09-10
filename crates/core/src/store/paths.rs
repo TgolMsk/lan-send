@@ -102,6 +102,14 @@ impl AppPaths {
 /// Documents is the right answer on iOS: it exists, it is writable, and
 /// `UIFileSharingEnabled` exposes it in the Files app.
 fn download_dir() -> Option<PathBuf> {
+    // macOS: the App Sandbox redirects `$HOME` into the container, so the
+    // `directories` crate would answer with a Downloads folder buried inside
+    // it. Ask the system for the real home instead; the sandboxed build
+    // reaches it through `com.apple.security.files.downloads.read-write`.
+    #[cfg(target_os = "macos")]
+    if let Some(home) = super::platform::macos::real_home_dir() {
+        return Some(home.join("Downloads"));
+    }
     let dirs = UserDirs::new()?;
     pick_download_dir(
         dirs.download_dir(),

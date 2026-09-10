@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+### Fixed
+- Mac App Store 沙盒版收到的文件落在容器里的 `Downloads` 而不是用户的"下载"文件夹：沙盒把 `$HOME` 及所有 Foundation 主目录查询都重定向到容器，`directories` crate 跟着错。macOS 上改用 `getpwuid_r` 取真实主目录，默认接收目录为 `<真实主目录>/Downloads`；这也是 `com.apple.security.files.downloads.read-write` 权限真正的用途（App Review 2.4.5(i) 曾判定该权限无对应功能）。
+- 支持页（`docs/support.md`）补上电子邮件联系方式与更完整的 FAQ；App Review 按 1.5 认为只有 GitHub issues 链接不算可用的支持渠道。
+
+### Changed
+- `lan-send identity` 多打印一行 `Receive dir`，方便确认文件会收到哪里。
+
 ### Added
 - iOS 发送时可以直接从相册选图片和视频：发送弹窗在移动端多一个“相册”按钮，走系统照片选择器（`PHPicker`），选中的项目由系统复制到应用临时目录后按普通文件发送，不需要先存进“文件”App。选择类型从布尔的 `folders` 改为 `files / folders / media`；`Info.ios.plist` 补上 `NSPhotoLibraryUsageDescription`。
 
