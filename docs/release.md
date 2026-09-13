@@ -60,7 +60,7 @@ git push origin v0.1.0
 
 局域网发现依赖 UDP 组播；iOS 14 起组播需要向 Apple 申请 `com.apple.developer.networking.multicast` 权限（[申请入口](https://developer.apple.com/contact/request/networking-multicast)，需登录开发者账号，填 App 名称、App Store Connect 的 Apple ID、类别、应用用途与为什么需要组播）。2026-09-08 提交申请（Request ID `HTFYV6DZUK`），**2026-09-13 获批**。状态在 developer.apple.com › Identifiers › `com.wangsheng.lansend` › **Capability Requests** 标签查看（Multicast Networking 一行）。没有这个权限时 iOS 端和沙盒版 macOS 都只能靠子网扫描和已知地址发现设备（仍可用，只是慢一些）。
 
-获批后的启用步骤（entitlements 已于 2026-09-13 加上 `com.apple.developer.networking.multicast`：iOS 在 `apps/app/src-tauri/gen/apple/lan-send-app_iOS/lan-send-app_iOS.entitlements`，沙盒版 macOS 在 `apps/app/src-tauri/entitlements/mas.plist`）：
+获批后的启用步骤（**三步均已于 2026-09-13 完成**：App ID 已勾选 Multicast Networking，`Lan-Send Mac App Store` 描述文件已重建并更新 `MAS_PROVISIONING_PROFILE`，本地副本在 `~/Downloads/lan-send-mas/LanSend_Mac_App_Store.provisionprofile`；entitlements 已于 2026-09-13 加上 `com.apple.developer.networking.multicast`：iOS 在 `apps/app/src-tauri/gen/apple/lan-send-app_iOS/lan-send-app_iOS.entitlements`，沙盒版 macOS 在 `apps/app/src-tauri/entitlements/mas.plist`）：
 
 1. developer.apple.com › Identifiers › `com.wangsheng.lansend` › Capabilities 勾选 **Multicast Networking** › Save（获批后该项才会出现）。App ID 的能力变了，旧的描述文件全部失效。
 2. iOS：不用做别的，Release 的云端自动签名会重新生成带该能力的描述文件。
