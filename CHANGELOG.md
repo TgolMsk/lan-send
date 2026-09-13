@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-13
+
 ### Added
 - 界面支持八种语言（简中、繁中、英、日、韩、德、法、西），文案表移到 `apps/app/src/locales/*.json`，`pnpm build` 前校验键集合与占位符；语言偏好成为设置项 `app.language`（默认跟随系统），托盘菜单与文件对话框标题跟随该设置，iOS / macOS 的系统权限弹窗按 `*.lproj/InfoPlist.strings` 本地化（ADR-0016）。
 - 核心层新增 `runtime::ErrorCode`：传输失败、配对失败、IPC 命令错误都带语言无关的编码，前端据此显示翻译后的提示，未编码的保留原文。
@@ -81,7 +83,8 @@
 - 文档：开发简报、LocalSend v2.2 接口核对清单、协议差异与扩展、三端平台约束、UI 视觉参考、ADR-0001 仓库布局。
 - CI：macOS / Windows / Linux 格式与 clippy 与测试，iOS 交叉检查，Windows 与 macOS CLI 产物，cargo-deny 许可证检查，标签发布。
 
-[Unreleased]: https://github.com/TgolMsk/lan-send/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/TgolMsk/lan-send/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/TgolMsk/lan-send/releases/tag/v0.4.0
 [0.3.0]: https://github.com/TgolMsk/lan-send/releases/tag/v0.3.0
 [0.2.0]: https://github.com/TgolMsk/lan-send/releases/tag/v0.2.0
 [0.1.0]: https://github.com/TgolMsk/lan-send/releases/tag/v0.1.0
