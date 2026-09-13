@@ -15,6 +15,7 @@
 - 支持页（`docs/support.md`）补上电子邮件联系方式与更完整的 FAQ；App Review 按 1.5 认为只有 GitHub issues 链接不算可用的支持渠道。
 
 ### Changed
+- 新图标：深蓝圆角方块内衬白底的衬线 L 与薄荷绿纸飞机（源图 `docs/brand/logo.jpeg`）。`apps/app/scripts/make-icons.py` 从源图裁出满铺方形（iOS / Windows）、Apple 圆角模板（macOS）与侧栏品牌标，再由 `cargo tauri icon` 生成各尺寸；iOS 图标去掉 alpha 通道。商店截图随之重出。
 - 应用改名为 **LanSend**（产品名、窗口标题、`CFBundleDisplayName`、托盘、文档与商店文案）；bundle id `com.wangsheng.lansend`、数据目录 `lan-send`、CLI 二进制名与 WiX `UpgradeCode` 保持不变，升级不丢数据。
 - `lan-send identity` 多打印一行 `Receive dir`，方便确认文件会收到哪里。
 
