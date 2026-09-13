@@ -308,6 +308,14 @@ App Store Connect › App › 左侧“App 信息 / 版本信息”右上角语�
   > • Nuevo nombre e icono
   > • Descubrimiento de dispositivos más rápido en iPhone
 
+### 0.4.0 提交记录（2026-09-13）
+
+- iOS 0.4.0（构建 22）与 macOS 0.4.0（构建 22）均已提交审核，审核后自动发布。macOS 0.3.0（构建 20）先"从审核中移除"（状态变为"被开发者拒绝"），该状态下不能新建版本，只能把这个版本的版本号改成 0.4.0、换构建后重新提交。
+- **英语区名称 `LanSend` 已被别的 App 占用**（`STATE_ERROR.DUPLICATE_NAME.DIFFERENT_ACCOUNT`，App 名称按语言分别查重），英文名改为 `LanSend: Wi‑Fi File Transfer`；简中、繁中、日、韩、德、法、西均用 `LanSend`。想要英文也叫 `LanSend` 只能向 Apple 提交商标申诉。
+- **ASC 网页表单的坑**：截图上传后弹出的说明框会吃掉后续键盘输入；受控输入框用脚本直接赋值会被还原，要点进去 ⌘A 再键入；新增本地化时若名称撞名，页面只显示保存按钮带感叹号，没有任何文字提示——错误要从网络请求（`/iris/v1/appStoreVersionLocalizations` 409）里看。
+- 更省事的做法：登录后在浏览器控制台用 `fetch('/iris/v1/...', {credentials:'include'})` 直接调 ASC 内部接口，`appInfoLocalizations`（名称、副标题、隐私政策网址——**新语言必须补 privacyPolicyUrl**）与 `appStoreVersionLocalizations`（推广文本、描述、关键词、新功能、支持/营销网址）都能 POST / PATCH；平台首个版本没有 `whatsNew` 字段，PATCH 会报 `STATE_ERROR`。
+- 截图仍需在网页上传（各语言共用主语言的截图）；构建选择、审核备注、沙盒说明在网页填；macOS 的备注与沙盒说明从 0.3.0 保留并追加了 0.4.0 的说明。
+
 ## 四、参考
 
 - [苹果 App Store 已开启 ICP 备案强校验](https://www.baijing.cn/article/48165)
