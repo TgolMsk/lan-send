@@ -62,7 +62,7 @@ App Store Connect › App › 左侧“App 信息 / 版本信息”右上角语�
 
 ### English (U.S.)（ASC 本地化：en-US）
 - **名称**：LanSend
-- **副标题**：Share files over Wi‑Fi, no cloud
+- **副标题**：Wi‑Fi file sharing, no cloud
 - **推广文本**：Send photos, videos, folders and your clipboard between iPhone, Mac and Windows on the same Wi‑Fi. Nothing leaves your network.
 - **关键词**：`file transfer,wifi,share,localsend,clipboard,lan,photos,send,nearby,offline,p2p,airdrop`
 - **描述**：
