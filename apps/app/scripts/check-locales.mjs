@@ -3,8 +3,10 @@
 // translation lost. Run: node scripts/check-locales.mjs
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const dir = new URL("../src/locales/", import.meta.url).pathname;
+// fileURLToPath, not .pathname: on Windows the latter yields "/D:/…" which join() turns into "D:\D:\…".
+const dir = fileURLToPath(new URL("../src/locales/", import.meta.url));
 const en = JSON.parse(readFileSync(join(dir, "en.json"), "utf8"));
 const placeholders = (text) => [...text.matchAll(/\{[a-zA-Z]+\}/g)].map((m) => m[0]).sort().join(" ");
 let failed = false;
