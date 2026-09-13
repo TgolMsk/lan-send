@@ -17,6 +17,12 @@ iOS：配置了下面的 App Store Connect API Key secrets 后，`ios-testflight
 
 版本号取自标签；`0.x` 或带 `-` 的版本自动标记为预发布。发布说明取自 `CHANGELOG.md` 中对应版本的小节。
 
+publish 任务偶尔被 GitHub 接口 500 打断（2026-09-13 的 v0.4.0 连续两次），构建产物已存为 artifact，可在本机补传，不必重跑构建：
+
+```bash
+gh run download <run-id> --repo TgolMsk/lan-send --dir dist && mkdir -p flat && find dist -type f -exec mv {} flat/ \; && cd flat && shasum -a 256 * > SHA256SUMS.txt && gh release upload v<版本> --repo TgolMsk/lan-send --clobber *
+```
+
 ## 步骤
 
 ```bash
