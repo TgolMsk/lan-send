@@ -58,17 +58,20 @@ git push origin v0.1.0
 
 5. 之后推送 `v*` 标签或手动运行 Release（勾选 publish 与否都会上传 TestFlight）。上传后在 App Store Connect › TestFlight 里等处理完成（通常几分钟），加内部测试员即可安装。构建号取自 GitHub 的运行序号，每次自动递增。
 
-局域网发现依赖 UDP 组播；iOS 14 起组播需要向 Apple 申请 `com.apple.developer.networking.multicast` 权限（[申请入口](https://developer.apple.com/contact/request/networking-multicast)，需登录开发者账号，填 App 名称、App Store Connect 的 Apple ID、类别、应用用途与为什么需要组播）。**已于 2026-09-08 提交申请，Request ID `HTFYV6DZUK`**，结果发到账号邮箱（通常几天到几周）。没有这个权限时 iOS 端只能靠子网扫描和已知地址发现设备（仍可用，只是慢一些）。批准后三步启用：
+局域网发现依赖 UDP 组播；iOS 14 起组播需要向 Apple 申请 `com.apple.developer.networking.multicast` 权限（[申请入口](https://developer.apple.com/contact/request/networking-multicast)，需登录开发者账号，填 App 名称、App Store Connect 的 Apple ID、类别、应用用途与为什么需要组播）。2026-09-08 提交申请（Request ID `HTFYV6DZUK`），**2026-09-13 获批**。状态在 developer.apple.com › Identifiers › `com.wangsheng.lansend` › **Capability Requests** 标签查看（Multicast Networking 一行）。没有这个权限时 iOS 端和沙盒版 macOS 都只能靠子网扫描和已知地址发现设备（仍可用，只是慢一些）。
 
-1. developer.apple.com › Identifiers › `com.wangsheng.lansend` › Capabilities 勾选 **Multicast Networking** › Save（批准后该项才会出现）。
-2. `apps/app/src-tauri/gen/apple/lan-send-app_iOS/lan-send-app_iOS.entitlements` 加上：
+获批后的启用步骤（entitlements 已于 2026-09-13 加上 `com.apple.developer.networking.multicast`：iOS 在 `apps/app/src-tauri/gen/apple/lan-send-app_iOS/lan-send-app_iOS.entitlements`，沙盒版 macOS 在 `apps/app/src-tauri/entitlements/mas.plist`）：
 
-   ```xml
-   <key>com.apple.developer.networking.multicast</key>
-   <true/>
+1. developer.apple.com › Identifiers › `com.wangsheng.lansend` › Capabilities 勾选 **Multicast Networking** › Save（获批后该项才会出现）。App ID 的能力变了，旧的描述文件全部失效。
+2. iOS：不用做别的，Release 的云端自动签名会重新生成带该能力的描述文件。
+3. 沙盒版 macOS：描述文件是手动建的，必须重建——developer.apple.com › Profiles › `LanSend Mac App Store` › Edit › Save（或按下文 Mac App Store 一节第 4 步重新生成）› 下载，再更新 secret：
+
+   ```bash
+   gh secret set MAS_PROVISIONING_PROFILE --repo TgolMsk/lan-send < <(base64 -i ~/Downloads/LanSend_Mac_App_Store.provisionprofile)
    ```
 
-3. 重新跑 Release（云端自动签名会带上新权限）。批准前不要加这个键，否则签名会因描述文件缺少该权限而失败。
+   不更新的话 `app-mas` 任务在 `codesign --entitlements` 时会因描述文件缺少该权限而失败。
+4. 之后跑 Release。
 
 ## Mac App Store（沙盒版，ADR-0014）
 
@@ -81,7 +84,7 @@ git push origin v0.1.0
    openssl rand -base64 24 > p12-password.txt && chmod 600 p12-password.txt
    for n in distribution installer; do
      openssl req -new -newkey rsa:2048 -nodes -keyout $n.key -out $n.csr \
-       -subj "/emailAddress=你的AppleID邮箱/CN=Lan-Send $n/C=CN"
+       -subj "/emailAddress=你的AppleID邮箱/CN=LanSend $n/C=CN"
    done
    ```
 
@@ -99,8 +102,8 @@ git push origin v0.1.0
    ```
 
    本机验证：`security import distribution.p12 -P "$(cat p12-password.txt)"`（installer 同理）后，`security find-identity -v` 应列出 `Apple Distribution: …` 与 `3rd Party Mac Developer Installer: …`。
-4. developer.apple.com › Profiles › ＋ › Distribution › **Mac App Store Connect** › App ID `com.wangsheng.lansend` › 选上面的 Apple Distribution 证书 › 名称 `Lan-Send Mac App Store` › 下载 `.provisionprofile`。
-5. App Store Connect › Lan-Send › 左上角 App 名称旁的“添加平台”› macOS。
+4. developer.apple.com › Profiles › ＋ › Distribution › **Mac App Store Connect** › App ID `com.wangsheng.lansend` › 选上面的 Apple Distribution 证书 › 名称 `LanSend Mac App Store` › 下载 `.provisionprofile`。
+5. App Store Connect › LanSend › 左上角 App 名称旁的“添加平台”› macOS。
 6. 写入 secrets（前四个含私钥或密码，由账号持有人自己运行）：
 
 ```bash
@@ -109,7 +112,7 @@ gh secret set MAS_CERTIFICATE_P12 --repo TgolMsk/lan-send < <(base64 -i distribu
 gh secret set MAS_CERTIFICATE_PASSWORD --repo TgolMsk/lan-send < p12-password.txt
 gh secret set MAS_INSTALLER_CERTIFICATE_P12 --repo TgolMsk/lan-send < <(base64 -i installer.p12)
 gh secret set MAS_INSTALLER_CERTIFICATE_PASSWORD --repo TgolMsk/lan-send < p12-password.txt
-gh secret set MAS_PROVISIONING_PROFILE --repo TgolMsk/lan-send < <(base64 -i Lan-Send_Mac_App_Store.provisionprofile)
+gh secret set MAS_PROVISIONING_PROFILE --repo TgolMsk/lan-send < <(base64 -i LanSend_Mac_App_Store.provisionprofile)
 ```
 
 证书一年后过期（到期日见 developer.apple.com › Certificates），到期前按上面步骤重做并更新 secrets；描述文件随证书一起重建。

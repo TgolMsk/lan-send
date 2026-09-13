@@ -1,4 +1,4 @@
-# Lan-Send 商店提交前检查清单（iOS App Store / Mac App Store / TestFlight）
+# LanSend 商店提交前检查清单（iOS App Store / Mac App Store / TestFlight）
 
 适用范围：`com.wangsheng.lansend`，Team `VVB976RN4W`。每次提交（含重新提交）逐条过一遍；带 ★ 的是已经被拒过一次的项。审核备注是**按版本**保存的，新版本要重新粘贴。
 
@@ -22,7 +22,7 @@
   - 检查：`sh scripts/mas-sandbox-check.sh`，期望输出 `Receive dir: /Users/<你>/Downloads` 和 `OK`。
   - 修：脚本只比对字符串，把它改成测行为：在打印的接收目录里写探针文件，断言 `realpath` 落在 `$(dscl . -read /Users/$USER NFSHomeDirectory | awk '{print $2}')/Downloads` 下，然后删除。
 - **★ 真实沙盒 bundle 里完整收一次文件**
-  - 检查：用 CI 产物或本地 `codesign --force --sign - --entitlements apps/app/src-tauri/entitlements/mas.plist`（先用 PlistBuddy 删掉 `com.apple.application-identifier` 和 `com.apple.developer.team-identifier`）签一个 `Lan-Send.app`，从 Finder 双击启动；另一台设备（Lan-Send 或官方 LocalSend）发一个文件；确认文件出现在 `~/Downloads`，设置页"接收目录"占位符显示 `/Users/<你>/Downloads`，历史页"打开"和"在文件夹中显示"都能弹出预览 / Finder。
+  - 检查：用 CI 产物或本地 `codesign --force --sign - --entitlements apps/app/src-tauri/entitlements/mas.plist`（先用 PlistBuddy 删掉 `com.apple.application-identifier` 和 `com.apple.developer.team-identifier`）签一个 `LanSend.app`，从 Finder 双击启动；另一台设备（LanSend 或官方 LocalSend）发一个文件；确认文件出现在 `~/Downloads`，设置页"接收目录"占位符显示 `/Users/<你>/Downloads`，历史页"打开"和"在文件夹中显示"都能弹出预览 / Finder。
   - 同时开着 `log stream --style compact --predicate 'eventMessage CONTAINS "Sandbox: lan-send-app"'` 看有没有 `deny`。
   - 修：任何 `deny` 或 `Operation not permitted` 都要在提交前解决；"打开"失败则把 `/usr/bin/open` 子进程换成 `NSWorkspace.openURL`（`apps/app/src-tauri/src/platform/macos.rs`）。
 - **★ Downloads 的 TCC 弹窗必须有说明文案、拒绝后有出路**
@@ -30,7 +30,7 @@
   - 修：`apps/app/src-tauri/Info.plist` 加 `NSDownloadsFolderUsageDescription`（如 `Files other devices send you are saved to your Downloads folder.`）；`crates/core/src/runtime/incoming.rs` 里 `Destination::new` 返回 EPERM 时，把原始错误替换成指向"系统设置 › 隐私与安全性 › 文件和文件夹"的提示，并建议改用设置页"选择文件夹"（powerbox 选的目录不会再弹窗）。
   - 注意：在 Terminal 里启动会继承 Terminal 的完全磁盘访问，看不到弹窗，验证无效。
 - **权限清单与描述文件一致**
-  - 检查：`pkgutil --expand-full Lan-Send.pkg /tmp/pkg && codesign -d --entitlements :- /tmp/pkg/Payload/Lan-Send.app`，逐 key 对比 `apps/app/src-tauri/entitlements/mas.plist`（多出的 `beta-reports-active` 是描述文件注入的，正常）；`TeamIdentifier=VVB976RN4W`。
+  - 检查：`pkgutil --expand-full LanSend.pkg /tmp/pkg && codesign -d --entitlements :- /tmp/pkg/Payload/LanSend.app`，逐 key 对比 `apps/app/src-tauri/entitlements/mas.plist`（多出的 `beta-reports-active` 是描述文件注入的，正常）；`TeamIdentifier=VVB976RN4W`。
   - 修：证书续期后 `mas.plist` 里的 `application-identifier` / `team-identifier` 必须和新描述文件一致（`docs/release.md` 证书一节）。
 - **每个权限都有"哪里用、怎么验、为什么静态扫描看不见"三句话**
   - 检查：第 2 节表格里的说明已粘贴到 ASC 版本页"App 沙盒信息"和"App 审核信息 › 备注"。
@@ -51,7 +51,7 @@
   - 检查：`crates/core/src/store/settings.rs` 默认 `CmdOrCtrl+Shift+V`，会吞掉其他 App 的"粘贴为纯文本"。
   - 修：默认留空，由用户在设置页开启；捕获 `FailedToWatchMediaKeyEvent` 并提示沙盒版拿不到输入监控。
 - **未配对时不要读剪贴板（macOS 26 会弹粘贴隐私提示）**
-  - 检查：在 macOS 26 上开着 Lan-Send 在 Safari 复制一段文字，看是否弹"Lan-Send 想要粘贴"。
+  - 检查：在 macOS 26 上开着 LanSend 在 Safari 复制一段文字，看是否弹"LanSend 想要粘贴"。
   - 修：`crates/core/src/runtime/clipboard.rs` 只有 `clipboard_peers()` 非空时才启动 watcher / `backend.read()`。
 - **拖拽到设备行要能发送**
   - 检查：沙盒 bundle 里从桌面拖文件到设备行，不能出现 `Permission denied`。
@@ -66,7 +66,7 @@
 - **用途说明**：macOS `NSLocalNetworkUsageDescription`、`NSDownloadsFolderUsageDescription`；iOS `NSLocalNetworkUsageDescription`、`NSPhotoLibraryUsageDescription`。缺一个补一个。
 - **版权**：`grep -n copyright apps/app/src-tauri/tauri.conf.json` 无结果则在 `bundle` 下加 `NSHumanReadableCopyright` = `© 2026 Wang Sheng`（已加在 `apps/app/src-tauri/Info.plist` 与 `Info.ios.plist`），和 ASC 的版权字段一字不差。
 - **类别**：`bundle.category = "Utility"` → `LSApplicationCategoryType = public.app-category.utilities`；ASC 两个平台主类别都选"工具"。
-- **PrivacyInfo.xcprivacy**：iOS 已有 `apps/app/src-tauri/gen/apple/PrivacyInfo.xcprivacy`（`project.yml` 以 resources 阶段打进 bundle 根目录；`NSPrivacyTracking=false`、无收集数据、`FileTimestamp` 理由 `C617.1` / `3B52.1`）。检查：模拟器构建后 `ls gen/apple/build/arm64-sim/Lan-Send.app/PrivacyInfo.xcprivacy` 存在；上传邮件里没有 `ITMS-91053`。若日后用到磁盘空间 / 启动时间 API，补 `DiskSpace E174.1`、`SystemBootTime 35F9.1`。macOS 暂不强制。改 `project.yml` 后要 `xcodegen generate`，且 `Sources` / `Externals` 已加 `excludes`（否则本地 `libapp.a` 会被打成资源）。
+- **PrivacyInfo.xcprivacy**：iOS 已有 `apps/app/src-tauri/gen/apple/PrivacyInfo.xcprivacy`（`project.yml` 以 resources 阶段打进 bundle 根目录；`NSPrivacyTracking=false`、无收集数据、`FileTimestamp` 理由 `C617.1` / `3B52.1`）。检查：模拟器构建后 `ls gen/apple/build/arm64-sim/LanSend.app/PrivacyInfo.xcprivacy` 存在；上传邮件里没有 `ITMS-91053`。若日后用到磁盘空间 / 启动时间 API，补 `DiskSpace E174.1`、`SystemBootTime 35F9.1`。macOS 暂不强制。改 `project.yml` 后要 `xcodegen generate`，且 `Sources` / `Externals` 已加 `excludes`（否则本地 `libapp.a` 会被打成资源）。
 
 ### 1.5 提交前顺手整理（不阻塞审核，但每次看到就修）
 
@@ -82,7 +82,7 @@
 | 权限 | 代码里对应功能 | 审核时怎么说明（英文粘贴到 App 沙盒信息 / 备注） |
 |---|---|---|
 | `com.apple.security.app-sandbox` | MAS 必需；ADR-0014；单一 Mach-O，无嵌套二进制 | 无需说明 |
-| `com.apple.security.network.server` ★ | `crates/core/src/transport/server/mod.rs` `TcpListener::bind(0.0.0.0:53317)` + IPv6 socket；`crates/core/src/discovery/multicast.rs` `join_multicast_v4(224.0.0.167)` / v6；`discovery/mod.rs` `recv_from` | `Runs an HTTPS server on TCP 53317 (LocalSend v2 prepare-upload/upload) and joins UDP multicast 224.0.0.167:53317 to answer discovery. Implemented with BSD sockets from Rust (std::net/tokio), not Network.framework, so static analysis does not detect it. Verify: install Lan-Send or LocalSend on a second device and send a file, or run 'nc -vz <mac-ip> 53317'.` |
+| `com.apple.security.network.server` ★ | `crates/core/src/transport/server/mod.rs` `TcpListener::bind(0.0.0.0:53317)` + IPv6 socket；`crates/core/src/discovery/multicast.rs` `join_multicast_v4(224.0.0.167)` / v6；`discovery/mod.rs` `recv_from` | `Runs an HTTPS server on TCP 53317 (LocalSend v2 prepare-upload/upload) and joins UDP multicast 224.0.0.167:53317 to answer discovery. Implemented with BSD sockets from Rust (std::net/tokio), not Network.framework, so static analysis does not detect it. Verify: install LanSend or LocalSend on a second device and send a file, or run 'nc -vz <mac-ip> 53317'.` |
 | `com.apple.security.network.client` | `crates/core/src/transport/client.rs` `reqwest` (rustls, 指纹固定)；`discovery/mod.rs` `send_to` 组播公告与 `register` | `Outbound HTTPS to other devices on the LAN for registration and file upload; UDP announce on 224.0.0.167:53317.` |
 | `com.apple.security.files.downloads.read-write` ★ | 默认接收目录 `crates/core/src/store/paths.rs` `download_dir()` → `store/platform/macos.rs` `getpwuid_r` 真实主目录 `/Downloads`；写入 `transport/server/save.rs`（`.lan-send.part` + rename）、`transfer/incoming.rs` `create_dir_all`；设置页占位符与 `lan-send identity` 显示该路径 | `Received files are saved to the user's ~/Downloads by default without an open/save panel, using POSIX file APIs from Rust (invisible to static analysis). The first receive triggers the standard Downloads-folder consent prompt; please allow it. Verify: Settings › Receive folder shows /Users/<user>/Downloads; send a file from another device and it appears there; History › Show in folder opens it in Finder.` 已排除的误判：容器 `Data/Downloads` 本身就是指向真实 `~/Downloads` 的符号链接，旧构建也在写真实目录，被拒是静态扫描而非目录错误，所以**说明 + 录屏**才是关键，代码修复只是让路径显式可读。 |
 | `com.apple.security.files.user-selected.read-write` | `apps/app/src-tauri/src/commands/app.rs` `cmd_app_pick_files` / `cmd_app_pick_folder`（tauri-plugin-dialog → rfd → `NSOpenPanel`）；读所选文件 `transport/client.rs`；写所选接收目录 `save.rs` | `NSOpenPanel is used to pick files/folders to send (read) and to choose a custom receive folder (write).` 静态扫描能看到 `NSOpenPanel`，一般不会被质疑。 |
@@ -91,19 +91,19 @@
 
 **不要申请的权限**（代码里没有对应调用，加了必被 2.4.5 拒）：`device.camera`、`device.microphone`、`personal-information.photos-library`、`automation.apple-events`（打开文件用 `/usr/bin/open` 子进程、Finder 显示用 `NSWorkspace`，都不需要）、`inherit`（无 helper）、`print`、任何 `temporary-exception`。全局快捷键走 Carbon `RegisterEventHotKey`，托盘、`NSPasteboard` 都不需要权限。
 
-**iOS 对应项**：无 App Sandbox 权限文件；组播权限 `com.apple.developer.networking.multicast` 未获批，审核网络禁组播时发现不到设备，备注里必须写"按地址发送"（输入对方 IP）作为备选路径。
+**iOS 对应项**：无 App Sandbox 权限文件；组播权限 `com.apple.developer.networking.multicast` 2026-09-13 已获批并写入 entitlements。审核网络仍可能禁组播，备注里照旧写"按地址发送"（输入对方 IP）作为备选路径。
 
 ## 3. 元数据与公开页面
 
-- **App 名称**：ASC 两个平台"App 名称"字段都必须是 `Lan-Send`，与 `CFBundleDisplayName` 一致（2.3）。仓库里统一：`grep -rn "lan-send" docs/_config.yml docs/index.md docs/privacy.md README.md apps/app/src/pages/Settings.tsx apps/app/src/i18n.ts`，用户可见处全部改为 `Lan-Send`；`lan-send` 只保留给 CLI 二进制、crate 名、仓库 slug。
+- **App 名称**：ASC 两个平台"App 名称"字段都必须是 `LanSend`，与 `CFBundleDisplayName` 一致（2.3）。仓库里统一：`grep -rn "lan-send" docs/_config.yml docs/index.md docs/privacy.md README.md apps/app/src/pages/Settings.tsx apps/app/src/i18n.ts`，用户可见处全部改为 `LanSend`；`lan-send` 只保留给 CLI 二进制、crate 名、仓库 slug。
 - **描述**：加一句 `Not affiliated with the LocalSend project; implements the open LocalSend protocol.`，预防 4.1 / 5.2.1 追问。
 - **类别**：两个平台主类别"工具"。
 - **版权**：ASC 版本页 › 版权 = `© 2026 Wang Sheng`，与 plist 的 `NSHumanReadableCopyright` 一字不差。
 - **★ 技术支持 URL** `https://tgolmsk.github.io/lan-send/support`（源 `docs/support.md`）
-  - 检查：`curl -sL https://tgolmsk.github.io/lan-send/support | grep -c 'mailto:'` ≥ 1；页面顶部就是不需注册的联系方式（邮箱 + 回复时限），GitHub issues 只作补充；英文段放前面或顶部加 `[English below]` 锚点；`<title>` 用 `Lan-Send`。
+  - 检查：`curl -sL https://tgolmsk.github.io/lan-send/support | grep -c 'mailto:'` ≥ 1；页面顶部就是不需注册的联系方式（邮箱 + 回复时限），GitHub issues 只作补充；英文段放前面或顶部加 `[English below]` 锚点；`<title>` 用 `LanSend`。
   - 修：改 `docs/support.md` 推送，GitHub Pages 几分钟生效，无需新构建；提交前再 `curl -sI` 看 `last-modified` 已更新。
 - **隐私政策 URL** `https://tgolmsk.github.io/lan-send/privacy`（源 `docs/privacy.md`）
-  - 检查：`curl -sL … | grep -c mailto:` ≥ 1；内容覆盖：不收集数据、无服务器、TLS、本地存储；局域网发现会向同网段设备广播设备名 / 型号 / 证书指纹；iOS 照片选择器只复制所选项目（PHPicker，无相册权限）；标题 `Lan-Send`；"最后更新"日期为当次修改日。
+  - 检查：`curl -sL … | grep -c mailto:` ≥ 1；内容覆盖：不收集数据、无服务器、TLS、本地存储；局域网发现会向同网段设备广播设备名 / 型号 / 证书指纹；iOS 照片选择器只复制所选项目（PHPicker，无相册权限）；标题 `LanSend`；"最后更新"日期为当次修改日。
   - 修：缺项补齐，保持"不收集数据"措辞与 ASC App 隐私一致。
 - **App 隐私**：选"不收集数据"。
 - **年龄分级**：2026 版问卷，无社交 / UGC / 付费，结果 4+。
@@ -126,7 +126,7 @@
 
 1. **真机屏幕录像**（模拟器不算）：从启动 App 开始，覆盖发现设备 → 发送文件 → 接收文件 → 历史页打开文件 → 设置页；macOS 版录到文件出现在 `~/Downloads` 和 Finder 显示；录一段"按地址发送"输入 IP 的路径；无注册 / 登录 / 注销、无 UGC、无付费，在备注里写明。文件 `.mov` / `.mp4`，作为附件放在 App 审核信息。
 2. **用途与目标用户**：局域网内设备间直接互传文件与剪贴板，无云端，面向同一 Wi‑Fi 下有多台设备的用户。
-3. **使用与访问说明**：无账号无凭据；验证步骤 = 第二台设备装 Lan-Send 或 LocalSend（同协议）→ 两台同网 → 设备列表出现对方 → 选文件发送 → 对方接受；审核网络禁组播时用"按地址发送"。
+3. **使用与访问说明**：无账号无凭据；验证步骤 = 第二台设备装 LanSend 或 LocalSend（同协议）→ 两台同网 → 设备列表出现对方 → 选文件发送 → 对方接受；审核网络禁组播时用"按地址发送"。
 4. **依赖的外部服务**：无（无数据源、无认证、无支付、无 AI）。
 5. **地区差异**：无，仅界面语言跟随系统（中 / 英）。
 6. **监管与第三方素材**：不属于强监管行业；LocalSend 协议为开放规范，独立实现，未打包其代码或素材。
@@ -135,7 +135,7 @@
 
 ```
 Purpose: peer-to-peer file and clipboard transfer between devices on the same LAN. No account, no server, no data collection.
-How to test: install Lan-Send (or LocalSend, same open protocol) on a second device on the same Wi-Fi; it appears in Devices; pick a file and send; accept on the receiver. If multicast is blocked on your network, use "Send by address" and enter the other device's IP (port 53317).
+How to test: install LanSend (or LocalSend, same open protocol) on a second device on the same Wi-Fi; it appears in Devices; pick a file and send; accept on the receiver. If multicast is blocked on your network, use "Send by address" and enter the other device's IP (port 53317).
 Entitlements (macOS): <第 2 节 network.server / network.client / files.downloads.read-write / files.user-selected / bookmarks 五段>
 Prompts you will see: Local Network (first launch); Downloads folder access (first receive, macOS) — please Allow.
 Not affiliated with the LocalSend project. Support: <邮箱>. Screen recording attached.
@@ -159,7 +159,7 @@ Not affiliated with the LocalSend project. Support: <邮箱>. Screen recording a
 - C：第 4 节六项 + 录屏。
 - D：改代码 → 1.1–1.4 全部重跑 → 提交 `CHANGELOG.md` 条目 → 打新 `v*` 标签走 `release.yml` → 等 ASC 处理完成。
 
-**第三步：ASC 精确按钮顺序**（App Store Connect › 我的 App › Lan-Send › 左侧选该平台被拒版本）
+**第三步：ASC 精确按钮顺序**（App Store Connect › 我的 App › LanSend › 左侧选该平台被拒版本）
 
 1. 版本页顶部"被拒"提示 → 打开 App 审核消息线程，点 **回复 App 审核**，粘贴英文说明；A / C 类在这里附录屏。
 2. 同一版本页 → **App 审核信息 › 备注**：把同样的说明合并进去（≤ 4000 字符，超长会报"此栏过长"）；macOS 再补 **App 沙盒信息**。
