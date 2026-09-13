@@ -5,6 +5,7 @@
 import type {
   ClipboardView,
   DeviceView,
+  ErrorCode,
   EventName,
   IdentityView,
   MediaInfo,
@@ -28,16 +29,25 @@ async function tauriInvoke<T>(command: string, args?: Record<string, unknown>): 
   return invoke<T>(command, args);
 }
 
+/** A command failed: `code` is the language-neutral reason when known. */
+export class IpcError extends Error {
+  code: ErrorCode | null;
+  constructor(message: string, code: ErrorCode | null) {
+    super(message);
+    this.name = "IpcError";
+    this.code = code;
+  }
+}
+
 async function invoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
   if (isTauri) {
     try {
       return await tauriInvoke<T>(command, args);
     } catch (err) {
-      const message =
-        typeof err === "object" && err !== null && "message" in err
-          ? String((err as { message: unknown }).message)
-          : String(err);
-      throw new Error(message);
+      const record = typeof err === "object" && err !== null ? (err as Record<string, unknown>) : null;
+      const message = record && "message" in record ? String(record.message) : String(err);
+      const code = record && typeof record.code === "string" ? (record.code as ErrorCode) : null;
+      throw new IpcError(message, code);
     }
   }
   const { mockInvoke } = await import("./mock");

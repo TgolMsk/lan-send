@@ -32,7 +32,7 @@ export function formatAgo(seconds: number): string {
 
 export function formatTime(seconds: number): string {
   const date = new Date(seconds * 1000);
-  return date.toLocaleString(getLocale() === "zh" ? "zh-CN" : "en-US", {
+  return date.toLocaleString(getLocale(), {
     month: "short",
     day: "numeric",
     hour: "2-digit",

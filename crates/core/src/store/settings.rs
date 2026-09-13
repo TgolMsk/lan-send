@@ -85,6 +85,9 @@ pub struct AppSettings {
     pub auto_accept_paired: bool,
     /// Show a system notification for received files and clipboard items.
     pub notifications: bool,
+    /// Interface language: a BCP 47 tag the app ships (`en`, `zh-Hans`,
+    /// `zh-Hant`, `ja`, `ko`, `de`, `fr`, `es`) or `system`.
+    pub language: String,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -104,6 +107,7 @@ impl Default for AppSettings {
             theme: Theme::Dark,
             auto_accept_paired: false,
             notifications: true,
+            language: "system".to_string(),
         }
     }
 }

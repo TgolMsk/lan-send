@@ -85,6 +85,7 @@ export interface TransferView {
   state: TransferState;
   clipboardIntent: boolean;
   error: string | null;
+  errorCode: ErrorCode | null;
   startedAt: number;
   finishedAt: number | null;
 }
@@ -179,8 +180,19 @@ export interface Settings {
     theme: "dark" | "light" | "system";
     autoAcceptPaired: boolean;
     notifications: boolean;
+    /** A locale the app ships or "system". */
+    language: string;
   };
 }
+
+/** Mirrors `lan_send_core::runtime::ErrorCode` (kebab-case). */
+export type ErrorCode =
+  | "unreachable" | "timeout" | "declined" | "busy" | "pin-required" | "pin-rejected"
+  | "cancelled" | "peer-gone" | "disk-full" | "permission-denied" | "not-found"
+  | "checksum-mismatch" | "not-paired" | "runtime-stopped" | "port-in-use"
+  | "invalid-address" | "tls" | "unsupported" | "nothing-accepted" | "partial-failure"
+  | "device-not-found" | "no-receive-dir" | "invalid" | "pair-declined" | "pair-timeout"
+  | "pair-busy" | "pair-unsupported" | "pair-withdrawn" | "pair-code-mismatch" | "unknown";
 
 export interface PlatformInfo {
   os: string;
@@ -216,11 +228,11 @@ export type RuntimeEvent =
   | { type: "transfer-needs-pin"; transferId: string; message: string }
   | { type: "pair-request"; fingerprint: string; alias: string; host: string; code: string }
   | { type: "pair-response"; fingerprint: string; alias: string; code: string }
-  | { type: "pair-result"; fingerprint: string; alias: string; paired: boolean; message: string | null }
+  | { type: "pair-result"; fingerprint: string; alias: string; paired: boolean; code: ErrorCode | null; message: string | null }
   | { type: "clipboard-received"; item: ClipboardView }
   | { type: "clipboard-local"; item: ClipboardView }
   | { type: "clipboard-sync"; active: boolean; peers: string[]; message: string | null }
   | { type: "media-ready"; path: string; media: MediaInfo }
-  | { type: "error"; scope: string; message: string };
+  | { type: "error"; scope: string; code: ErrorCode | null; message: string };
 
 export type EventName = RuntimeEvent["type"] | "runtime-state";

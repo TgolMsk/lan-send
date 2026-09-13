@@ -1,25 +1,22 @@
 //! Desktop-only pieces shared by macOS and Windows: tray icon, global
 //! shortcut, close-to-tray.
 
-use crate::AppState;
 use crate::state::EVENT_PREFIX;
+use crate::{AppState, Locale};
 use std::sync::atomic::Ordering;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
-pub fn setup(app: &AppHandle) -> anyhow::Result<()> {
-    let show = MenuItem::with_id(app, "show", "Open Lan-Send", true, None::<&str>)?;
-    let push = MenuItem::with_id(
-        app,
-        "push",
-        "Push clipboard to paired devices",
-        true,
-        None::<&str>,
-    )?;
-    let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-    let menu = Menu::with_items(
+const TRAY_ID: &str = "main";
+
+fn tray_menu(app: &AppHandle, locale: Locale) -> tauri::Result<Menu<tauri::Wry>> {
+    let strings = locale.strings();
+    let show = MenuItem::with_id(app, "show", strings.tray_open, true, None::<&str>)?;
+    let push = MenuItem::with_id(app, "push", strings.tray_push, true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", strings.tray_quit, true, None::<&str>)?;
+    Menu::with_items(
         app,
         &[
             &show,
@@ -28,14 +25,35 @@ pub fn setup(app: &AppHandle) -> anyhow::Result<()> {
             &PredefinedMenuItem::separator(app)?,
             &quit,
         ],
-    )?;
+    )
+}
+
+/// Rebuilds the tray menu in the language from the settings.
+pub async fn apply_language_from_settings(app: &AppHandle) {
+    let locale = app.state::<AppState>().locale().await;
+    if let Some(tray) = app.tray_by_id(TRAY_ID) {
+        match tray_menu(app, locale) {
+            Ok(menu) => {
+                if let Err(err) = tray.set_menu(Some(menu)) {
+                    tracing::warn!("could not update the tray menu: {err}");
+                }
+            }
+            Err(err) => tracing::warn!("could not build the tray menu: {err}"),
+        }
+    }
+}
+
+pub fn setup(app: &AppHandle) -> anyhow::Result<()> {
+    // The settings are not loaded yet: start with the system language and
+    // switch once the runtime is up (`apply_language_from_settings`).
+    let menu = tray_menu(app, Locale::system())?;
     let icon = app
         .default_window_icon()
         .cloned()
         .ok_or_else(|| anyhow::anyhow!("the bundle has no icon"))?;
-    TrayIconBuilder::with_id("main")
+    TrayIconBuilder::with_id(TRAY_ID)
         .icon(icon)
-        .tooltip("Lan-Send")
+        .tooltip("LanSend")
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {

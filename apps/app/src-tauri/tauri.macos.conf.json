@@ -3,6 +3,16 @@
     "macOS": {
       "entitlements": null,
       "signingIdentity": null
+    },
+    "resources": {
+      "locales/en.lproj/InfoPlist.strings": "en.lproj/InfoPlist.strings",
+      "locales/zh-Hans.lproj/InfoPlist.strings": "zh-Hans.lproj/InfoPlist.strings",
+      "locales/zh-Hant.lproj/InfoPlist.strings": "zh-Hant.lproj/InfoPlist.strings",
+      "locales/ja.lproj/InfoPlist.strings": "ja.lproj/InfoPlist.strings",
+      "locales/ko.lproj/InfoPlist.strings": "ko.lproj/InfoPlist.strings",
+      "locales/de.lproj/InfoPlist.strings": "de.lproj/InfoPlist.strings",
+      "locales/fr.lproj/InfoPlist.strings": "fr.lproj/InfoPlist.strings",
+      "locales/es.lproj/InfoPlist.strings": "es.lproj/InfoPlist.strings"
     }
   }
 }

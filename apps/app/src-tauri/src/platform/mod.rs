@@ -31,6 +31,8 @@ pub async fn after_runtime_start(app: &AppHandle) {
     macos::restore_receive_dir();
     #[cfg(desktop)]
     desktop::apply_shortcut_from_settings(app).await;
+    #[cfg(desktop)]
+    desktop::apply_language_from_settings(app).await;
     #[cfg(mobile)]
     let _ = app;
 }

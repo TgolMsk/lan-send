@@ -2,11 +2,12 @@
 // subscribed through useSyncExternalStore; actions are plain functions.
 
 import { useSyncExternalStore } from "react";
-import { ipc, isTauri, listen } from "./ipc";
-import { getLocale, setLocale as applyLocale, t, type Locale } from "./i18n";
+import { IpcError, ipc, isTauri, listen } from "./ipc";
+import { getLocale, hasKey, setLanguage, t, type LanguageSetting, type Locale } from "./i18n";
 import type {
   ClipboardView,
   DeviceView,
+  ErrorCode,
   IdentityView,
   IncomingRequestView,
   PlatformInfo,
@@ -177,6 +178,24 @@ function sampleSpeed(transferId: string, totalDone: number) {
   });
 }
 
+function applyLanguage(settings: Settings | null) {
+  const language = settings?.app.language;
+  setLanguage(language === "system" || language == null ? "system" : (language as Locale));
+  set({ locale: getLocale() });
+}
+
+/** Translated text for an error code, or the raw message when unknown. */
+export function errorText(code: ErrorCode | null | undefined, message: string): string {
+  const key = code ? `error.${code}` : "";
+  return key && hasKey(key) ? t(key) : message;
+}
+
+/** What to show for a failed command. */
+export function describeError(err: unknown): string {
+  if (err instanceof IpcError) return errorText(err.code, err.message);
+  return String(err instanceof Error ? err.message : err);
+}
+
 function applyTheme(settings: Settings | null) {
   const theme = settings?.app.theme ?? "dark";
   const dark = theme === "system" ? window.matchMedia("(prefers-color-scheme: dark)").matches : theme === "dark";
@@ -256,7 +275,7 @@ function handleEvent(event: RuntimeEvent) {
       }));
       delete progressMarks[transfer.id];
       if (transfer.state === "finished") toast("success", t("toast.transferFinished", { alias: transfer.peerAlias }));
-      else if (transfer.state === "failed") toast("error", `${t("toast.transferFailed", { alias: transfer.peerAlias })}${transfer.error ? ` · ${transfer.error}` : ""}`);
+      else if (transfer.state === "failed") toast("error", `${t("toast.transferFailed", { alias: transfer.peerAlias })}${transfer.error ? ` · ${errorText(transfer.errorCode, transfer.error)}` : ""}`);
       void loadHistory();
       break;
     }
@@ -275,10 +294,10 @@ function handleEvent(event: RuntimeEvent) {
       break;
     case "pair-result":
       set((s) => ({
-        pair: s.pair && s.pair.fingerprint === event.fingerprint ? { ...s.pair, stage: "done", paired: event.paired, message: event.message } : s.pair,
+        pair: s.pair && s.pair.fingerprint === event.fingerprint ? { ...s.pair, stage: "done", paired: event.paired, message: event.message ? errorText(event.code, event.message) : event.message } : s.pair,
       }));
       if (event.paired) toast("success", t("pair.success", { alias: event.alias }));
-      else if (event.message) toast("info", `${t("pair.failed")}: ${event.message}`);
+      else if (event.message) toast("info", `${t("pair.failed")}: ${errorText(event.code, event.message)}`);
       void refreshDevices();
       void loadClipboardSync();
       break;
@@ -297,7 +316,7 @@ function handleEvent(event: RuntimeEvent) {
       if (event.message) toast("info", event.message);
       break;
     case "error":
-      toast("error", event.message);
+      toast("error", errorText(event.code, event.message));
       break;
   }
 }
@@ -378,6 +397,7 @@ async function loadAll() {
     ipc.transfer.list(),
   ]);
   applyTheme(settings);
+  applyLanguage(settings);
   set({ identity, settings, devices: sortDevices(devices), transfers });
   void loadHistory();
   void loadClipboard();
@@ -395,7 +415,7 @@ export async function refreshDevices() {
     await ipc.devices.refresh();
     set({ devices: sortDevices(await ipc.devices.list()) });
   } catch (err) {
-    toast("error", String(err instanceof Error ? err.message : err));
+    toast("error", describeError(err));
   }
 }
 
@@ -403,7 +423,7 @@ export async function retryRuntime() {
   try {
     await ipc.app.restart();
   } catch (err) {
-    toast("error", String(err instanceof Error ? err.message : err));
+    toast("error", describeError(err));
   }
 }
 
@@ -423,7 +443,7 @@ export async function pickFiles(kind: PickKind = "files"): Promise<string[]> {
   try {
     return await ipc.app.pickFiles(kind);
   } catch (err) {
-    toast("error", String(err instanceof Error ? err.message : err));
+    toast("error", describeError(err));
     return [];
   }
 }
@@ -433,7 +453,7 @@ export async function sendFiles(device: string, paths: string[], pin?: string) {
     await ipc.transfer.send(device, paths, pin);
     set({ sendDraft: null, page: "transfers" });
   } catch (err) {
-    toast("error", String(err instanceof Error ? err.message : err));
+    toast("error", describeError(err));
   }
 }
 
@@ -443,7 +463,7 @@ export async function respondIncoming(sessionId: string, accept: boolean) {
     await ipc.transfer.respondIncoming(sessionId, accept);
     if (accept) set({ page: "transfers" });
   } catch (err) {
-    toast("error", String(err instanceof Error ? err.message : err));
+    toast("error", describeError(err));
   }
 }
 
@@ -452,7 +472,7 @@ export async function providePin(transferId: string, pin: string | null) {
   try {
     await ipc.transfer.providePin(transferId, pin);
   } catch (err) {
-    toast("error", String(err instanceof Error ? err.message : err));
+    toast("error", describeError(err));
   }
 }
 
@@ -461,7 +481,7 @@ export async function respondConflict(conflict: Conflict, overwrite: boolean) {
   try {
     await ipc.transfer.respondConflict(conflict.sessionId, conflict.fileId, overwrite);
   } catch (err) {
-    toast("error", String(err instanceof Error ? err.message : err));
+    toast("error", describeError(err));
   }
 }
 
@@ -469,7 +489,7 @@ export async function cancelTransfer(transferId: string) {
   try {
     await ipc.transfer.cancel(transferId);
   } catch (err) {
-    toast("error", String(err instanceof Error ? err.message : err));
+    toast("error", describeError(err));
   }
 }
 
@@ -493,7 +513,7 @@ export async function startPair(device: DeviceView | string) {
     }));
   } catch (err) {
     set({ pair: null });
-    toast("error", String(err instanceof Error ? err.message : err));
+    toast("error", describeError(err));
   }
 }
 
@@ -506,7 +526,7 @@ export async function confirmPair(matches: boolean) {
     if (!matches) set({ pair: null });
   } catch (err) {
     set({ pair: null });
-    toast("error", String(err instanceof Error ? err.message : err));
+    toast("error", describeError(err));
   }
 }
 
@@ -520,7 +540,7 @@ export async function unpair(device: DeviceView) {
     toast("info", t("pair.unpaired", { alias: device.displayName }));
     await refreshDevices();
   } catch (err) {
-    toast("error", String(err instanceof Error ? err.message : err));
+    toast("error", describeError(err));
   }
 }
 
@@ -529,7 +549,7 @@ export async function setFavorite(device: DeviceView, favorite: boolean) {
   try {
     await ipc.devices.setFavorite(device.fingerprint, favorite);
   } catch (err) {
-    toast("error", String(err instanceof Error ? err.message : err));
+    toast("error", describeError(err));
   }
 }
 
@@ -538,7 +558,7 @@ export async function renameDevice(device: DeviceView, alias: string | null) {
     await ipc.devices.setAlias(device.fingerprint, alias);
     set({ devices: sortDevices(await ipc.devices.list()) });
   } catch (err) {
-    toast("error", String(err instanceof Error ? err.message : err));
+    toast("error", describeError(err));
   }
 }
 
@@ -547,7 +567,7 @@ export async function forgetDevice(device: DeviceView) {
   try {
     await ipc.devices.forget(device.fingerprint);
   } catch (err) {
-    toast("error", String(err instanceof Error ? err.message : err));
+    toast("error", describeError(err));
   }
 }
 
@@ -555,13 +575,14 @@ export async function saveSettings(settings: Settings) {
   try {
     const restarted = await ipc.app.settingsUpdate(settings);
     applyTheme(settings);
+    applyLanguage(settings);
     set({ settings });
     toast("success", restarted ? t("settings.restarted") : t("settings.saved"));
     if (restarted) {
       set({ identity: await ipc.app.identity() });
     }
   } catch (err) {
-    toast("error", String(err instanceof Error ? err.message : err));
+    toast("error", describeError(err));
   }
 }
 
@@ -600,7 +621,7 @@ export async function mediaCacheClear(): Promise<number> {
     set({ media: {} });
     return freed;
   } catch (err) {
-    toast("error", String(err));
+    toast("error", describeError(err));
     return 0;
   }
 }
@@ -610,7 +631,7 @@ export async function deleteHistory(id: string) {
   try {
     await ipc.history.delete(id);
   } catch (err) {
-    toast("error", String(err instanceof Error ? err.message : err));
+    toast("error", describeError(err));
   }
 }
 
@@ -619,7 +640,7 @@ export async function clearHistory() {
   try {
     await ipc.history.clear();
   } catch (err) {
-    toast("error", String(err instanceof Error ? err.message : err));
+    toast("error", describeError(err));
   }
 }
 
@@ -649,7 +670,7 @@ export async function setClipboardSync(enabled: boolean) {
       settings: s.settings ? { ...s.settings, clipboard: { ...s.settings.clipboard, syncEnabled: enabled } } : s.settings,
     }));
   } catch (err) {
-    toast("error", String(err instanceof Error ? err.message : err));
+    toast("error", describeError(err));
   }
 }
 
@@ -658,7 +679,7 @@ export async function clipboardPush(device?: string) {
     const item = await ipc.clipboard.push(device);
     toast("success", t("toast.clipboardLocal", { what: describeClipboard(item) }));
   } catch (err) {
-    toast("error", String(err instanceof Error ? err.message : err));
+    toast("error", describeError(err));
   }
 }
 
@@ -667,7 +688,7 @@ export async function clipboardCopy(id: string) {
     await ipc.clipboard.copy(id);
     toast("success", t("app.copied"));
   } catch (err) {
-    toast("error", String(err instanceof Error ? err.message : err));
+    toast("error", describeError(err));
   }
 }
 
@@ -676,7 +697,7 @@ export async function clipboardDelete(id: string) {
   try {
     await ipc.clipboard.delete(id);
   } catch (err) {
-    toast("error", String(err instanceof Error ? err.message : err));
+    toast("error", describeError(err));
   }
 }
 
@@ -685,20 +706,30 @@ export async function clipboardClear() {
   try {
     await ipc.clipboard.clear();
   } catch (err) {
-    toast("error", String(err instanceof Error ? err.message : err));
+    toast("error", describeError(err));
   }
 }
 
-export function switchLocale(locale: Locale) {
-  applyLocale(locale);
-  set({ locale });
+/** Switches the language now and stores the choice in the settings. */
+export async function switchLanguage(language: LanguageSetting) {
+  setLanguage(language);
+  set({ locale: getLocale() });
+  const settings = state.settings;
+  if (!settings || settings.app.language === language) return;
+  const next: Settings = { ...settings, app: { ...settings.app, language } };
+  try {
+    await ipc.app.settingsUpdate(next);
+    set({ settings: next });
+  } catch (err) {
+    toast("error", describeError(err));
+  }
 }
 
 export async function openPath(path: string) {
   try {
     await ipc.app.openPath(path);
   } catch (err) {
-    toast("error", String(err instanceof Error ? err.message : err));
+    toast("error", describeError(err));
   }
 }
 
@@ -706,7 +737,7 @@ export async function revealPath(path: string) {
   try {
     await ipc.app.revealPath(path);
   } catch (err) {
-    toast("error", String(err instanceof Error ? err.message : err));
+    toast("error", describeError(err));
   }
 }
 
@@ -714,7 +745,7 @@ export async function pickFolder(): Promise<string | null> {
   try {
     return await ipc.app.pickFolder();
   } catch (err) {
-    toast("error", String(err instanceof Error ? err.message : err));
+    toast("error", describeError(err));
     return null;
   }
 }

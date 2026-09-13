@@ -1,0 +1,4 @@
+/* Permission prompts shown by the system; keep the product name LanSend as is. */
+"NSLocalNetworkUsageDescription" = "LanSend finds other devices on your Wi‑Fi and sends files to them directly.";
+"NSPhotoLibraryUsageDescription" = "LanSend shows your photo library so you can pick photos and videos to send to another device. Nothing is uploaded anywhere; the files go straight to the device you choose.";
+"NSDownloadsFolderUsageDescription" = "LanSend saves files received from your other devices to your Downloads folder. You can pick a different folder in Settings.";

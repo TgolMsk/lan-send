@@ -2,9 +2,9 @@
 //! opening files).
 
 use crate::AppState;
-use crate::error::CmdResult;
+use crate::error::{AppError, CmdResult};
 use crate::state::RuntimeStateView;
-use lan_send_core::runtime::IdentityView;
+use lan_send_core::runtime::{ErrorCode, IdentityView};
 use lan_send_core::store::Settings;
 use std::path::PathBuf;
 use std::sync::atomic::Ordering;
@@ -93,12 +93,17 @@ pub enum PickKind {
 /// temporary directory and hands back a normal path, so the send path is the
 /// same for all three.
 #[tauri::command]
-pub async fn cmd_app_pick_files(app: AppHandle, kind: PickKind) -> CmdResult<Vec<PathBuf>> {
+pub async fn cmd_app_pick_files(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    kind: PickKind,
+) -> CmdResult<Vec<PathBuf>> {
+    let strings = state.locale().await.strings();
     let (tx, rx) = tokio::sync::oneshot::channel();
     let dialog = app.dialog().file().set_title(match kind {
-        PickKind::Files => "Choose files to send",
-        PickKind::Folders => "Choose folders to send",
-        PickKind::Media => "Choose photos or videos to send",
+        PickKind::Files => strings.dialog_files,
+        PickKind::Folders => strings.dialog_folders,
+        PickKind::Media => strings.dialog_media,
     });
     match kind {
         PickKind::Folders => {
@@ -109,7 +114,10 @@ pub async fn cmd_app_pick_files(app: AppHandle, kind: PickKind) -> CmdResult<Vec
             #[cfg(mobile)]
             {
                 drop((dialog, tx));
-                return Err("folder picking is not available on this platform".into());
+                return Err(AppError::coded(
+                    ErrorCode::Unsupported,
+                    "folder picking is not available on this platform",
+                ));
             }
         }
         PickKind::Media => {
@@ -122,7 +130,10 @@ pub async fn cmd_app_pick_files(app: AppHandle, kind: PickKind) -> CmdResult<Vec
             #[cfg(desktop)]
             {
                 drop((dialog, tx));
-                return Err("the photo library is only available on mobile".into());
+                return Err(AppError::coded(
+                    ErrorCode::Unsupported,
+                    "the photo library is only available on mobile",
+                ));
             }
         }
         PickKind::Files => dialog.pick_files(move |paths| {
@@ -132,31 +143,44 @@ pub async fn cmd_app_pick_files(app: AppHandle, kind: PickKind) -> CmdResult<Vec
     let picked = rx.await.map_err(|_| "the dialog was closed")?;
     let mut paths = Vec::new();
     for path in picked.unwrap_or_default() {
-        paths.push(path.into_path()?);
+        paths.push(
+            path.into_path()
+                .map_err(|err| AppError::message(err.to_string()))?,
+        );
     }
     Ok(paths)
 }
 
 /// Picks one directory for the receive folder setting (desktop only).
 #[tauri::command]
-pub async fn cmd_app_pick_folder(app: AppHandle) -> CmdResult<Option<PathBuf>> {
+pub async fn cmd_app_pick_folder(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> CmdResult<Option<PathBuf>> {
     #[cfg(mobile)]
     {
-        let _ = app;
-        Err("folder picking is not available on this platform".into())
+        let _ = (app, state);
+        Err(AppError::coded(
+            ErrorCode::Unsupported,
+            "folder picking is not available on this platform",
+        ))
     }
     #[cfg(desktop)]
     {
+        let title = state.locale().await.strings().dialog_receive_dir;
         let (tx, rx) = tokio::sync::oneshot::channel();
         app.dialog()
             .file()
-            .set_title("Choose the receive folder")
+            .set_title(title)
             .pick_folder(move |path| {
                 let _ = tx.send(path);
             });
         let picked = rx.await.map_err(|_| "the dialog was closed")?;
         let path = match picked {
-            Some(path) => Some(path.into_path()?),
+            Some(path) => Some(
+                path.into_path()
+                    .map_err(|err| AppError::message(err.to_string()))?,
+            ),
             None => None,
         };
         if let Some(path) = &path {

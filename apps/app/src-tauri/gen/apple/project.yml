@@ -42,6 +42,10 @@ targets:
       - path: LaunchScreen.storyboard
       - path: PrivacyInfo.xcprivacy
         buildPhase: resources
+      # Localized permission prompts (InfoPlist.strings per *.lproj), shared with macOS.
+      - path: ../../locales
+        buildPhase: resources
+        name: locales
     info:
       path: lan-send-app_iOS/Info.plist
       properties:
@@ -59,8 +63,8 @@ targets:
           - UIInterfaceOrientationLandscapeRight
         CFBundleShortVersionString: 0.2.0
         CFBundleVersion: "1"
-        CFBundleDisplayName: Lan-Send
-        NSLocalNetworkUsageDescription: lan-send finds other devices on your Wi‑Fi and sends files to them directly.
+        CFBundleDisplayName: LanSend
+        NSLocalNetworkUsageDescription: LanSend finds other devices on your Wi‑Fi and sends files to them directly.
         ITSAppUsesNonExemptEncryption: false
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true

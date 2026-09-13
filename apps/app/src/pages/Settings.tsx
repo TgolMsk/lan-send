@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { PageHead } from "../components/Layout";
 import { Button, Card, Field, Select, TextInput, Toggle } from "../components/ui";
 import { formatBytes } from "../format";
-import { getLocale, t, type Locale } from "../i18n";
-import { mediaCacheClear, mediaCacheSize, pickFolder, saveSettings, switchLocale, useStore } from "../store";
+import { LOCALES, LOCALE_NAMES, t, type LanguageSetting } from "../i18n";
+import { mediaCacheClear, mediaCacheSize, pickFolder, saveSettings, switchLanguage, useStore } from "../store";
 import type { Settings } from "../types";
 
 const MB = 1024 * 1024;
@@ -12,7 +12,6 @@ export function SettingsPage() {
   const stored = useStore((s) => s.settings);
   const identity = useStore((s) => s.identity);
   const platform = useStore((s) => s.platform);
-  const locale = useStore((s) => s.locale);
   const [draft, setDraft] = useState<Settings | null>(stored);
   useEffect(() => setDraft(stored), [stored]);
   const [cacheSize, setCacheSize] = useState<number | null>(null);
@@ -95,12 +94,15 @@ export function SettingsPage() {
             />
           </Field>
           <Field label={t("settings.language")}>
-            <Select<Locale>
-              value={locale || getLocale()}
-              onChange={(v) => switchLocale(v)}
+            <Select<LanguageSetting>
+              value={(draft.app.language as LanguageSetting) || "system"}
+              onChange={(v) => {
+                patch((s) => ({ ...s, app: { ...s.app, language: v } }));
+                void switchLanguage(v);
+              }}
               options={[
-                { value: "zh", label: "中文" },
-                { value: "en", label: "English" },
+                { value: "system", label: t("settings.languageSystem") },
+                ...LOCALES.map((locale) => ({ value: locale, label: LOCALE_NAMES[locale] })),
               ]}
             />
           </Field>

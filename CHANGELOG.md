@@ -4,11 +4,18 @@
 
 ## [Unreleased]
 
+### Added
+- 界面支持八种语言（简中、繁中、英、日、韩、德、法、西），文案表移到 `apps/app/src/locales/*.json`，`pnpm build` 前校验键集合与占位符；语言偏好成为设置项 `app.language`（默认跟随系统），托盘菜单与文件对话框标题跟随该设置，iOS / macOS 的系统权限弹窗按 `*.lproj/InfoPlist.strings` 本地化（ADR-0016）。
+- 核心层新增 `runtime::ErrorCode`：传输失败、配对失败、IPC 命令错误都带语言无关的编码，前端据此显示翻译后的提示，未编码的保留原文。
+- 商店文案八种语言的草稿（`docs/store-listing.md` §五）。
+- iOS 与 Mac App Store 沙盒版加上 `com.apple.developer.networking.multicast` 权利（Apple 于 2026-09-13 批准申请 HTFYV6DZUK）。此前这两种构建收不到也发不出组播公告，手机端只能靠电脑主动探测才会互相出现；现在与桌面版一样走组播发现。沙盒版的描述文件需重建后更新 `MAS_PROVISIONING_PROFILE`，步骤见 `docs/release.md`。
+
 ### Fixed
 - Mac App Store 沙盒版的默认接收目录显式指向真实的 `~/Downloads`：沙盒把 `$HOME` 及所有 Foundation 主目录查询都重定向到容器，`directories` crate 算出的是容器路径（只靠沙盒创建的符号链接才写到真实目录，设置页显示的也是容器路径）。macOS 上改用 `getpwuid_r` 取真实主目录。App Review 2.4.5(i) 的静态扫描看不见 Rust `std::fs` 的写入，曾判定 `com.apple.security.files.downloads.read-write` 无对应功能；显式路径加上审核备注里的说明是应对办法。
 - 支持页（`docs/support.md`）补上电子邮件联系方式与更完整的 FAQ；App Review 按 1.5 认为只有 GitHub issues 链接不算可用的支持渠道。
 
 ### Changed
+- 应用改名为 **LanSend**（产品名、窗口标题、`CFBundleDisplayName`、托盘、文档与商店文案）；bundle id `com.wangsheng.lansend`、数据目录 `lan-send`、CLI 二进制名与 WiX `UpgradeCode` 保持不变，升级不丢数据。
 - `lan-send identity` 多打印一行 `Receive dir`，方便确认文件会收到哪里。
 
 ### Added

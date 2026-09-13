@@ -15,6 +15,12 @@
     <true/>
     <key>com.apple.security.network.server</key>
     <true/>
+    <!-- LAN discovery: UDP multicast 224.0.0.167 / ff12::fd3a:e420 (LocalSend v2).
+         Sandboxed builds cannot join multicast groups without it. Granted by
+         Apple on 2026-09-13; the embedded provisioning profile must include the
+         Multicast Networking capability or codesign rejects the entitlement. -->
+    <key>com.apple.developer.networking.multicast</key>
+    <true/>
     <!-- Files the user picks to send, and the receive folder they choose. -->
     <key>com.apple.security.files.user-selected.read-write</key>
     <true/>

@@ -4,7 +4,7 @@ import { Icon } from "../components/icons";
 import { Badge, Button, Card, EmptyState, Progress, Sparkline, Stat } from "../components/ui";
 import { formatBytes, formatDuration, formatPercent, formatSpeed } from "../format";
 import { t } from "../i18n";
-import { cancelTransfer, dismissTransfer, navigate, revealPath, useStore } from "../store";
+import { cancelTransfer, dismissTransfer, navigate, revealPath, useStore, errorText } from "../store";
 import type { TransferView } from "../types";
 
 const finalStates = ["finished", "failed", "cancelled", "declined"];
@@ -56,7 +56,7 @@ export function TransfersPage() {
                     </div>
                     <div className="muted" style={{ fontSize: 12 }}>
                       {transfer.files.length} {t("transfers.files")} · {formatBytes(transfer.totalSize)}
-                      {transfer.error ? ` · ${transfer.error}` : ""}
+                      {transfer.error ? ` · ${errorText(transfer.errorCode, transfer.error)}` : ""}
                     </div>
                   </div>
                 </div>

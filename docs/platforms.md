@@ -4,7 +4,7 @@
 
 ## macOS
 
-- 组播：非沙盒分发不需要额外权限；沙盒/App Store 分发需要 `com.apple.developer.networking.multicast` 权利。macOS 15+ 首次访问局域网会弹"本地网络"授权，需在 `Info.plist` 写 `NSLocalNetworkUsageDescription`。
+- 组播：非沙盒分发不需要额外权限；沙盒/App Store 分发需要 `com.apple.developer.networking.multicast` 权利（2026-09-13 已获批，`entitlements/mas.plist` 已加，描述文件需包含该能力）。macOS 15+ 首次访问局域网会弹"本地网络"授权，需在 `Info.plist` 写 `NSLocalNetworkUsageDescription`。
 - 组播 socket：每个接口地址各绑一个 socket，`SO_REUSEADDR + SO_REUSEPORT`，绑定 `0.0.0.0`，`IP_MULTICAST_IF` 指定接口，loopback 开启（同机多实例互见）。
 - 组播发送偶发 `No route to host (os error 65)`：macOS 15+ 的"本地网络"授权尚未生效、或 VPN/代理的 TUN 网卡（如 198.18.0.1）刚接管路由时会出现，几秒后自行恢复；发现模块把它当作普通失败记录并靠子网扫描兜底，不要当成 bug 反复重试。
 - 剪贴板：`NSPasteboard` 无变更通知，只能轮询 `changeCount`（200–500 ms）。图片优先取 PNG，其次 TIFF 转 PNG。
@@ -20,8 +20,8 @@
 
 ## iOS
 
-- 组播需要 `com.apple.developer.networking.multicast` 权利，且该权利必须向 Apple 申请。未获批前 iOS 端**只能**依赖 HTTP 扫描、收藏/配对设备直连，以及"被别人发现"（别的设备公告时，iOS 端能否收到组播同样受限）。发现模块必须把"无组播"当作正常路径。
-- 本地网络隐私：`NSLocalNetworkUsageDescription` 必填；`NSBonjourServices` 仅在用 Bonjour 时需要（当前不用）。
+- 组播需要 `com.apple.developer.networking.multicast` 权利，且该权利必须向 Apple 申请（2026-09-13 已获批，entitlements 已加）。没有该权利的构建（例如本机开发签名的 App ID 未勾选该能力时）iOS 端**只能**依赖 HTTP 扫描、收藏/配对设备直连，以及"被别人发现"（别的设备公告时，iOS 端同样收不到组播）。发现模块必须把"无组播"当作正常路径。
+- 本地网络隐私：`NSLocalNetworkUsageDescription` 必填；`NSBonjourServices` 仅在用 Bonjour 时需要（当前不用）。权限弹窗文案按 `apps/app/src-tauri/locales/<locale>.lproj/InfoPlist.strings` 本地化，通过 `gen/apple/project.yml` 的 `locales` 资源进入 bundle 根目录（ADR-0016）。
 - 后台：App 挂起时系统会回收监听 socket，回到前台必须重建 HTTP 服务与组播（官方 LocalSend 的 `ListenerFailed` / `SocketsFailed` 事件就是为此设计）。长时间传输需要 `beginBackgroundTask` 争取几分钟，超时即中断——断点续传扩展在 iOS 上价值最大。
 - 剪贴板：`UIPasteboard` 只能在前台轮询 `changeCount`；iOS 16+ 读取他人写入的剪贴板会弹"允许粘贴"提示。"后台持续同步"在 iOS 上不可行，产品上应定义为"前台同步 + 手动推送"。
 - 文件：接收目录是 App 沙盒的 `Documents/`（可通过"文件"App 访问），没有系统"下载目录"。

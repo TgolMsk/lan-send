@@ -1,0 +1,4 @@
+/* Permission prompts shown by the system; keep the product name LanSend as is. */
+"NSLocalNetworkUsageDescription" = "LanSend findet andere Geräte in deinem WLAN und sendet Dateien direkt an sie.";
+"NSPhotoLibraryUsageDescription" = "LanSend zeigt deine Fotomediathek, damit du Fotos und Videos zum Senden an ein anderes Gerät auswählen kannst. Es wird nichts hochgeladen; die Dateien gehen direkt an das gewählte Gerät.";
+"NSDownloadsFolderUsageDescription" = "LanSend speichert Dateien, die du von deinen anderen Geräten empfängst, in deinem Downloads-Ordner. Du kannst in den Einstellungen einen anderen Ordner wählen.";

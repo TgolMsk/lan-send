@@ -1,8 +1,8 @@
 ---
-title: Lan-Send
+title: LanSend
 ---
 
-# Lan-Send
+# LanSend
 
 局域网文件与剪贴板互传，兼容 LocalSend。macOS、Windows、iOS。
 

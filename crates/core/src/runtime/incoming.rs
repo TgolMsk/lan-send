@@ -1,7 +1,7 @@
 //! The server event loop: incoming transfer sessions, cancel requests,
 //! pairing requests and clipboard pushes.
 
-use super::{Inner, RuntimeError};
+use super::{ErrorCode, Inner, RuntimeError};
 use crate::discovery::Device;
 use crate::protocol::{DeviceInfo, FEATURE_RESUME, FileDto, Fingerprint, INTENT_CLIPBOARD};
 use crate::runtime::{
@@ -201,6 +201,7 @@ impl Inner {
             },
             clipboard_intent,
             error: None,
+            error_code: None,
             started_at: unix_now(),
             finished_at: None,
         };
@@ -293,7 +294,11 @@ impl Inner {
             Ok(destination) => destination,
             Err(message) => {
                 let _ = pending.decision.send(UploadDecision::Decline);
-                self.fail_transfer(&pending.session_id, message.clone());
+                self.fail_transfer(
+                    &pending.session_id,
+                    ErrorCode::NoReceiveDir,
+                    message.clone(),
+                );
                 self.emit_error("receive", message);
                 return;
             }
@@ -353,7 +358,7 @@ impl Inner {
 
     pub(crate) fn decline_incoming(&self, pending: PendingIncoming) {
         let _ = pending.decision.send(UploadDecision::Decline);
-        self.complete_transfer(&pending.session_id, TransferState::Declined, None);
+        self.complete_transfer(&pending.session_id, TransferState::Declined, None, None);
     }
 
     /// Files of a new request that match a partial upload from the same
@@ -608,13 +613,22 @@ impl Inner {
             SessionEndReason::Finished => TransferState::Failed,
             SessionEndReason::Cancelled | SessionEndReason::TimedOut => TransferState::Cancelled,
         };
-        let error = match (reason, info.failed) {
-            (SessionEndReason::Finished, 0) => None,
-            (SessionEndReason::Finished, failed) => Some(format!("{failed} file(s) failed")),
-            (SessionEndReason::Cancelled, _) => Some("cancelled by the sender".to_string()),
-            (SessionEndReason::TimedOut, _) => Some("the sender went away".to_string()),
+        let (error, code) = match (reason, info.failed) {
+            (SessionEndReason::Finished, 0) => (None, None),
+            (SessionEndReason::Finished, failed) => (
+                Some(format!("{failed} file(s) failed")),
+                Some(ErrorCode::PartialFailure),
+            ),
+            (SessionEndReason::Cancelled, _) => (
+                Some("cancelled by the sender".to_string()),
+                Some(ErrorCode::Cancelled),
+            ),
+            (SessionEndReason::TimedOut, _) => (
+                Some("the sender went away".to_string()),
+                Some(ErrorCode::PeerGone),
+            ),
         };
-        self.complete_transfer(session_id, state, error);
+        self.complete_transfer(session_id, state, error, code);
         if info.intent.as_deref() == Some(INTENT_CLIPBOARD)
             && state == TransferState::Finished
             && !info.received.is_empty()

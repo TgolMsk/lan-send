@@ -1,7 +1,7 @@
 //! Pairing (ADR-0010) driven by events: incoming requests wait for
 //! `respond_pair_request`, outgoing ones for `pair_confirm`.
 
-use super::{Inner, RuntimeError};
+use super::{ErrorCode, Inner, RuntimeError};
 use crate::discovery::Device;
 use crate::protocol::{Fingerprint, ProtocolType, verification_code};
 use crate::runtime::{PairView, RuntimeEvent};
@@ -79,6 +79,7 @@ impl Inner {
             fingerprint: fingerprint.to_string(),
             alias: pending.alias,
             paired: accept,
+            code: None,
             message: None,
         });
         self.refresh_clipboard_peers();
@@ -97,6 +98,7 @@ impl Inner {
                 .alias_of(fingerprint.as_str())
                 .unwrap_or_else(|| peer.addr.to_string()),
             paired: false,
+            code: Some(ErrorCode::PairWithdrawn),
             message: Some("the other device withdrew the pairing".into()),
         });
         self.refresh_clipboard_peers();
@@ -166,6 +168,7 @@ impl Inner {
                         fingerprint,
                         alias: device.alias,
                         paired: false,
+                        code: Some(ErrorCode::from_client(&err)),
                         message: Some(err.to_string()),
                     });
                     return;
@@ -193,26 +196,31 @@ impl Inner {
                     });
                 }
                 Err(err) => {
-                    let message = match &err {
-                        ClientError::Status { status: 403, .. } => {
-                            "the other device declined".to_string()
-                        }
-                        ClientError::Status { status: 408, .. } => {
-                            "the other device did not answer in time".to_string()
-                        }
-                        ClientError::Status { status: 409, .. } => {
-                            "the other device is busy with another pairing".to_string()
-                        }
-                        ClientError::Status { status: 404, .. } => {
+                    let (error_code, message) = match &err {
+                        ClientError::Status { status: 403, .. } => (
+                            ErrorCode::PairDeclined,
+                            "the other device declined".to_string(),
+                        ),
+                        ClientError::Status { status: 408, .. } => (
+                            ErrorCode::PairTimeout,
+                            "the other device did not answer in time".to_string(),
+                        ),
+                        ClientError::Status { status: 409, .. } => (
+                            ErrorCode::PairBusy,
+                            "the other device is busy with another pairing".to_string(),
+                        ),
+                        ClientError::Status { status: 404, .. } => (
+                            ErrorCode::PairUnsupported,
                             "the other device does not support pairing (official LocalSend?)"
-                                .to_string()
-                        }
-                        other => other.to_string(),
+                                .to_string(),
+                        ),
+                        other => (ErrorCode::from_client(other), other.to_string()),
                     };
                     this.emit(RuntimeEvent::PairResult {
                         fingerprint,
                         alias: device.alias,
                         paired: false,
+                        code: Some(error_code),
                         message: Some(message),
                     });
                 }
@@ -244,6 +252,7 @@ impl Inner {
                 fingerprint: fingerprint.to_string(),
                 alias: pending.alias,
                 paired: true,
+                code: None,
                 message: None,
             });
         } else {
@@ -258,6 +267,7 @@ impl Inner {
                 fingerprint: fingerprint.to_string(),
                 alias: pending.alias,
                 paired: false,
+                code: Some(ErrorCode::PairCodeMismatch),
                 message: Some("the codes did not match".into()),
             });
         }
@@ -298,6 +308,7 @@ impl Inner {
                 fingerprint: fingerprint.to_string(),
                 alias: self.alias_of(fingerprint).unwrap_or_default(),
                 paired: false,
+                code: None,
                 message: None,
             });
         }

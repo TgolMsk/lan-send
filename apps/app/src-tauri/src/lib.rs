@@ -5,9 +5,11 @@
 
 mod commands;
 mod error;
+mod i18n;
 mod platform;
 mod state;
 
+pub use i18n::Locale;
 pub use state::AppState;
 
 use tauri::Manager;

@@ -220,7 +220,7 @@ jobs:
         run: |
           mkdir -p dist
           cp target/universal-apple-darwin/release/bundle/dmg/*.dmg "dist/lan-send-${VERSION}-macos-universal.dmg"
-          ditto -c -k --keepParent target/universal-apple-darwin/release/bundle/macos/Lan-Send.app "dist/lan-send-${VERSION}-macos-universal.app.zip"
+          ditto -c -k --keepParent target/universal-apple-darwin/release/bundle/macos/LanSend.app "dist/lan-send-${VERSION}-macos-universal.app.zip"
           ls -la dist
       - uses: actions/upload-artifact@v7
         with:
@@ -420,21 +420,21 @@ jobs:
         if: steps.gate.outputs.ready == 'true'
         shell: bash
         run: |
-          APP=target/universal-apple-darwin/release/bundle/macos/Lan-Send.app
+          APP=target/universal-apple-darwin/release/bundle/macos/LanSend.app
           echo "$MAS_PROVISIONING_PROFILE" | base64 --decode > "$APP/Contents/embedded.provisionprofile"
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${GITHUB_RUN_NUMBER}" "$APP/Contents/Info.plist"
           /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${VERSION%%-*}" "$APP/Contents/Info.plist"
           codesign --force --sign "$APP_IDENTITY" --entitlements apps/app/src-tauri/entitlements/mas.plist "$APP"
           codesign --verify --verbose=2 "$APP"
           mkdir -p dist
-          productbuild --component "$APP" /Applications --sign "$INSTALLER_IDENTITY" "dist/Lan-Send-${VERSION}-mac-app-store.pkg"
+          productbuild --component "$APP" /Applications --sign "$INSTALLER_IDENTITY" "dist/LanSend-${VERSION}-mac-app-store.pkg"
       - name: Upload to App Store Connect
         if: steps.gate.outputs.ready == 'true'
         shell: bash
         run: |
           mkdir -p "$HOME/.appstoreconnect/private_keys"
           printf '%s' "$APPSTORE_PRIVATE_KEY" > "$HOME/.appstoreconnect/private_keys/AuthKey_${APPLE_API_KEY}.p8"
-          xcrun altool --upload-app --type macos --file "dist/Lan-Send-${VERSION}-mac-app-store.pkg" --apiKey "$APPLE_API_KEY" --apiIssuer "$APPLE_API_ISSUER"
+          xcrun altool --upload-app --type macos --file "dist/LanSend-${VERSION}-mac-app-store.pkg" --apiKey "$APPLE_API_KEY" --apiIssuer "$APPLE_API_ISSUER"
       - uses: actions/upload-artifact@v7
         if: steps.gate.outputs.ready == 'true'
         with:

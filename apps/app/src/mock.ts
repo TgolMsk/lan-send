@@ -110,6 +110,7 @@ const settings: Settings = {
     theme: "dark",
     autoAcceptPaired: false,
     notifications: true,
+    language: "system",
   },
 };
 
@@ -173,6 +174,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         state: "active",
         clipboardIntent: false,
         error: null,
+        errorCode: null,
         startedAt: Date.now() / 1000,
         finishedAt: null,
       };
@@ -225,6 +227,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
           mime: "image/jpeg",
           status: "finished",
           error: null,
+          errorCode: null,
           startedAt: Date.now() / 1000 - 3600,
           finishedAt: Date.now() / 1000 - 3590,
         },
@@ -240,6 +243,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
           mime: "audio/mpeg",
           status: "finished",
           error: null,
+          errorCode: null,
           startedAt: Date.now() / 1000 - 7200,
           finishedAt: Date.now() / 1000 - 7180,
         },
@@ -255,6 +259,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
           mime: "application/pdf",
           status: "finished",
           error: null,
+          errorCode: null,
           startedAt: Date.now() / 1000 - 86400,
           finishedAt: Date.now() / 1000 - 86390,
         },
@@ -289,7 +294,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       const device = devices.find((d) => d.fingerprint === args?.fingerprint);
       if (device) device.paired = Boolean(args?.accept);
       window.setTimeout(
-        () => emit({ type: "pair-result", fingerprint: String(args?.fingerprint), alias: device?.displayName ?? "device", paired: Boolean(args?.accept), message: null }),
+        () => emit({ type: "pair-result", fingerprint: String(args?.fingerprint), alias: device?.displayName ?? "device", paired: Boolean(args?.accept), code: null, message: null }),
         200,
       );
       return undefined as T;
@@ -317,6 +322,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
           state: "active",
           clipboardIntent: false,
           error: null,
+          errorCode: null,
           startedAt: Date.now() / 1000,
           finishedAt: null,
         };
@@ -496,7 +502,7 @@ export function mockPairConfirm(fingerprint: string, matches: boolean) {
   const device = devices.find((d) => d.fingerprint === fingerprint);
   if (device) device.paired = matches;
   window.setTimeout(
-    () => emit({ type: "pair-result", fingerprint, alias: device?.displayName ?? "device", paired: matches, message: matches ? null : "the codes did not match" }),
+    () => emit({ type: "pair-result", fingerprint, alias: device?.displayName ?? "device", paired: matches, code: matches ? null : "pair-code-mismatch", message: matches ? null : "the codes did not match" }),
     300,
   );
 }

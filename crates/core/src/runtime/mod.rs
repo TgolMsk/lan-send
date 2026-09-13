@@ -5,6 +5,7 @@
 //! enter a PIN, resolve a file conflict) into an event plus an answering
 //! method. Nothing here prints or depends on a terminal or a window system.
 
+pub mod error_code;
 pub mod events;
 
 mod clipboard;
@@ -13,6 +14,7 @@ mod incoming;
 mod outgoing;
 mod pairing;
 
+pub use error_code::ErrorCode;
 pub use events::*;
 pub use outgoing::SendRequest;
 
@@ -76,6 +78,13 @@ pub enum RuntimeError {
     NothingPending,
     #[error("the clipboard is not supported on this platform")]
     NoClipboard,
+}
+
+impl RuntimeError {
+    /// The language-neutral code an interface translates.
+    pub fn code(&self) -> ErrorCode {
+        ErrorCode::from_runtime(self)
+    }
 }
 
 /// How to start a [`Runtime`].
@@ -593,6 +602,7 @@ impl Inner {
     pub(crate) fn emit_error(&self, scope: &str, message: impl Into<String>) {
         self.emit(RuntimeEvent::Error {
             scope: scope.to_string(),
+            code: None,
             message: message.into(),
         });
     }
@@ -733,13 +743,20 @@ impl Inner {
 
     /// Ends a transfer: files still open get a matching final state, the
     /// interface gets `transfer-completed`.
-    pub(crate) fn complete_transfer(&self, id: &str, state: TransferState, error: Option<String>) {
+    pub(crate) fn complete_transfer(
+        &self,
+        id: &str,
+        state: TransferState,
+        error: Option<String>,
+        code: Option<ErrorCode>,
+    ) {
         let view = self.update_transfer(id, |transfer| {
             if transfer.view.state.is_final() {
                 return None;
             }
             transfer.view.state = state;
             transfer.view.error = error;
+            transfer.view.error_code = code;
             transfer.view.finished_at = Some(unix_now());
             transfer.finished = Some(Instant::now());
             let file_state = match state {
@@ -801,8 +818,8 @@ impl Inner {
         });
     }
 
-    pub(crate) fn fail_transfer(&self, id: &str, message: impl Into<String>) {
-        self.complete_transfer(id, TransferState::Failed, Some(message.into()));
+    pub(crate) fn fail_transfer(&self, id: &str, code: ErrorCode, message: impl Into<String>) {
+        self.complete_transfer(id, TransferState::Failed, Some(message.into()), Some(code));
     }
 
     pub(crate) async fn cancel_transfer(&self, id: &str) -> Result<(), RuntimeError> {
@@ -827,7 +844,7 @@ impl Inner {
                 if let Some(pending) = pending {
                     self.decline_incoming(pending);
                 } else {
-                    self.complete_transfer(id, TransferState::Cancelled, None);
+                    self.complete_transfer(id, TransferState::Cancelled, None, None);
                 }
             }
             crate::store::Direction::Send => {

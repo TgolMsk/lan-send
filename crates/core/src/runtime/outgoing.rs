@@ -1,7 +1,7 @@
 //! Sending: device lookup, prepare-upload with the PIN dance, parallel
 //! uploads with retries and resume, history entries.
 
-use super::{Inner, RuntimeError};
+use super::{ErrorCode, Inner, RuntimeError};
 use crate::discovery::{Device, parse_host_port};
 use crate::protocol::{
     DEFAULT_PORT, FEATURE_RESUME, Fingerprint, INTENT_CLIPBOARD, PrepareUploadRequest, ProtocolType,
@@ -65,6 +65,7 @@ impl Inner {
             state: TransferState::Preparing,
             clipboard_intent: request.intent.as_deref() == Some(INTENT_CLIPBOARD),
             error: None,
+            error_code: None,
             started_at: unix_now(),
             finished_at: None,
         };
@@ -73,7 +74,7 @@ impl Inner {
         let transfer_id = id.clone();
         self.tasks.spawn(async move {
             if let Err(err) = run_send(&this, &transfer_id, request, cancel).await {
-                this.fail_transfer(&transfer_id, err.to_string());
+                this.fail_transfer(&transfer_id, err.code(), err.to_string());
             }
         });
         Ok(id)
@@ -168,7 +169,7 @@ async fn run_send(
     let (device, target) = tokio::select! {
         result = inner.resolve_device(&request.device) => result?,
         _ = cancel.cancelled() => {
-            inner.complete_transfer(transfer_id, TransferState::Cancelled, None);
+            inner.complete_transfer(transfer_id, TransferState::Cancelled, None, None);
             return Ok(());
         }
     };
@@ -186,7 +187,7 @@ async fn run_send(
     if inner.settings().create_checksums {
         for file in &outgoing.files {
             if cancel.is_cancelled() {
-                inner.complete_transfer(transfer_id, TransferState::Cancelled, None);
+                inner.complete_transfer(transfer_id, TransferState::Cancelled, None, None);
                 return Ok(());
             }
             checksums.insert(file.id.clone(), sha256_of(&file.path).await?);
@@ -219,7 +220,7 @@ async fn run_send(
         let attempt = tokio::select! {
             result = client.prepare_upload(&target, &prepare, pin.as_deref()) => result,
             _ = cancel.cancelled() => {
-                inner.complete_transfer(transfer_id, TransferState::Cancelled, None);
+                inner.complete_transfer(transfer_id, TransferState::Cancelled, None, None);
                 return Ok(());
             }
         };
@@ -230,6 +231,7 @@ async fn run_send(
                     transfer_id,
                     TransferState::Declined,
                     Some("the receiver accepted nothing".into()),
+                    Some(ErrorCode::NothingAccepted),
                 );
                 return Ok(());
             }
@@ -259,7 +261,7 @@ async fn run_send(
                         inner.set_transfer_state(transfer_id, TransferState::Preparing);
                     }
                     None => {
-                        inner.complete_transfer(transfer_id, TransferState::Cancelled, None);
+                        inner.complete_transfer(transfer_id, TransferState::Cancelled, None, None);
                         return Ok(());
                     }
                 }
@@ -268,11 +270,20 @@ async fn run_send(
                 status: 403,
                 message,
             }) => {
-                inner.complete_transfer(transfer_id, TransferState::Declined, Some(message));
+                inner.complete_transfer(
+                    transfer_id,
+                    TransferState::Declined,
+                    Some(message),
+                    Some(ErrorCode::Declined),
+                );
                 return Ok(());
             }
             Err(ClientError::Status { status: 409, .. }) => {
-                inner.fail_transfer(transfer_id, "the receiver is busy with another transfer");
+                inner.fail_transfer(
+                    transfer_id,
+                    ErrorCode::Busy,
+                    "the receiver is busy with another transfer",
+                );
                 return Ok(());
             }
             Err(err) => return Err(err.into()),
@@ -310,6 +321,7 @@ async fn run_send(
             transfer_id,
             TransferState::Declined,
             Some("the receiver accepted no files".into()),
+            Some(ErrorCode::NothingAccepted),
         );
         return Ok(());
     }
@@ -387,16 +399,17 @@ async fn run_send(
     }
     if cancelled {
         let _ = client.cancel(&target, Some(&session_id)).await;
-        inner.complete_transfer(transfer_id, TransferState::Cancelled, None);
+        inner.complete_transfer(transfer_id, TransferState::Cancelled, None, None);
     } else if failed > 0 {
         let _ = client.cancel(&target, Some(&session_id)).await;
         inner.complete_transfer(
             transfer_id,
             TransferState::Failed,
             Some(format!("{failed} of {} file(s) failed", sent + failed)),
+            Some(ErrorCode::PartialFailure),
         );
     } else {
-        inner.complete_transfer(transfer_id, TransferState::Finished, None);
+        inner.complete_transfer(transfer_id, TransferState::Finished, None, None);
     }
     Ok(())
 }

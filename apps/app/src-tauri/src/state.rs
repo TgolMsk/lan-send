@@ -54,8 +54,20 @@ impl AppState {
                     .await
                     .clone()
                     .unwrap_or_else(|| "the runtime is not running".to_string());
-                Err(message.into())
+                Err(crate::error::AppError::coded(
+                    lan_send_core::runtime::ErrorCode::RuntimeStopped,
+                    message,
+                ))
             }
+        }
+    }
+
+    /// The interface language from the settings, the system's before the
+    /// runtime is up.
+    pub async fn locale(&self) -> crate::Locale {
+        match self.runtime.read().await.as_ref() {
+            Some(runtime) => crate::Locale::from_setting(&runtime.settings().app.language),
+            None => crate::Locale::system(),
         }
     }
 

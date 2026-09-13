@@ -3,6 +3,7 @@
 //! unchanged. Clipboard text never appears in logs; views carry it only
 //! when the item is kept in the history.
 
+use super::ErrorCode;
 use crate::clipboard::{ClipboardItem, ClipboardPayload};
 use crate::media::MediaInfo;
 use crate::store::{ClipboardRecord, Direction};
@@ -141,6 +142,8 @@ pub struct TransferView {
     pub state: TransferState,
     pub clipboard_intent: bool,
     pub error: Option<String>,
+    /// Why it failed or was declined, for a translated interface.
+    pub error_code: Option<ErrorCode>,
     /// Unix seconds.
     pub started_at: i64,
     pub finished_at: Option<i64>,
@@ -356,6 +359,7 @@ pub enum RuntimeEvent {
         fingerprint: String,
         alias: String,
         paired: bool,
+        code: Option<ErrorCode>,
         message: Option<String>,
     },
 
@@ -382,6 +386,7 @@ pub enum RuntimeEvent {
 
     Error {
         scope: String,
+        code: Option<ErrorCode>,
         message: String,
     },
 }
