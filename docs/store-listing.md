@@ -38,6 +38,7 @@
 ## 三点五、提交时踩过的坑（每次被拒都记在这里；提交前照 `docs/store-checklist.md` 逐项过）
 
 - **被拒：5.1.1(ii) Privacy – Data Collection and Storage，`NSDownloadsFolderUsageDescription` 不够具体（macOS 0.4.0 构建 22，2026-09-13 上午 10:07 中招；提交 ID 62283207-545d-48a5-80d3-c32eaf00e962）**。审核员认为“下载”文件夹的用途说明只讲了用途，没有按 5.1.1(ii) 的要求“说明怎么用这些数据并举一个具体例子”。原文案：`LanSend saves files received from your other devices to your Downloads folder. You can pick a different folder in Settings.`。信里说“见附件截图”，但 App Store Connect 的提交页没有渲染出任何附件。修法：`apps/app/src-tauri/Info.plist` 与八个 `locales/*.lproj/InfoPlist.strings` 里的这条改成“需要访问 → 用来做什么 → 例如 iPhone 发一张照片到这台 Mac 时写入下载文件夹以便在访达打开 → 可在设置里改”四段式。**注意**：用途说明编译在 App 的 Info.plist 里，与 1.5 改支持网址不同，必须出新构建重新上传，不能只“重新提交”。重提流程同 2.4.5 那次：版本页删旧构建、添加新构建并保存，“回复 App 审核”说明已按要求补充示例，再“重新提交至 App 审核”。iOS 0.4.0 不受影响。**处理记录（2026-09-13）**：修法提交 a5932af，打 `v0.4.1` 标签（1379337）跑 release.yml（运行 34793460511，全部任务成功，含 GitHub Release 与 App Store 上传），构建 0.4.1 (23) 约 20 分钟后在 ASC 可选。版本页把“版本”字段从 0.4.0 改成 0.4.1（构建的 CFBundleShortVersionString 随标签变了，版本记录要跟着改），删构建 22、添加构建 23、保存，状态变“准备提交”；提交页“回复 App 审核”写明已按 5.1.1(ii) 补充示例并附新文案与 `tccutil reset SystemPolicyDownloadsFolder com.wangsheng.lansend` 复现方法；版本页“更新审核”→ 弹窗“继续”（项目变“可供审核”）→ 提交页“重新提交至 App 审核”，状态回到“等待审核”（下午 6:00 左右）。iOS 0.4.0 (22) 未动。**教训**：苹果对每一条 `*UsageDescription` 的标准都是“用途 + 具体例子”，`NSLocalNetworkUsageDescription`、`NSPhotoLibraryUsageDescription` 也照此格式写，别等被拒再补。
+- **被拒：2.3.10 Accurate Metadata，描述里提到 Android（iOS 0.4.0 构建 22，2026-09-14 中招；提交 ID 88bc4784-fc3c-49c9-8d29-1bba4f97c08c）**。描述的“兼容 LocalSend”一段写了“Android、Linux 等平台上的免费 LocalSend 应用”，苹果按 2.3.10 认为提及第三方平台与 App Store 用户无关，要求删掉 Android。纯元数据问题，不需要新构建：八种语言的描述改成只说“使用开放的 LocalSend 协议，可与其他支持同一协议的应用互传”，不点任何平台名。顺手把关键词里的 `airdrop` / `隔空投送` / `에어드롭` 去掉（2.3.7 禁止塞商标词，AirDrop 是苹果商标）。**注意** macOS 0.4.1 的描述与 iOS 相同，也含 Android，正在排队审核的那份大概率会以同样理由被拒，等结果或主动改。**教训**：商店文案里不出现 Android / Windows / Linux / Google 等其他平台名，也不出现 AirDrop 等苹果商标；兼容性只能用协议名描述。（此次由用户自行在 ASC 修改并重新提交。）
 - **审核信息里“需要登录”默认勾选**：不取消会因“用户名/密码为必填”而无法“添加以供审核”。应用没有账号，取消勾选即可。
 - **出口合规**：Info.plist 里声明 `ITSAppUsesNonExemptEncryption=false`（iOS 在 `Info.ios.plist`，macOS 在 `Info.plist`），App Store Connect 就不再问加密问题。若走手动申报，选“标准加密算法”后会追问“是否在法国分发”，答“是”需上传法国的加密申报文件——直接用 plist 声明可避开。
 - **macOS 沙盒说明**（版本页“App 沙盒信息”，可不填）：已为 `network.server`、`network.client`、`files.downloads.read-write`、`files.user-selected.read-write` 各写一句用途，方便审核员理解为何要监听端口。
@@ -65,7 +66,7 @@ App Store Connect › App › 左侧“App 信息 / 版本信息”右上角语�
 - **名称**：LanSend
 - **副标题**：Wi‑Fi file sharing, no cloud
 - **推广文本**：Send photos, videos, folders and your clipboard between iPhone, Mac and Windows on the same Wi‑Fi. Nothing leaves your network.
-- **关键词**：`file transfer,wifi,share,localsend,clipboard,lan,photos,send,nearby,offline,p2p,airdrop`
+- **关键词**：`file transfer,wifi,share,localsend,clipboard,lan,photos,send,nearby,offline,p2p,mac`
 - **描述**：
 
   > LanSend moves files between your devices over the local network. No account, no cloud, no size limits: the data goes straight from one device to the other.
@@ -78,7 +79,7 @@ App Store Connect › App › 左侧“App 信息 / 版本信息”右上角语�
   > • Verify every file with a checksum
   >
   > WORKS WITH LOCALSEND
-  > LanSend speaks the open LocalSend protocol, so it also talks to the free LocalSend app on Android, Linux and other platforms.
+  > LanSend uses the open LocalSend protocol, so it can also exchange files with any other app that speaks the same protocol.
   >
   > PRIVACY
   > Everything stays on your network. LanSend has no servers, collects no data and needs no sign‑in. Transfers are encrypted end to end with TLS, and you can require a PIN or a one‑time pairing before anyone can send to you.
@@ -96,7 +97,7 @@ App Store Connect › App › 左侧“App 信息 / 版本信息”右上角语�
 - **名称**：LanSend
 - **副标题**：局域网互传文件，不经云端
 - **推广文本**：在同一 Wi‑Fi 下的 iPhone、Mac 和 Windows 之间发送照片、视频、文件夹和剪贴板，数据不出本地网络。
-- **关键词**：`文件传输,局域网,互传,隔空投送,LocalSend,剪贴板,照片,wifi,发送,离线,附近,电脑`
+- **关键词**：`文件传输,局域网,互传,LocalSend,剪贴板,照片,wifi,发送,离线,附近,电脑,无线`
 - **描述**：
 
   > LanSend 通过局域网在你的设备之间传文件。不用账号，不经云端，没有大小限制：数据直接从一台设备到另一台。
@@ -109,7 +110,7 @@ App Store Connect › App › 左侧“App 信息 / 版本信息”右上角语�
   > • 每个文件都做校验和核对
   >
   > 兼容 LocalSend
-  > LanSend 使用开放的 LocalSend 协议，因此也能和 Android、Linux 等平台上的免费 LocalSend 应用互传。
+  > LanSend 使用开放的 LocalSend 协议，因此也能和其他支持同一协议的应用互传文件。
   >
   > 隐私
   > 一切都留在你的网络里。LanSend 没有服务器，不收集数据，不需要登录。传输全程 TLS 加密，你还可以要求对方输入 PIN 或先完成一次配对才能向你发送。
@@ -127,7 +128,7 @@ App Store Connect › App › 左侧“App 信息 / 版本信息”右上角语�
 - **名称**：LanSend
 - **副标题**：區域網路互傳檔案，不經雲端
 - **推广文本**：在同一 Wi‑Fi 下的 iPhone、Mac 和 Windows 之間傳送相片、影片、資料夾與剪貼簿內容，資料不離開本地網路。
-- **关键词**：`檔案傳輸,區域網路,互傳,隔空投送,LocalSend,剪貼簿,相片,wifi,傳送,離線,附近,電腦`
+- **关键词**：`檔案傳輸,區域網路,互傳,LocalSend,剪貼簿,相片,wifi,傳送,離線,附近,電腦,無線`
 - **描述**：
 
   > LanSend 透過區域網路在你的裝置之間傳輸檔案。不需帳號、不經雲端，也沒有檔案大小限制：資料直接從一台裝置傳到另一台。
@@ -140,7 +141,7 @@ App Store Connect › App › 左侧“App 信息 / 版本信息”右上角语�
   > • 每個檔案都會核對校驗碼
   >
   > 相容 LocalSend
-  > LanSend 採用開放的 LocalSend 通訊協定，因此也能與 Android、Linux 等平台上的免費 LocalSend 應用程式互相傳輸。
+  > LanSend 採用開放的 LocalSend 通訊協定，因此也能與其他支援同一協定的應用程式互傳檔案。
   >
   > 隱私
   > 所有資料都留在你的網路裡。LanSend 沒有伺服器、不收集任何資料，也不需要登入。傳輸全程以 TLS 加密，你還可以要求對方輸入 PIN，或先完成一次配對才能傳送檔案給你。
@@ -158,7 +159,7 @@ App Store Connect › App › 左侧“App 信息 / 版本信息”右上角语�
 - **名称**：LanSend
 - **副标题**：クラウド不要、Wi‑Fiでファイル共有
 - **推广文本**：同じWi‑Fi上のiPhone、Mac、Windows間で写真・動画・フォルダ・クリップボードを送信できます。データはネットワークの外に出ません。
-- **关键词**：`ファイル転送,wifi,共有,localsend,クリップボード,lan,写真,送信,近くのデバイス,オフライン,p2p,airdrop`
+- **关键词**：`ファイル転送,wifi,共有,localsend,クリップボード,lan,写真,送信,近くのデバイス,オフライン,p2p,mac`
 - **描述**：
 
   > LanSendはローカルネットワーク経由でデバイス間のファイルをやり取りします。アカウント登録もクラウドもサイズ制限もなく、データは一方の端末からもう一方へ直接送られます。
@@ -171,7 +172,7 @@ App Store Connect › App › 左侧“App 信息 / 版本信息”右上角语�
   > • すべてのファイルをチェックサムで検証
   >
   > LocalSendと互換
-  > LanSendはオープンなLocalSendプロトコルを使用しているため、Android、Linuxなど他のプラットフォームの無料アプリLocalSendとも通信できます。
+  > LanSendはオープンなLocalSendプロトコルを使用しているため、同じプロトコルに対応した他のアプリともファイルをやり取りできます。
   >
   > プライバシー
   > すべての通信はネットワーク内で完結します。LanSendにはサーバーがなく、データを収集せず、サインインも不要です。転送はTLSでエンドツーエンドに暗号化され、送信を受け付ける前にPINやワンタイムのペアリングを必須にすることもできます。
@@ -189,7 +190,7 @@ App Store Connect › App › 左侧“App 信息 / 版本信息”右上角语�
 - **名称**：LanSend
 - **副标题**：Wi‑Fi로 파일 공유, 클라우드 없이
 - **推广文本**：iPhone, Mac, Windows가 같은 Wi‑Fi에 있으면 사진, 동영상, 폴더, 클립보드를 주고받을 수 있습니다. 데이터는 네트워크 밖으로 나가지 않습니다.
-- **关键词**：`파일전송,wifi,공유,localsend,클립보드,lan,사진,전송,근처기기,오프라인,p2p,에어드롭`
+- **关键词**：`파일전송,wifi,공유,localsend,클립보드,lan,사진,전송,근처기기,오프라인,p2p,mac`
 - **描述**：
 
   > LanSend는 로컬 네트워크를 통해 기기 간에 파일을 전송합니다. 계정도, 클라우드도, 용량 제한도 없이 데이터가 한 기기에서 다른 기기로 바로 전달됩니다.
@@ -202,7 +203,7 @@ App Store Connect › App › 左侧“App 信息 / 版本信息”右上角语�
   > • 체크섬으로 모든 파일 검증
   >
   > 로컬센드와 호환
-  > LanSend는 공개된 LocalSend 프로토콜을 사용하므로 Android, Linux 등 다른 플랫폼의 무료 LocalSend 앱과도 통신할 수 있습니다.
+  > LanSend는 공개된 LocalSend 프로토콜을 사용하므로 같은 프로토콜을 지원하는 다른 앱과도 파일을 주고받을 수 있습니다.
   >
   > 개인정보 보호
   > 모든 데이터는 사용자의 네트워크 안에만 머무릅니다. LanSend는 서버가 없고 데이터를 수집하지 않으며 로그인도 필요 없습니다. 전송은 TLS로 종단 간 암호화되며, PIN이나 일회성 페어링을 요구해 아무나 파일을 보낼 수 없게 설정할 수 있습니다.
@@ -220,7 +221,7 @@ App Store Connect › App › 左侧“App 信息 / 版本信息”右上角语�
 - **名称**：LanSend
 - **副标题**：Dateien per WLAN, ohne Cloud
 - **推广文本**：Sende Fotos, Videos, Ordner und deine Zwischenablage zwischen iPhone, Mac und Windows im selben WLAN. Nichts verlässt dein Netzwerk.
-- **关键词**：`dateiübertragung,wlan,teilen,localsend,zwischenablage,lan,fotos,senden,nähe,offline,p2p,airdrop`
+- **关键词**：`dateiübertragung,wlan,teilen,localsend,zwischenablage,lan,fotos,senden,nähe,offline,p2p,mac`
 - **描述**：
 
   > LanSend überträgt Dateien zwischen deinen Geräten über das lokale Netzwerk. Kein Konto, keine Cloud, keine Größenbeschränkung: Die Daten gehen direkt von einem Gerät zum anderen.
@@ -233,7 +234,7 @@ App Store Connect › App › 左侧“App 信息 / 版本信息”右上角语�
   > • Jede Datei mit einer Prüfsumme verifizieren
   >
   > FUNKTIONIERT MIT LOCALSEND
-  > LanSend spricht das offene LocalSend-Protokoll und kann daher auch mit der kostenlosen LocalSend-App unter Android, Linux und anderen Plattformen kommunizieren.
+  > LanSend spricht das offene LocalSend-Protokoll und kann daher auch mit anderen Apps Dateien austauschen, die dasselbe Protokoll unterstützen.
   >
   > DATENSCHUTZ
   > Alles bleibt in deinem Netzwerk. LanSend hat keine Server, sammelt keine Daten und benötigt keine Anmeldung. Übertragungen sind Ende-zu-Ende mit TLS verschlüsselt, und du kannst eine PIN oder eine einmalige Kopplung verlangen, bevor dir jemand etwas senden kann.
@@ -251,7 +252,7 @@ App Store Connect › App › 左侧“App 信息 / 版本信息”右上角语�
 - **名称**：LanSend
 - **副标题**：Fichiers par Wi-Fi, sans cloud
 - **推广文本**：Envoyez photos, vidéos, dossiers et le presse-papiers entre iPhone, Mac et Windows sur le même Wi-Fi. Rien ne quitte votre réseau.
-- **关键词**：`transfert,wifi,partage,localsend,presse-papiers,lan,photos,envoyer,proximite,hors-ligne,p2p,airdrop`
+- **关键词**：`transfert,wifi,partage,localsend,presse-papiers,lan,photos,envoyer,proximite,hors-ligne,p2p,mac`
 - **描述**：
 
   > LanSend transfère des fichiers entre vos appareils sur le réseau local. Pas de compte, pas de cloud, aucune limite de taille : les données passent directement d'un appareil à l'autre.
@@ -264,7 +265,7 @@ App Store Connect › App › 左侧“App 信息 / 版本信息”右上角语�
   > • Vérifiez chaque fichier grâce à une somme de contrôle
   >
   > COMPATIBLE AVEC LOCALSEND
-  > LanSend utilise le protocole ouvert LocalSend, et communique donc aussi avec l'application gratuite LocalSend sur Android, Linux et d'autres plateformes.
+  > LanSend utilise le protocole ouvert LocalSend et peut donc aussi échanger des fichiers avec toute autre application qui prend en charge ce protocole.
   >
   > CONFIDENTIALITÉ
   > Tout reste sur votre réseau. LanSend n'a pas de serveur, ne collecte aucune donnée et ne nécessite aucune connexion. Les transferts sont chiffrés de bout en bout avec TLS, et vous pouvez exiger un code PIN ou un jumelage ponctuel avant que quiconque puisse vous envoyer quelque chose.
@@ -282,7 +283,7 @@ App Store Connect › App › 左侧“App 信息 / 版本信息”右上角语�
 - **名称**：LanSend
 - **副标题**：Comparte archivos por Wi‑Fi
 - **推广文本**：Envía fotos, vídeos, carpetas y tu portapapeles entre iPhone, Mac y Windows en la misma red Wi‑Fi. Nada sale de tu red.
-- **关键词**：`transferencia,wifi,compartir,localsend,portapapeles,lan,fotos,enviar,cercano,sinconexion,p2p,airdrop`
+- **关键词**：`transferencia,wifi,compartir,localsend,portapapeles,lan,fotos,enviar,cercano,sinconexion,p2p,mac`
 - **描述**：
 
   > LanSend mueve archivos entre tus dispositivos a través de la red local. Sin cuenta, sin nube, sin límites de tamaño: los datos van directamente de un dispositivo a otro.
@@ -295,7 +296,7 @@ App Store Connect › App › 左侧“App 信息 / 版本信息”右上角语�
   > • Verifica cada archivo con una suma de comprobación
   >
   > COMPATIBLE CON LOCALSEND
-  > LanSend habla el protocolo abierto de LocalSend, así que también se comunica con la app gratuita LocalSend en Android, Linux y otras plataformas.
+  > LanSend usa el protocolo abierto de LocalSend, así que también puede intercambiar archivos con cualquier otra app que admita el mismo protocolo.
   >
   > PRIVACIDAD
   > Todo se queda en tu red. LanSend no tiene servidores, no recopila datos y no requiere iniciar sesión. Las transferencias se cifran de extremo a extremo con TLS, y puedes exigir un PIN o un emparejamiento único antes de que alguien pueda enviarte algo.
