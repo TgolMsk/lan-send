@@ -27,7 +27,7 @@
   - 修：任何 `deny` 或 `Operation not permitted` 都要在提交前解决；"打开"失败则把 `/usr/bin/open` 子进程换成 `NSWorkspace.openURL`（`apps/app/src-tauri/src/platform/macos.rs`）。
 - **★ Downloads 的 TCC 弹窗必须有说明文案、拒绝后有出路**
   - 检查：`tccutil reset SystemPolicyDownloadsFolder com.wangsheng.lansend` 后从 Finder 双击启动沙盒 bundle，接收第一个文件时应弹"想要访问下载文件夹"，且弹窗里有一行用途说明。`plutil -p apps/app/src-tauri/Info.plist | grep NSDownloadsFolderUsageDescription` 必须有值。
-  - 修：`apps/app/src-tauri/Info.plist` 加 `NSDownloadsFolderUsageDescription`（如 `Files other devices send you are saved to your Downloads folder.`）；`crates/core/src/runtime/incoming.rs` 里 `Destination::new` 返回 EPERM 时，把原始错误替换成指向"系统设置 › 隐私与安全性 › 文件和文件夹"的提示，并建议改用设置页"选择文件夹"（powerbox 选的目录不会再弹窗）。
+  - 修：`apps/app/src-tauri/Info.plist` 加 `NSDownloadsFolderUsageDescription`，文案必须是“用途 + 具体例子”（5.1.1(ii)，2026-09-13 只写用途被拒过），如 `LanSend needs access to your Downloads folder to save the files other devices send you. For example, when you send a photo from your iPhone to this Mac, LanSend writes it to your Downloads folder so you can open it in Finder. You can choose a different folder in Settings.`，八个 `locales/*.lproj/InfoPlist.strings` 同步改；`crates/core/src/runtime/incoming.rs` 里 `Destination::new` 返回 EPERM 时，把原始错误替换成指向"系统设置 › 隐私与安全性 › 文件和文件夹"的提示，并建议改用设置页"选择文件夹"（powerbox 选的目录不会再弹窗）。
   - 注意：在 Terminal 里启动会继承 Terminal 的完全磁盘访问，看不到弹窗，验证无效。
 - **权限清单与描述文件一致**
   - 检查：`pkgutil --expand-full LanSend.pkg /tmp/pkg && codesign -d --entitlements :- /tmp/pkg/Payload/LanSend.app`，逐 key 对比 `apps/app/src-tauri/entitlements/mas.plist`（多出的 `beta-reports-active` 是描述文件注入的，正常）；`TeamIdentifier=VVB976RN4W`。
@@ -63,7 +63,7 @@
 ### 1.4 Info.plist / 隐私清单
 
 - **出口合规**：`plutil -p apps/app/src-tauri/Info.plist apps/app/src-tauri/Info.ios.plist | grep ITSAppUsesNonExemptEncryption` 均为 `false`；ASC 就不会再问加密问题。
-- **用途说明**：macOS `NSLocalNetworkUsageDescription`、`NSDownloadsFolderUsageDescription`；iOS `NSLocalNetworkUsageDescription`、`NSPhotoLibraryUsageDescription`。缺一个补一个。
+- **用途说明**：macOS `NSLocalNetworkUsageDescription`、`NSDownloadsFolderUsageDescription`；iOS `NSLocalNetworkUsageDescription`、`NSPhotoLibraryUsageDescription`。缺一个补一个。每条都要“用途 + 具体例子”，只写用途会按 5.1.1(ii) 被拒。
 - **版权**：`grep -n copyright apps/app/src-tauri/tauri.conf.json` 无结果则在 `bundle` 下加 `NSHumanReadableCopyright` = `© 2026 Wang Sheng`（已加在 `apps/app/src-tauri/Info.plist` 与 `Info.ios.plist`），和 ASC 的版权字段一字不差。
 - **类别**：`bundle.category = "Utility"` → `LSApplicationCategoryType = public.app-category.utilities`；ASC 两个平台主类别都选"工具"。
 - **PrivacyInfo.xcprivacy**：iOS 已有 `apps/app/src-tauri/gen/apple/PrivacyInfo.xcprivacy`（`project.yml` 以 resources 阶段打进 bundle 根目录；`NSPrivacyTracking=false`、无收集数据、`FileTimestamp` 理由 `C617.1` / `3B52.1`）。检查：模拟器构建后 `ls gen/apple/build/arm64-sim/LanSend.app/PrivacyInfo.xcprivacy` 存在；上传邮件里没有 `ITMS-91053`。若日后用到磁盘空间 / 启动时间 API，补 `DiskSpace E174.1`、`SystemBootTime 35F9.1`。macOS 暂不强制。改 `project.yml` 后要 `xcodegen generate`，且 `Sources` / `Externals` 已加 `excludes`（否则本地 `libapp.a` 会被打成资源）。

@@ -11,7 +11,7 @@
     <!-- macOS 15+ asks before an app may talk to the local network. -->
     <!-- Shown by macOS the first time the sandboxed app writes a received file into ~/Downloads. -->
     <key>NSDownloadsFolderUsageDescription</key>
-    <string>LanSend saves files received from your other devices to your Downloads folder. You can pick a different folder in Settings.</string>
+    <string>LanSend needs access to your Downloads folder to save the files other devices send you. For example, when you send a photo from your iPhone to this Mac, LanSend writes it to your Downloads folder so you can open it in Finder. You can choose a different folder in Settings.</string>
     <key>NSLocalNetworkUsageDescription</key>
     <string>LanSend finds other devices on your Wi‑Fi and sends files to them directly.</string>
 </dict>

@@ -4,6 +4,9 @@
 
 ## [Unreleased]
 
+### Fixed
+- macOS “下载”文件夹的用途说明（`NSDownloadsFolderUsageDescription`，Info.plist 与八种语言的 `InfoPlist.strings`）改成“用途 + 具体例子”的写法。App Review 按 5.1.1(ii) 拒绝了 0.4.0 构建 22，认为原文案只说明了用途、没有举例；这条字符串编译在 App 内，需要新构建重新提交。
+
 ## [0.4.0] - 2026-09-13
 
 ### Added

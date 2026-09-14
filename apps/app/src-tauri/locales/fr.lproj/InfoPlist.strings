@@ -1,4 +1,4 @@
 /* Permission prompts shown by the system; keep the product name LanSend as is. */
 "NSLocalNetworkUsageDescription" = "LanSend recherche d'autres appareils sur votre Wi-Fi et leur envoie des fichiers directement.";
 "NSPhotoLibraryUsageDescription" = "LanSend affiche votre photothèque pour que vous puissiez choisir des photos et vidéos à envoyer à un autre appareil. Rien n'est mis en ligne : les fichiers vont directement vers l'appareil que vous choisissez.";
-"NSDownloadsFolderUsageDescription" = "LanSend enregistre les fichiers reçus de vos autres appareils dans votre dossier Téléchargements. Vous pouvez choisir un autre dossier dans les Réglages.";
+"NSDownloadsFolderUsageDescription" = "LanSend a besoin d'accéder à votre dossier Téléchargements pour y enregistrer les fichiers que vos autres appareils vous envoient. Par exemple, lorsque vous envoyez une photo depuis votre iPhone vers ce Mac, LanSend l'écrit dans votre dossier Téléchargements afin que vous puissiez l'ouvrir dans le Finder. Vous pouvez choisir un autre dossier dans les Réglages.";

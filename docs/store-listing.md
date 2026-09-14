@@ -37,6 +37,7 @@
 
 ## 三点五、提交时踩过的坑（每次被拒都记在这里；提交前照 `docs/store-checklist.md` 逐项过）
 
+- **被拒：5.1.1(ii) Privacy – Data Collection and Storage，`NSDownloadsFolderUsageDescription` 不够具体（macOS 0.4.0 构建 22，2026-09-13 上午 10:07 中招；提交 ID 62283207-545d-48a5-80d3-c32eaf00e962）**。审核员认为“下载”文件夹的用途说明只讲了用途，没有按 5.1.1(ii) 的要求“说明怎么用这些数据并举一个具体例子”。原文案：`LanSend saves files received from your other devices to your Downloads folder. You can pick a different folder in Settings.`。信里说“见附件截图”，但 App Store Connect 的提交页没有渲染出任何附件。修法：`apps/app/src-tauri/Info.plist` 与八个 `locales/*.lproj/InfoPlist.strings` 里的这条改成“需要访问 → 用来做什么 → 例如 iPhone 发一张照片到这台 Mac 时写入下载文件夹以便在访达打开 → 可在设置里改”四段式。**注意**：用途说明编译在 App 的 Info.plist 里，与 1.5 改支持网址不同，必须出新构建重新上传，不能只“重新提交”。重提流程同 2.4.5 那次：版本页删旧构建、添加新构建并保存，“回复 App 审核”说明已按要求补充示例，再“重新提交至 App 审核”。iOS 0.4.0 不受影响。**教训**：苹果对每一条 `*UsageDescription` 的标准都是“用途 + 具体例子”，`NSLocalNetworkUsageDescription`、`NSPhotoLibraryUsageDescription` 也照此格式写，别等被拒再补。
 - **审核信息里“需要登录”默认勾选**：不取消会因“用户名/密码为必填”而无法“添加以供审核”。应用没有账号，取消勾选即可。
 - **出口合规**：Info.plist 里声明 `ITSAppUsesNonExemptEncryption=false`（iOS 在 `Info.ios.plist`，macOS 在 `Info.plist`），App Store Connect 就不再问加密问题。若走手动申报，选“标准加密算法”后会追问“是否在法国分发”，答“是”需上传法国的加密申报文件——直接用 plist 声明可避开。
 - **macOS 沙盒说明**（版本页“App 沙盒信息”，可不填）：已为 `network.server`、`network.client`、`files.downloads.read-write`、`files.user-selected.read-write` 各写一句用途，方便审核员理解为何要监听端口。
