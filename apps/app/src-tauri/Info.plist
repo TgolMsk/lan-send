@@ -13,6 +13,6 @@
     <key>NSDownloadsFolderUsageDescription</key>
     <string>LanSend needs access to your Downloads folder to save the files other devices send you. For example, when you send a photo from your iPhone to this Mac, LanSend writes it to your Downloads folder so you can open it in Finder. You can choose a different folder in Settings.</string>
     <key>NSLocalNetworkUsageDescription</key>
-    <string>LanSend finds other devices on your Wi‑Fi and sends files to them directly.</string>
+    <string>LanSend needs access to your local network to find your other devices and send files to them directly. For example, when you choose a photo and pick your Mac or iPhone in the device list, LanSend discovers that device on your Wi‑Fi and sends the photo straight to it, with no server in between.</string>
 </dict>
 </plist>

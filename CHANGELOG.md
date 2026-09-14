@@ -4,6 +4,9 @@
 
 ## [Unreleased]
 
+### Fixed
+- “本地网络”（`NSLocalNetworkUsageDescription`，macOS 与 iOS）和 iOS “照片图库”（`NSPhotoLibraryUsageDescription`）的用途说明改成与“下载”文件夹同款的“用途 + 具体例子”写法，Info.plist、Info.ios.plist 与八种语言的 `InfoPlist.strings` 同步。0.4.1 只补了下载文件夹那条；这两条随下一个构建带上，不为此单独出版本（0.4.0 / 0.4.1 的审核都没有对它们提出异议）。
+
 ## [0.4.1] - 2026-09-13
 
 Mac App Store 重提：仅改“下载”文件夹用途说明，功能与 0.4.0 相同。

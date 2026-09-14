@@ -1,4 +1,4 @@
 /* Permission prompts shown by the system; keep the product name LanSend as is. */
-"NSLocalNetworkUsageDescription" = "LanSend finds other devices on your Wi‑Fi and sends files to them directly.";
-"NSPhotoLibraryUsageDescription" = "LanSend shows your photo library so you can pick photos and videos to send to another device. Nothing is uploaded anywhere; the files go straight to the device you choose.";
+"NSLocalNetworkUsageDescription" = "LanSend needs access to your local network to find your other devices and send files to them directly. For example, when you choose a photo and pick your Mac or iPhone in the device list, LanSend discovers that device on your Wi‑Fi and sends the photo straight to it, with no server in between.";
+"NSPhotoLibraryUsageDescription" = "LanSend needs access to your photo library so you can pick photos and videos to send to another device. For example, choose a video from your library and send it to your Mac: it goes straight to that device and is never uploaded anywhere.";
 "NSDownloadsFolderUsageDescription" = "LanSend needs access to your Downloads folder to save the files other devices send you. For example, when you send a photo from your iPhone to this Mac, LanSend writes it to your Downloads folder so you can open it in Finder. You can choose a different folder in Settings.";

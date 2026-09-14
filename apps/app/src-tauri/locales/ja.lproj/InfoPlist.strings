@@ -1,4 +1,4 @@
 /* Permission prompts shown by the system; keep the product name LanSend as is. */
-"NSLocalNetworkUsageDescription" = "LanSendは同じWi‑Fi上の他のデバイスを見つけ、直接ファイルを送信します。";
-"NSPhotoLibraryUsageDescription" = "LanSendは写真ライブラリを表示し、他のデバイスに送る写真や動画を選べるようにします。アップロードは行われず、選んだデバイスへ直接送信されます。";
+"NSLocalNetworkUsageDescription" = "LanSendは、他のデバイスを見つけてファイルを直接送信するためにローカルネットワークへのアクセスが必要です。たとえば写真を選んでデバイス一覧から自分のMacやiPhoneを選ぶと、LanSendはWi‑Fi上でそのデバイスを見つけ、サーバーを介さずに写真を直接送信します。";
+"NSPhotoLibraryUsageDescription" = "LanSendは、他のデバイスに送信する写真や動画を選べるように写真ライブラリへのアクセスが必要です。たとえばライブラリから動画を選んでMacに送ると、その動画はどこにもアップロードされず、そのデバイスに直接届きます。";
 "NSDownloadsFolderUsageDescription" = "LanSendは、他のデバイスから送られたファイルを保存するために「ダウンロード」フォルダへのアクセスが必要です。たとえば、iPhoneからこのMacに写真を送ると、LanSendはその写真を「ダウンロード」フォルダに書き込み、Finderで開けるようにします。保存先は設定で変更できます。";
