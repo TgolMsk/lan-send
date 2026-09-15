@@ -144,6 +144,11 @@ export function dismissToast(id: number) {
   set((s) => ({ toasts: s.toasts.filter((toast) => toast.id !== id) }));
 }
 
+/** Every toast at once, for the tap-anywhere-to-dismiss gesture. */
+export function dismissAllToasts() {
+  set((s) => (s.toasts.length === 0 ? {} : { toasts: [] }));
+}
+
 function sortDevices(devices: DeviceView[]): DeviceView[] {
   return [...devices].sort(
     (a, b) =>

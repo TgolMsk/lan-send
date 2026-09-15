@@ -166,12 +166,6 @@
   .tabbar {
     display: flex;
   }
-  .toasts {
-    right: 12px;
-    left: 12px;
-    bottom: calc(76px + env(safe-area-inset-bottom));
-    max-width: none;
-  }
 }
 /* Cards ------------------------------------------------------------------- */
 .card {
@@ -815,8 +809,13 @@
   gap: 8px;
   z-index: 60;
   max-width: min(420px, calc(100% - 40px));
+  /* Only the cards themselves take taps; the space around them belongs to
+     whatever is underneath. */
+  pointer-events: none;
 }
 .toast {
+  pointer-events: auto;
+  cursor: pointer;
   padding: 12px 16px;
   border-radius: 14px;
   background: var(--modal);
@@ -833,6 +832,21 @@
 }
 .toast.error {
   border-color: rgba(255, 107, 107, 0.6);
+}
+/* Must come after the base rule above, not with the other mobile overrides
+   further up the file: same specificity, so source order decides and an
+   earlier block loses. */
+@media (max-width: 839px) {
+  .toasts {
+    right: 12px;
+    left: 12px;
+    /* Clear the tab bar by its measured height (Layout.tsx publishes it): a
+       guessed constant breaks as soon as a translated label wraps and the bar
+       grows. The measurement already covers the home indicator inset, so no
+       env() on top of it. */
+    bottom: calc(var(--tabbar-height, 64px) + 12px);
+    max-width: none;
+  }
 }
 .empty {
   text-align: center;

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { Icon, type IconName } from "./icons";
 import { t } from "../i18n";
 import { navigate, useStore, type Page } from "../store";
@@ -21,6 +21,34 @@ const pages: { id: Page; icon: IconName; label: () => string }[] = [
   { id: "settings", icon: "settings", label: () => t("nav.settings") },
 ];
 
+/** Publishes the tab bar's real height as `--tabbar-height` so overlays (the
+ *  toasts) can sit above it. Measured rather than assumed: the bar grows when a
+ *  translated label wraps, and it is `display: none` on wide windows, where the
+ *  observer reports zero. */
+function useTabbarHeight() {
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    const publish = () => {
+      const height = element.offsetHeight;
+      document.documentElement.style.setProperty("--tabbar-height", `${height}px`);
+    };
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(element);
+    // A bar that switches to `display: none` stops producing observations in
+    // some engines, so watch the breakpoint itself as well.
+    const breakpoint = window.matchMedia("(max-width: 839px)");
+    breakpoint.addEventListener("change", publish);
+    return () => {
+      observer.disconnect();
+      breakpoint.removeEventListener("change", publish);
+    };
+  }, []);
+  return ref;
+}
+
 export function Layout({ children }: { children: ReactNode }) {
   const page = useStore((s) => s.page);
   const identity = useStore((s) => s.identity);
@@ -28,6 +56,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const platform = useStore((s) => s.platform);
   const active = useStore((s) => s.transfers.filter((t) => !["finished", "failed", "cancelled", "declined"].includes(t.state)).length);
   const visible = pages.filter((p) => !(platform.mobile && p.id === "clipboard"));
+  const tabbar = useTabbarHeight();
   return (
     <div className="shell">
       {/* `deep` drags from anywhere in the subtree; Tauri excludes buttons and
@@ -60,7 +89,7 @@ export function Layout({ children }: { children: ReactNode }) {
       <main className="content">
         <div className="content-inner">{children}</div>
       </main>
-      <nav className="tabbar">
+      <nav className="tabbar" ref={tabbar}>
         {visible.map((p) => (
           <button key={p.id} className={`tab-item ${page === p.id ? "active" : ""}`} onClick={() => navigate(p.id)}>
             <Icon name={p.icon} size={20} />
