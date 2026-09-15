@@ -1,12 +1,15 @@
 //! The HTTP routes of the v2 upload API plus the resume extension.
 
 use super::save::{self, SaveOptions, SaveOutcome, Timestamps};
-use super::state::{AppState, FileStatus, PinCheck, Session, SessionFile, UploadRefusal};
+use super::state::{
+    AppState, FileStatus, ParkedUpload, PinCheck, Session, SessionFile, UploadRefusal,
+};
 use super::{Peer, ServerEvent, SessionEndReason, UploadDecision, UploadTarget};
 use crate::protocol::{
-    DeviceInfo, ErrorResponse, FEATURE_RESUME, PAIR_PATH, PairRequest, PairResponse, PeerInfo,
-    PrepareUploadRequest, PrepareUploadResponse, RESUME_OFFSET_HEADER, RESUME_PATH,
-    RESUME_TOKEN_HEADER, ResumeOffsetResponse, UNPAIR_PATH, verification_code,
+    CHECKSUM_PATH, ChecksumRequest, DeviceInfo, ErrorResponse, FEATURE_RESUME,
+    FEATURE_STREAM_CHECKSUM, PAIR_PATH, PairRequest, PairResponse, PeerInfo, PrepareUploadRequest,
+    PrepareUploadResponse, RESUME_OFFSET_HEADER, RESUME_PATH, RESUME_TOKEN_HEADER,
+    ResumeOffsetResponse, UNPAIR_PATH, UploadAck, verification_code,
 };
 use axum::Router;
 use axum::body::Bytes;
@@ -42,6 +45,7 @@ pub(super) fn router(state: Arc<AppState>) -> Router {
         )
         .route("/api/localsend/v2/cancel", post(cancel))
         .route(RESUME_PATH, get(resume_offset))
+        .route(CHECKSUM_PATH, post(confirm_checksum))
         .route(PAIR_PATH, post(pair))
         .route(UNPAIR_PATH, post(unpair))
         .route(
@@ -174,6 +178,14 @@ async fn prepare_upload(
         .ext
         .as_ref()
         .is_some_and(|ext| ext.supports(FEATURE_RESUME));
+    // Only meaningful when this side verifies at all; a sender that announces
+    // the extension but sends a digest up front keeps the plain path.
+    let sender_streams = state.verify_checksums
+        && request
+            .info
+            .ext
+            .as_ref()
+            .is_some_and(|ext| ext.supports(FEATURE_STREAM_CHECKSUM));
 
     let session_id = Uuid::new_v4().to_string();
     let Some(cancelled) = state.claim_pending(&session_id, peer.addr) else {
@@ -225,6 +237,7 @@ async fn prepare_upload(
                 status: FileStatus::Pending,
                 attempts: 0,
                 path: None,
+                parked: None,
             };
             (id, file)
         })
@@ -249,6 +262,7 @@ async fn prepare_upload(
         peer: peer.addr,
         files,
         resume_token: resume_token.clone(),
+        stream_checksum: sender_streams,
         last_activity: Instant::now(),
     });
     pending.disarm();
@@ -341,7 +355,11 @@ async fn upload(
     state.set_file_path(&session_id, &file_id, path.clone());
     guard.path = Some(path.clone());
 
-    let expected_sha256 = match state.verify_checksums {
+    // A sender on the streaming-checksum extension leaves `sha256` empty and
+    // confirms after the body; one that still sends a digest up front keeps
+    // the plain inline comparison (ADR-0017).
+    let defer_checksum = start.stream_checksum && file.sha256.is_none();
+    let expected_sha256 = match state.verify_checksums && !defer_checksum {
         true => file.sha256.clone(),
         false => None,
     };
@@ -365,6 +383,7 @@ async fn upload(
             expected_sha256: expected_sha256.as_deref(),
             timestamps,
             resume_from,
+            defer_checksum,
             keep_partial: start.resumable,
             idle_timeout: state.upload_idle_timeout,
         },
@@ -380,6 +399,25 @@ async fn upload(
         },
     )
     .await;
+
+    // Held: the bytes are on disk under the part name and the sender still owes
+    // its digest. Park the file so the session stays open, and hand the sender
+    // what this side computed so it can compare before confirming.
+    if let SaveOutcome::Held { sha256 } = &outcome {
+        let parked = ParkedUpload {
+            part_path: save::part_path(&path),
+            final_path: path.clone(),
+            digest: sha256.clone(),
+            timestamps,
+        };
+        if state.park_upload(&session_id, &file_id, parked) {
+            guard.hold();
+            return Ok(Json(UploadAck {
+                sha256: Some(sha256.clone()),
+            })
+            .into_response());
+        }
+    }
 
     let received = match &outcome {
         SaveOutcome::Success => file.size,
@@ -398,7 +436,7 @@ async fn upload(
     guard.finish(&outcome);
 
     match outcome {
-        SaveOutcome::Success => Ok(StatusCode::OK.into_response()),
+        SaveOutcome::Success | SaveOutcome::Held { .. } => Ok(StatusCode::OK.into_response()),
         SaveOutcome::HashMismatch => Err(ApiError::new(
             StatusCode::UNPROCESSABLE_ENTITY,
             "Checksum mismatch",
@@ -411,6 +449,81 @@ async fn upload(
         SaveOutcome::Interrupted { reason, .. } | SaveOutcome::Failed(reason) => {
             Err(ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, reason))
         }
+    }
+}
+
+/// Streaming-checksum extension: the sender reports the digest it computed
+/// while uploading. On a match the part file moves into place, otherwise it is
+/// dropped and the sender may retry the file (ADR-0017).
+async fn confirm_checksum(
+    State(state): State<Arc<AppState>>,
+    Extension(peer): Extension<Peer>,
+    Query(query): Params,
+    Json(body): Json<ChecksumRequest>,
+) -> Result<Response, ApiError> {
+    let (Some(session_id), Some(file_id), Some(token)) = (
+        query.get("sessionId"),
+        query.get("fileId"),
+        query.get("token"),
+    ) else {
+        return Err(ApiError::bad_request("Missing parameters"));
+    };
+    let parked = state
+        .take_parked(session_id, file_id, token, peer.addr)
+        .map_err(|refusal| match refusal {
+            UploadRefusal::Invalid => ApiError::invalid_token(),
+            UploadRefusal::InProgress => {
+                ApiError::new(StatusCode::CONFLICT, "File upload in progress")
+            }
+        })?;
+    // The file is already settled: this receiver does not verify checksums, so
+    // it never held anything back. Nothing to compare, nothing to report.
+    let Some(parked) = parked else {
+        return Ok(StatusCode::OK.into_response());
+    };
+
+    let outcome = if parked.digest.eq_ignore_ascii_case(body.sha256.trim()) {
+        save::finish_part(&parked.part_path, &parked.final_path, parked.timestamps).await
+    } else {
+        tracing::warn!(
+            "checksum mismatch: the sender reported {}, this side computed {}",
+            body.sha256.trim(),
+            parked.digest
+        );
+        let _ = tokio::fs::remove_file(&parked.part_path).await;
+        SaveOutcome::HashMismatch
+    };
+
+    let received = match &outcome {
+        SaveOutcome::Success => std::fs::metadata(&parked.final_path)
+            .map(|metadata| metadata.len())
+            .unwrap_or(0),
+        _ => 0,
+    };
+    let _ = state
+        .events
+        .send(ServerEvent::FileUploadResult {
+            session_id: session_id.clone(),
+            file_id: file_id.clone(),
+            path: parked.final_path,
+            outcome: outcome.clone(),
+            received,
+        })
+        .await;
+    if state.finalize_file(session_id, file_id, &outcome) {
+        state.emit_session_end(session_id.clone(), SessionEndReason::Finished);
+    }
+
+    match outcome {
+        SaveOutcome::Success => Ok(StatusCode::OK.into_response()),
+        SaveOutcome::HashMismatch => Err(ApiError::new(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "Checksum mismatch",
+        )),
+        other => Err(ApiError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            other.to_string(),
+        )),
     }
 }
 
@@ -748,6 +861,12 @@ impl UploadGuard {
             path: None,
             armed: true,
         }
+    }
+
+    /// Give up ownership without finalizing: the file lives on in the session
+    /// as a parked upload and the confirming request finalizes it.
+    fn hold(&mut self) {
+        self.armed = false;
     }
 
     fn finish(&mut self, outcome: &SaveOutcome) {

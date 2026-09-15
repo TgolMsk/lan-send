@@ -55,6 +55,10 @@ pub(super) struct Session {
     /// Resume extension: the token `Range` uploads must carry. `None` for
     /// senders that did not announce the extension.
     pub resume_token: Option<String>,
+    /// Streaming-checksum extension (ADR-0017): the sender hashes while
+    /// uploading and confirms afterwards, so a received file waits in its part
+    /// file until the digest arrives.
+    pub stream_checksum: bool,
     pub last_activity: Instant,
 }
 
@@ -65,12 +69,29 @@ pub(super) struct SessionFile {
     pub attempts: u8,
     /// Where the file is being written, once the application decided.
     pub path: Option<PathBuf>,
+    /// Set while [`FileStatus::AwaitingChecksum`].
+    pub parked: Option<ParkedUpload>,
+}
+
+/// A fully received body whose part file is not in place yet, because the
+/// sender still owes the digest it computed while streaming (ADR-0017).
+pub(super) struct ParkedUpload {
+    pub part_path: PathBuf,
+    pub final_path: PathBuf,
+    /// What this side computed while writing.
+    pub digest: String,
+    /// Applied when the part file is finally moved into place.
+    pub timestamps: super::save::Timestamps,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum FileStatus {
     Pending,
     InProgress,
+    /// Body received, waiting for the sender's digest. Unlike `InProgress`
+    /// this does not hold off the idle reaper: a sender that never confirms
+    /// must not pin the session slot.
+    AwaitingChecksum,
     Finished,
     Failed,
 }
@@ -108,6 +129,8 @@ pub(super) struct UploadStart {
     /// The path chosen for an earlier attempt, when there was one.
     pub path: Option<PathBuf>,
     pub resumable: bool,
+    /// The sender hashes while uploading and confirms afterwards (ADR-0017).
+    pub stream_checksum: bool,
 }
 
 impl AppState {
@@ -248,6 +271,65 @@ impl AppState {
         }
     }
 
+    /// Streaming-checksum extension: keep a received body in its part file
+    /// until the sender confirms the digest. Returns false when the file is no
+    /// longer in a state that can be parked.
+    pub fn park_upload(&self, session_id: &str, file_id: &str, parked: ParkedUpload) -> bool {
+        let mut slot = self.session.lock();
+        let Some(SessionState::Active(session)) = slot.as_mut() else {
+            return false;
+        };
+        if session.session_id != session_id {
+            return false;
+        }
+        session.last_activity = Instant::now();
+        match session.files.get_mut(file_id) {
+            Some(file) if file.status == FileStatus::InProgress => {
+                file.status = FileStatus::AwaitingChecksum;
+                file.parked = Some(parked);
+                true
+            }
+            _ => false,
+        }
+    }
+
+    /// Takes a parked upload back out for the confirming request, which must
+    /// come from the session's peer and carry the file's upload token.
+    ///
+    /// `Ok(None)` means the request was legitimate but there is nothing to
+    /// settle: this side did not defer, because it verifies no checksums. The
+    /// sender is told the file is fine rather than made to retry it.
+    pub fn take_parked(
+        &self,
+        session_id: &str,
+        file_id: &str,
+        token: &str,
+        peer: IpAddr,
+    ) -> Result<Option<ParkedUpload>, UploadRefusal> {
+        let mut slot = self.session.lock();
+        let Some(SessionState::Active(session)) = slot.as_mut() else {
+            return Err(UploadRefusal::Invalid);
+        };
+        if session.session_id != session_id || session.peer != peer {
+            return Err(UploadRefusal::Invalid);
+        }
+        session.last_activity = Instant::now();
+        let Some(file) = session.files.get_mut(file_id) else {
+            return Err(UploadRefusal::Invalid);
+        };
+        if file.token != token {
+            return Err(UploadRefusal::Invalid);
+        }
+        match file.status {
+            FileStatus::InProgress => Err(UploadRefusal::InProgress),
+            FileStatus::AwaitingChecksum => {
+                file.parked.take().map(Some).ok_or(UploadRefusal::Invalid)
+            }
+            FileStatus::Finished => Ok(None),
+            FileStatus::Pending | FileStatus::Failed => Err(UploadRefusal::Invalid),
+        }
+    }
+
     /// Drops the active session when it has been idle for too long.
     /// Returns its id when that happened.
     pub fn reap_idle(&self) -> Option<String> {
@@ -291,6 +373,7 @@ impl AppState {
             return Err(UploadRefusal::Invalid);
         }
         let resumable = session.resumable();
+        let stream_checksum = session.stream_checksum;
         session.last_activity = Instant::now();
         let file = session
             .files
@@ -301,15 +384,19 @@ impl AppState {
         }
         match file.status {
             FileStatus::Pending => {}
-            FileStatus::InProgress => return Err(UploadRefusal::InProgress),
+            FileStatus::InProgress | FileStatus::AwaitingChecksum => {
+                return Err(UploadRefusal::InProgress);
+            }
             FileStatus::Finished | FileStatus::Failed => return Err(UploadRefusal::Invalid),
         }
         file.status = FileStatus::InProgress;
         file.attempts = file.attempts.saturating_add(1);
+        file.parked = None;
         Ok(UploadStart {
             file: file.dto.clone(),
             path: file.path.clone(),
             resumable,
+            stream_checksum,
         })
     }
 
@@ -346,7 +433,9 @@ impl AppState {
         session.last_activity = Instant::now();
         let file = session.files.get(file_id).ok_or(UploadRefusal::Invalid)?;
         match file.status {
-            FileStatus::InProgress => Err(UploadRefusal::InProgress),
+            // Awaiting a checksum still counts as busy: the bytes are all there
+            // but the file is not settled, so an offset answer would mislead.
+            FileStatus::InProgress | FileStatus::AwaitingChecksum => Err(UploadRefusal::InProgress),
             FileStatus::Pending => Ok(file.path.clone()),
             FileStatus::Finished | FileStatus::Failed => Err(UploadRefusal::Invalid),
         }
@@ -367,8 +456,12 @@ impl AppState {
         session.last_activity = Instant::now();
         let resumable = session.resumable();
         if let Some(file) = session.files.get_mut(file_id)
-            && file.status == FileStatus::InProgress
+            && matches!(
+                file.status,
+                FileStatus::InProgress | FileStatus::AwaitingChecksum
+            )
         {
+            file.parked = None;
             let retry_allowed = file.attempts < MAX_UPLOAD_ATTEMPTS;
             file.status = match outcome {
                 SaveOutcome::Success => FileStatus::Finished,

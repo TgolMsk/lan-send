@@ -31,13 +31,17 @@ pub struct OutgoingFile {
 }
 
 impl OutgoingFile {
-    pub fn to_dto(&self, sha256: Option<String>) -> FileDto {
+    /// `content_id` is only set when the checksum is deferred to the upload
+    /// (ADR-0017); it lets the receiver match a partial upload without a
+    /// digest of the whole file.
+    pub fn to_dto(&self, sha256: Option<String>, content_id: Option<String>) -> FileDto {
         FileDto {
             id: self.id.clone(),
             file_name: self.name.clone(),
             size: self.size,
             file_type: self.mime.clone(),
             sha256,
+            content_id,
             preview: None,
             metadata: self.metadata.clone(),
         }

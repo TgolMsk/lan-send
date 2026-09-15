@@ -56,6 +56,7 @@
   "transfers.files": "개 파일",
   "transfers.filesLabel": "파일",
   "transfers.state.preparing": "준비 중",
+  "transfers.state.hashing": "체크섬 계산 중",
   "transfers.state.waiting-pin": "PIN 대기 중",
   "transfers.state.waiting-accept": "수락 대기 중",
   "transfers.state.active": "전송 중",

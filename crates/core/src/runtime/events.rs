@@ -104,8 +104,12 @@ pub struct TransferFileView {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum TransferState {
-    /// Collecting files, hashing, looking up the device.
+    /// Collecting files and looking up the device.
     Preparing,
+    /// Outgoing: reading every file to compute its checksum before the receiver
+    /// is contacted. Only reached with peers that lack the streaming-checksum
+    /// extension (ADR-0017); the byte counters track the hashing pass.
+    Hashing,
     /// The receiver wants a PIN; answer with `provide_pin`.
     WaitingPin,
     /// Incoming: waiting for the local user's answer.

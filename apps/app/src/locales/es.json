@@ -56,6 +56,7 @@
   "transfers.files": "archivos",
   "transfers.filesLabel": "Archivos",
   "transfers.state.preparing": "Preparando",
+  "transfers.state.hashing": "Calculando suma de verificación",
   "transfers.state.waiting-pin": "Esperando el PIN",
   "transfers.state.waiting-accept": "Esperando aceptación",
   "transfers.state.active": "Transfiriendo",

@@ -248,7 +248,8 @@ impl<'a> Incoming<'a> {
                                 sender_fingerprint,
                                 file_name: file.file_name.clone(),
                                 size: file.size,
-                                sha256: file.sha256.clone(),
+                                sha256: lan_send_core::runtime::resume_key(&file)
+                                    .map(str::to_owned),
                                 received: 0,
                                 updated_at: unix_now(),
                             });
@@ -413,10 +414,10 @@ fn resumable_files(
     let mut offsets = HashMap::new();
     let mut paths = HashMap::new();
     for (id, file) in files {
-        let Some(sha256) = &file.sha256 else {
+        let Some(key) = lan_send_core::runtime::resume_key(file) else {
             continue;
         };
-        let Ok(Some(partial)) = app.db.find_partial(sender_fingerprint, sha256, file.size) else {
+        let Ok(Some(partial)) = app.db.find_partial(sender_fingerprint, key, file.size) else {
             continue;
         };
         let on_disk = std::fs::metadata(&partial.part_path)
@@ -465,6 +466,7 @@ fn placeholder_file(file_id: &str, path: &std::path::Path) -> FileDto {
         size: std::fs::metadata(path).map(|m| m.len()).unwrap_or(0),
         file_type: "application/octet-stream".into(),
         sha256: None,
+        content_id: None,
         preview: None,
         metadata: None,
     }

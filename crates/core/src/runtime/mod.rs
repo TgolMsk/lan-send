@@ -16,6 +16,7 @@ mod pairing;
 
 pub use error_code::ErrorCode;
 pub use events::*;
+pub use incoming::resume_key;
 pub use outgoing::SendRequest;
 
 use crate::clipboard::{ClipboardError, ClipboardSync, platform_backend};
@@ -23,7 +24,7 @@ use crate::discovery::{Discovery, DiscoveryConfig};
 use crate::media::{self, MediaInfo, MediaKind, ThumbnailCache};
 use crate::protocol::{
     DeviceInfo, DeviceType, Extensions, FEATURE_CLIPBOARD, FEATURE_PAIRING, FEATURE_RESUME,
-    Fingerprint, PROTOCOL_VERSION, ProtocolType,
+    FEATURE_STREAM_CHECKSUM, Fingerprint, PROTOCOL_VERSION, ProtocolType,
 };
 use crate::store::{
     AppPaths, Database, KnownDevice, Settings, StoreError, TransferRecord, unix_now,
@@ -666,6 +667,21 @@ impl Inner {
         }
     }
 
+    /// Put every file's byte counter back to zero, so a phase that reused the
+    /// counters (hashing before the upload) does not leave the bar full.
+    pub(crate) fn reset_file_progress(&self, id: &str) {
+        self.update_transfer(id, |transfer| {
+            for file in &mut transfer.view.files {
+                file.done = 0;
+                if file.state == FileState::Active {
+                    file.state = FileState::Pending;
+                }
+            }
+            transfer.last_emit.clear();
+            transfer.view.recompute_totals();
+        });
+    }
+
     pub(crate) fn emit_transfer_updated(&self, id: &str) {
         if let Some(view) = self.transfer_view(id) {
             self.emit(RuntimeEvent::TransferUpdated { transfer: view });
@@ -906,6 +922,11 @@ fn prune_finished(transfers: &mut HashMap<String, ActiveTransfer>) {
 
 fn features_for(settings: &Settings) -> Vec<&'static str> {
     let mut features = vec![FEATURE_PAIRING];
+    // Announcing it while not verifying would make senders confirm a digest
+    // this side never computed (ADR-0017).
+    if settings.verify_checksums {
+        features.push(FEATURE_STREAM_CHECKSUM);
+    }
     if settings.resume {
         features.push(FEATURE_RESUME);
     }

@@ -5,7 +5,8 @@ use futures_util::StreamExt;
 use indicatif::MultiProgress;
 use lan_send_core::discovery::{Device, Discovery};
 use lan_send_core::protocol::{
-    DEFAULT_PORT, FEATURE_RESUME, Fingerprint, PrepareUploadRequest, ProtocolType,
+    DEFAULT_PORT, FEATURE_RESUME, FEATURE_STREAM_CHECKSUM, Fingerprint, PrepareUploadRequest,
+    ProtocolType,
 };
 use lan_send_core::store::{Direction, TransferRecord, TransferStatus, unix_now};
 use lan_send_core::transfer::{CollectOptions, OutgoingFile, collect};
@@ -149,8 +150,21 @@ pub async fn transfer(
     options: TransferOptions,
     events_rx: Option<mpsc::Receiver<ServerEvent>>,
 ) -> anyhow::Result<TransferOutcome> {
+    // With a peer on the streaming-checksum extension the digest comes out of
+    // the upload pass, so nothing is read here and the receiver is asked right
+    // away (ADR-0017). Only the cheap content identifier for cross-session
+    // resume is computed.
+    let stream_checksum = options.checksum
+        && discovery
+            .device_by_fingerprint(peer_fingerprint)
+            .is_some_and(|device| device.supports(FEATURE_STREAM_CHECKSUM));
     let mut checksums: HashMap<String, String> = HashMap::new();
-    if options.checksum {
+    let mut content_ids: HashMap<String, String> = HashMap::new();
+    if stream_checksum {
+        for file in &files {
+            content_ids.insert(file.id.clone(), content_id_of(&file.path, file.size).await?);
+        }
+    } else if options.checksum {
         let bar = indicatif::ProgressBar::new(files.len() as u64)
             .with_message("hashing")
             .with_style(
@@ -176,7 +190,10 @@ pub async fn transfer(
             .map(|file| {
                 (
                     file.id.clone(),
-                    file.to_dto(checksums.get(&file.id).cloned()),
+                    file.to_dto(
+                        checksums.get(&file.id).cloned(),
+                        content_ids.get(&file.id).cloned(),
+                    ),
                 )
             })
             .collect(),
@@ -322,6 +339,7 @@ pub async fn transfer(
                     path: &file.path,
                     resume_token: resume_token.as_deref(),
                     offset,
+                    stream_checksum,
                 };
                 let result = upload_with_retries(&client, &target, plan, &bar, &cancel).await;
                 bar.finish_and_clear();
@@ -413,6 +431,8 @@ struct UploadPlan<'a> {
     resume_token: Option<&'a str>,
     /// Bytes the receiver already holds (from an earlier session).
     offset: u64,
+    /// Hash while uploading and confirm afterwards (ADR-0017).
+    stream_checksum: bool,
 }
 
 async fn upload_with_retries(
@@ -443,6 +463,7 @@ async fn upload_with_retries(
             plan.token,
             plan.path,
             resume,
+            plan.stream_checksum,
             move |sent| bar_for_progress.set_position(sent),
         );
         let result = tokio::select! {
@@ -557,6 +578,35 @@ pub(crate) fn direct_target(query: &str) -> Option<Target> {
         port: port.unwrap_or(DEFAULT_PORT),
         protocol: ProtocolType::Https,
     })
+}
+
+/// See `content_id_of` in `core::runtime::outgoing`: a resume key that costs
+/// two mebibytes of reading no matter how large the file is.
+async fn content_id_of(path: &Path, size: u64) -> anyhow::Result<String> {
+    use tokio::io::AsyncSeekExt;
+    const EDGE: u64 = 1024 * 1024;
+
+    let mut file = tokio::fs::File::open(path)
+        .await
+        .with_context(|| format!("cannot open {}", path.display()))?;
+    let mut hasher = Sha256::new();
+    hasher.update(size.to_le_bytes());
+    let head = usize::try_from(size.min(EDGE)).unwrap_or(0);
+    let mut buffer = vec![0u8; head];
+    file.read_exact(&mut buffer).await?;
+    hasher.update(&buffer);
+    if size > EDGE * 2 {
+        file.seek(std::io::SeekFrom::End(-(EDGE as i64))).await?;
+        let mut tail = vec![0u8; EDGE as usize];
+        file.read_exact(&mut tail).await?;
+        hasher.update(&tail);
+    }
+    let hex: String = hasher
+        .finalize()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect();
+    Ok(format!("q:{hex}"))
 }
 
 async fn sha256_of(path: &Path) -> anyhow::Result<String> {

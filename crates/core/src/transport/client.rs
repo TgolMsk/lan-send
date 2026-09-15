@@ -2,18 +2,51 @@
 //! ADR-0008).
 
 use crate::protocol::{
-    API_PREFIX_V2, DeviceInfo, ErrorResponse, Fingerprint, PAIR_PATH, PairRequest, PairResponse,
-    PeerInfo, PrepareUploadRequest, PrepareUploadResponse, ProtocolType, RESUME_OFFSET_HEADER,
-    RESUME_PATH, RESUME_TOKEN_HEADER, ResumeOffsetResponse, UNPAIR_PATH,
+    API_PREFIX_V2, CHECKSUM_PATH, ChecksumRequest, DeviceInfo, ErrorResponse, Fingerprint,
+    PAIR_PATH, PairRequest, PairResponse, PeerInfo, PrepareUploadRequest, PrepareUploadResponse,
+    ProtocolType, RESUME_OFFSET_HEADER, RESUME_PATH, RESUME_TOKEN_HEADER, ResumeOffsetResponse,
+    UNPAIR_PATH, UploadAck,
 };
 use crate::transport::identity::Identity;
 use crate::transport::scoped_host;
 use crate::transport::tls::{self, TlsError};
 use futures_util::StreamExt;
+use parking_lot::Mutex;
 use reqwest::StatusCode;
+use sha2::{Digest, Sha256};
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::io::AsyncReadExt;
+
+/// Lowercase hex of a digest.
+fn hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
+}
+
+/// Feed `length` bytes from the current position of `file` into `hasher`,
+/// leaving the file positioned right after them.
+async fn hash_prefix(
+    file: &mut tokio::fs::File,
+    length: u64,
+    hasher: &Mutex<Sha256>,
+) -> Result<(), std::io::Error> {
+    let mut remaining = length;
+    let mut buffer = vec![0u8; 512 * 1024];
+    while remaining > 0 {
+        let want = usize::try_from(remaining.min(buffer.len() as u64)).unwrap_or(buffer.len());
+        let read = file.read(&mut buffer[..want]).await?;
+        if read == 0 {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::UnexpectedEof,
+                "file shorter than the offset the receiver reported",
+            ));
+        }
+        hasher.lock().update(&buffer[..read]);
+        remaining -= read as u64;
+    }
+    Ok(())
+}
 
 /// Where a request goes.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -244,12 +277,16 @@ impl Client {
         body: reqwest::Body,
     ) -> Result<(), ClientError> {
         self.upload_with(target, session_id, file_id, token, body, None)
-            .await
+            .await?;
+        Ok(())
     }
 
     /// `POST /upload`, optionally resuming: with `resume` given, the body
     /// starts at `resume.offset` and the request carries `Range` and the
     /// resume token. A 416 answer becomes [`ClientError::OffsetMismatch`].
+    /// The returned [`UploadAck`] carries a digest only when the receiver held
+    /// the file back for a streaming-checksum confirmation (ADR-0017); official
+    /// receivers answer with an empty body, which parses as an empty ack.
     pub async fn upload_with(
         &self,
         target: &Target,
@@ -258,7 +295,7 @@ impl Client {
         token: &str,
         body: reqwest::Body,
         resume: Option<Resume<'_>>,
-    ) -> Result<(), ClientError> {
+    ) -> Result<UploadAck, ClientError> {
         let mut request = self
             .http
             .post(target.url("/upload"))
@@ -283,8 +320,12 @@ impl Client {
         {
             return Err(ClientError::OffsetMismatch(expected));
         }
-        ok_or_error(response).await?;
-        Ok(())
+        let text = ok_or_error(response)
+            .await?
+            .text()
+            .await
+            .unwrap_or_default();
+        Ok(serde_json::from_str::<UploadAck>(&text).unwrap_or_default())
     }
 
     /// `POST /upload` streaming the file at `path`; `progress` receives the
@@ -298,12 +339,21 @@ impl Client {
         path: &Path,
         progress: impl Fn(u64) + Send + Sync + 'static,
     ) -> Result<(), ClientError> {
-        self.upload_file_from(target, session_id, file_id, token, path, None, progress)
-            .await
+        self.upload_file_from(
+            target, session_id, file_id, token, path, None, false, progress,
+        )
+        .await
     }
 
     /// Like [`Client::upload_file`], resuming at `resume.offset` when given;
     /// `progress` then starts from that offset.
+    ///
+    /// With `stream_checksum` the SHA-256 is computed from the same pass that
+    /// feeds the network, so the file is read once and `prepare-upload` did not
+    /// have to wait for a hashing pass (ADR-0017). The digest is confirmed with
+    /// [`Client::confirm_checksum`] once the body is through; a receiver that
+    /// disagrees answers 422, which reaches the caller as a plain
+    /// [`ClientError::Status`] and drives the same retry as an inline mismatch.
     #[allow(clippy::too_many_arguments)]
     pub async fn upload_file_from(
         &self,
@@ -313,33 +363,86 @@ impl Client {
         token: &str,
         path: &Path,
         resume: Option<Resume<'_>>,
+        stream_checksum: bool,
         progress: impl Fn(u64) + Send + Sync + 'static,
     ) -> Result<(), ClientError> {
         use tokio::io::AsyncSeekExt;
 
         let mut file = tokio::fs::File::open(path).await?;
         let offset = resume.as_ref().map(|resume| resume.offset).unwrap_or(0);
+        let hasher = stream_checksum.then(|| Arc::new(Mutex::new(Sha256::new())));
         if offset > 0 {
-            file.seek(std::io::SeekFrom::Start(offset)).await?;
+            match &hasher {
+                // The receiver hashes the whole file, the part already on disk
+                // included, so read the same prefix here instead of skipping it.
+                Some(hasher) => hash_prefix(&mut file, offset, hasher).await?,
+                None => {
+                    file.seek(std::io::SeekFrom::Start(offset)).await?;
+                }
+            }
         }
         let mut sent = offset;
+        let chunk_hasher = hasher.clone();
         let stream =
             tokio_util::io::ReaderStream::with_capacity(file, 512 * 1024).map(move |chunk| {
                 if let Ok(bytes) = &chunk {
                     sent += bytes.len() as u64;
+                    if let Some(hasher) = &chunk_hasher {
+                        hasher.lock().update(bytes);
+                    }
                     progress(sent);
                 }
                 chunk
             });
-        self.upload_with(
-            target,
-            session_id,
-            file_id,
-            token,
-            reqwest::Body::wrap_stream(stream),
-            resume,
-        )
-        .await
+        let resume_token = resume.as_ref().map(|resume| resume.token);
+        let ack = self
+            .upload_with(
+                target,
+                session_id,
+                file_id,
+                token,
+                reqwest::Body::wrap_stream(stream),
+                resume,
+            )
+            .await?;
+        // Only a receiver that answered with its own digest is holding the file
+        // and waiting to be told ours. Anyone else has already settled it, and
+        // a confirmation would arrive after the session is gone.
+        if let (Some(hasher), Some(_)) = (hasher, &ack.sha256) {
+            let digest = hex(&hasher.lock().clone().finalize());
+            self.confirm_checksum(target, session_id, file_id, token, resume_token, &digest)
+                .await?;
+        }
+        Ok(())
+    }
+
+    /// Streaming-checksum extension: hand the receiver the digest computed
+    /// while uploading so it can move the part file into place (ADR-0017).
+    pub async fn confirm_checksum(
+        &self,
+        target: &Target,
+        session_id: &str,
+        file_id: &str,
+        token: &str,
+        resume_token: Option<&str>,
+        sha256: &str,
+    ) -> Result<(), ClientError> {
+        let mut request = self
+            .http
+            .post(format!("{}{CHECKSUM_PATH}", target.origin()))
+            .query(&[
+                ("sessionId", session_id),
+                ("fileId", file_id),
+                ("token", token),
+            ])
+            .json(&ChecksumRequest {
+                sha256: sha256.to_string(),
+            });
+        if let Some(resume_token) = resume_token {
+            request = request.header(RESUME_TOKEN_HEADER, resume_token);
+        }
+        ok_or_error(request.send().await?).await?;
+        Ok(())
     }
 
     /// Resume extension: how many bytes of a pending file the receiver

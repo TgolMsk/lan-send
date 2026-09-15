@@ -56,6 +56,7 @@
   "transfers.files": "fichiers",
   "transfers.filesLabel": "Fichiers",
   "transfers.state.preparing": "Préparation",
+  "transfers.state.hashing": "Calcul de la somme de contrôle",
   "transfers.state.waiting-pin": "En attente du code PIN",
   "transfers.state.waiting-accept": "En attente d’acceptation",
   "transfers.state.active": "Transfert en cours",

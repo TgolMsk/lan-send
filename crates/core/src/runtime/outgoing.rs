@@ -4,7 +4,8 @@
 use super::{ErrorCode, Inner, RuntimeError};
 use crate::discovery::{Device, parse_host_port};
 use crate::protocol::{
-    DEFAULT_PORT, FEATURE_RESUME, Fingerprint, INTENT_CLIPBOARD, PrepareUploadRequest, ProtocolType,
+    DEFAULT_PORT, FEATURE_RESUME, FEATURE_STREAM_CHECKSUM, Fingerprint, INTENT_CLIPBOARD,
+    PrepareUploadRequest, ProtocolType,
 };
 use crate::runtime::{FileState, RuntimeEvent, TransferFileView, TransferState, TransferView};
 use crate::store::{Direction, TransferRecord, TransferStatus, unix_now};
@@ -16,7 +17,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::io::AsyncReadExt;
+use tokio::io::{AsyncReadExt, AsyncSeekExt};
 use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
 
@@ -182,16 +183,44 @@ async fn run_send(
     });
     inner.emit_transfer_updated(transfer_id);
 
-    // 3. Checksums.
+    // 3. Checksums. When the peer speaks the streaming-checksum extension the
+    //    digest falls out of the upload pass itself (ADR-0017): nothing is read
+    //    here, so the receiver learns about the transfer immediately and every
+    //    file is read once instead of twice. Only a cheap content identifier is
+    //    computed, so the receiver can still match a partial upload from an
+    //    earlier session. Otherwise hash up front as before, but report progress
+    //    so a large file does not look like a freeze.
+    let create_checksums = inner.settings().create_checksums;
+    let stream_checksum = create_checksums && device.supports(FEATURE_STREAM_CHECKSUM);
     let mut checksums: HashMap<String, String> = HashMap::new();
-    if inner.settings().create_checksums {
+    let mut content_ids: HashMap<String, String> = HashMap::new();
+    if stream_checksum {
         for file in &outgoing.files {
             if cancel.is_cancelled() {
                 inner.complete_transfer(transfer_id, TransferState::Cancelled, None, None);
                 return Ok(());
             }
-            checksums.insert(file.id.clone(), sha256_of(&file.path).await?);
+            content_ids.insert(file.id.clone(), content_id_of(&file.path, file.size).await?);
         }
+    } else if create_checksums {
+        inner.set_transfer_state(transfer_id, TransferState::Hashing);
+        for file in &outgoing.files {
+            if cancel.is_cancelled() {
+                inner.complete_transfer(transfer_id, TransferState::Cancelled, None, None);
+                return Ok(());
+            }
+            let reporter = inner.clone();
+            let hashed_transfer = transfer_id.to_string();
+            let hashed_file = file.id.clone();
+            let digest = sha256_of(&file.path, |done| {
+                reporter.progress(&hashed_transfer, &hashed_file, done);
+            })
+            .await?;
+            checksums.insert(file.id.clone(), digest);
+        }
+        // Hashed bytes are not transferred bytes: start the real bar at zero.
+        inner.reset_file_progress(transfer_id);
+        inner.set_transfer_state(transfer_id, TransferState::Preparing);
     }
 
     // 4. prepare-upload, asking for a PIN when the receiver wants one.
@@ -208,7 +237,10 @@ async fn run_send(
             .map(|file| {
                 (
                     file.id.clone(),
-                    file.to_dto(checksums.get(&file.id).cloned()),
+                    file.to_dto(
+                        checksums.get(&file.id).cloned(),
+                        content_ids.get(&file.id).cloned(),
+                    ),
                 )
             })
             .collect(),
@@ -349,6 +381,7 @@ async fn run_send(
                     path: &file.path,
                     resume_token: resume_token.as_deref(),
                     offset,
+                    stream_checksum,
                 };
                 let result =
                     upload_with_retries(&inner, &transfer_id, &client, &target, plan, &cancel)
@@ -449,6 +482,9 @@ struct UploadPlan<'a> {
     resume_token: Option<&'a str>,
     /// Bytes the receiver already holds (from an earlier session).
     offset: u64,
+    /// Hash while uploading and confirm afterwards instead of sending a digest
+    /// in `prepare-upload` (ADR-0017).
+    stream_checksum: bool,
 }
 
 async fn upload_with_retries(
@@ -482,6 +518,7 @@ async fn upload_with_retries(
             plan.token,
             plan.path,
             resume,
+            plan.stream_checksum,
             move |sent| progress_inner.progress(&progress_transfer, &progress_file, sent),
         );
         let result = tokio::select! {
@@ -525,20 +562,49 @@ async fn upload_with_retries(
     }
 }
 
-async fn sha256_of(path: &Path) -> Result<String, RuntimeError> {
+/// SHA-256 of the whole file; `progress` gets the running byte count so the
+/// user interface can show the wait instead of sitting on "preparing".
+async fn sha256_of(path: &Path, mut progress: impl FnMut(u64)) -> Result<String, RuntimeError> {
     let mut file = tokio::fs::File::open(path).await?;
     let mut hasher = Sha256::new();
     let mut buffer = vec![0u8; 512 * 1024];
+    let mut done = 0u64;
     loop {
         let read = file.read(&mut buffer).await?;
         if read == 0 {
             break;
         }
         hasher.update(&buffer[..read]);
+        done += read as u64;
+        progress(done);
     }
-    Ok(hasher
-        .finalize()
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect())
+    Ok(hex(&hasher.finalize()))
+}
+
+/// A content identifier that costs the same for a 2 MiB file and a 200 GB one:
+/// the size plus the first and last mebibyte. It replaces the full digest as
+/// the key for cross-session resume when the checksum is deferred to the upload
+/// (ADR-0017). The `q:` prefix keeps it from ever colliding with a real digest.
+async fn content_id_of(path: &Path, size: u64) -> Result<String, RuntimeError> {
+    const EDGE: u64 = 1024 * 1024;
+
+    let mut file = tokio::fs::File::open(path).await?;
+    let mut hasher = Sha256::new();
+    hasher.update(size.to_le_bytes());
+    let head = usize::try_from(size.min(EDGE)).unwrap_or(0);
+    let mut buffer = vec![0u8; head];
+    file.read_exact(&mut buffer).await?;
+    hasher.update(&buffer);
+    if size > EDGE * 2 {
+        file.seek(std::io::SeekFrom::End(-(EDGE as i64))).await?;
+        let mut tail = vec![0u8; EDGE as usize];
+        file.read_exact(&mut tail).await?;
+        hasher.update(&tail);
+    }
+    Ok(format!("q:{}", hex(&hasher.finalize())))
+}
+
+/// Lowercase hex of a digest.
+fn hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }

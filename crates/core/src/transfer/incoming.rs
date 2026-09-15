@@ -186,6 +186,7 @@ mod tests {
             size: 1,
             file_type: mime.into(),
             sha256: None,
+            content_id: None,
             preview: None,
             metadata: None,
         }

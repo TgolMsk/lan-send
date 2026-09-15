@@ -54,6 +54,7 @@ export type FileState = "pending" | "active" | "finished" | "failed" | "cancelle
 
 export type TransferState =
   | "preparing"
+  | "hashing"
   | "waiting-pin"
   | "waiting-accept"
   | "active"

@@ -371,11 +371,10 @@ impl Inner {
         let mut offsets = HashMap::new();
         let mut paths = HashMap::new();
         for (id, file) in files {
-            let Some(sha256) = &file.sha256 else {
+            let Some(key) = resume_key(file) else {
                 continue;
             };
-            let Ok(Some(partial)) = self.db.find_partial(sender_fingerprint, sha256, file.size)
-            else {
+            let Ok(Some(partial)) = self.db.find_partial(sender_fingerprint, key, file.size) else {
                 continue;
             };
             let on_disk = std::fs::metadata(&partial.part_path)
@@ -483,7 +482,7 @@ impl Inner {
                 sender_fingerprint: sender,
                 file_name: file.file_name.clone(),
                 size: file.size,
-                sha256: file.sha256.clone(),
+                sha256: resume_key(file).map(str::to_owned),
                 received: 0,
                 updated_at: unix_now(),
             });
@@ -654,6 +653,17 @@ impl Inner {
     }
 }
 
+/// The key a partial upload is filed under: the real digest when the sender
+/// hashed up front, otherwise the cheap content identifier it sent instead
+/// (ADR-0017). Both are stable for the same bytes from the same sender.
+pub fn resume_key(file: &FileDto) -> Option<&str> {
+    file.sha256
+        .as_deref()
+        .or(file.content_id.as_deref())
+        .map(str::trim)
+        .filter(|key| !key.is_empty())
+}
+
 fn placeholder_file(file_id: &str, path: &std::path::Path) -> FileDto {
     FileDto {
         id: file_id.to_string(),
@@ -664,6 +674,7 @@ fn placeholder_file(file_id: &str, path: &std::path::Path) -> FileDto {
         size: std::fs::metadata(path).map(|m| m.len()).unwrap_or(0),
         file_type: "application/octet-stream".into(),
         sha256: None,
+        content_id: None,
         preview: None,
         metadata: None,
     }

@@ -69,6 +69,15 @@ objc2-core-foundation = { version = "0.3", default-features = false, features = 
 objc2-core-graphics = { version = "0.3", default-features = false, features = ["std", "CGImage", "CGBitmapContext", "CGColorSpace", "CGContext", "CGGeometry", "CGDataProvider"] }
 objc2-image-io = { version = "0.3", default-features = false, features = ["std", "CGImageSource", "CGImageProperties", "objc2-core-graphics"] }
 
+# SHA-256 dominates the time a large transfer spends outside the network.
+# On x86 the sha2 crate already selects SHA-NI at runtime; on aarch64 its
+# ARMv8 crypto backend is compiled only when the `asm` feature is on, which
+# is worth ~4.5x (521 -> 2330 MiB/s on an M-series Mac). The feature stays
+# off elsewhere because `sha2-asm` assembles GNU-syntax .S files with
+# `cc -c`, which the MSVC toolchain used by the Windows CI job rejects.
+[target.'cfg(target_arch = "aarch64")'.dependencies]
+sha2 = { workspace = true, features = ["asm"] }
+
 [target.'cfg(target_os = "windows")'.dependencies]
 # Clipboard access with an AddClipboardFormatListener-based monitor, and
 # BMP <-> PNG conversion for CF_DIB (ADR-0011).

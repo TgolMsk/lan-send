@@ -49,6 +49,11 @@ pub const FEATURE_RESUME: &str = "resume";
 /// Extension feature: clipboard sync endpoint (milestone 3).
 pub const FEATURE_CLIPBOARD: &str = "clipboard";
 
+/// Extension feature: single-pass streaming checksums (ADR-0017). The sender
+/// leaves [`FileDto::sha256`] empty, hashes while uploading and confirms the
+/// digest afterwards, so the receiver hears about the transfer immediately.
+pub const FEATURE_STREAM_CHECKSUM: &str = "checksum-stream";
+
 /// Device category, only used for icons in user interfaces.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum DeviceType {
@@ -274,6 +279,18 @@ pub struct FileDto {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sha256: Option<String>,
 
+    /// Streaming-checksum extension (ADR-0017): a content identifier that is
+    /// cheap to compute for any file size, `q:` followed by the SHA-256 of the
+    /// size plus the first and last mebibyte. It stands in for `sha256` when
+    /// the receiver matches a partial upload across sessions. Official clients
+    /// ignore the unknown field.
+    #[serde(
+        default,
+        rename = "x-content-id",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub content_id: Option<String>,
+
     /// For a single `text/*` file: the message text itself.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub preview: Option<String>,
@@ -374,6 +391,27 @@ pub const RESUME_OFFSET_HEADER: &str = "x-resume-offset";
 
 /// Path of the resume query endpoint.
 pub const RESUME_PATH: &str = "/api/ext/v1/resume";
+
+/// Path of the streaming-checksum confirmation endpoint (ADR-0017).
+pub const CHECKSUM_PATH: &str = "/api/ext/v1/checksum";
+
+/// Body of `POST /api/ext/v1/checksum`: the digest the sender computed while
+/// streaming the file. The receiver compares it with its own and either moves
+/// the part file into place or discards it.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChecksumRequest {
+    /// Lowercase hex SHA-256 of the uploaded content.
+    pub sha256: String,
+}
+
+/// Body of the 200 response to `POST /upload`. Empty for plain uploads;
+/// carries the digest the receiver computed when the sender announced
+/// [`FEATURE_STREAM_CHECKSUM`], so a sender may compare before confirming.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UploadAck {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sha256: Option<String>,
+}
 
 /// Extension feature: device pairing (milestone 3).
 pub const FEATURE_PAIRING: &str = "pairing";
@@ -496,6 +534,7 @@ mod tests {
             size: 3,
             file_type: "text/plain".into(),
             sha256: None,
+            content_id: None,
             preview: None,
             metadata: None,
         };

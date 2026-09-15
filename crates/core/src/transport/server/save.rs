@@ -28,6 +28,10 @@ pub enum SaveOutcome {
     /// A `Range` upload started at an offset other than the part file's
     /// length; nothing was written.
     OffsetMismatch { expected: u64 },
+    /// Streaming-checksum extension (ADR-0017): received completely and
+    /// hashed, but the part file stays where it is until the sender confirms
+    /// the digest it computed while uploading.
+    Held { sha256: String },
 }
 
 impl SaveOutcome {
@@ -55,6 +59,7 @@ impl std::fmt::Display for SaveOutcome {
             Self::Failed(reason) => f.write_str(reason),
             Self::HashMismatch => f.write_str("checksum mismatch"),
             Self::OffsetMismatch { expected } => write!(f, "expected upload offset {expected}"),
+            Self::Held { .. } => f.write_str("received, awaiting the sender's checksum"),
         }
     }
 }
@@ -74,6 +79,11 @@ pub(super) struct SaveOptions<'a> {
     /// `Some(offset)`: append after `offset` bytes, which must be exactly
     /// what the part file holds. `None`: start from scratch.
     pub resume_from: Option<u64>,
+    /// Streaming-checksum extension: hash everything that is written and stop
+    /// after the part file is complete, leaving it for the confirming request
+    /// to move into place. Mutually exclusive with `expected_sha256`, which is
+    /// what a sender that hashes up front provides instead.
+    pub defer_checksum: bool,
     /// Keep the part file when the upload is interrupted (resumable session).
     pub keep_partial: bool,
     /// No data for this long counts as an interruption: a sender that
@@ -123,7 +133,8 @@ pub(super) async fn save_body(
         return SaveOutcome::OffsetMismatch { expected: existing };
     }
 
-    let mut hasher = options.expected_sha256.map(|_| Sha256::new());
+    let mut hasher =
+        (options.expected_sha256.is_some() || options.defer_checksum).then(Sha256::new);
     let file = if offset > 0 {
         // Hash the prefix that is already on disk, then append.
         let open = tokio::fs::OpenOptions::new()
@@ -154,7 +165,7 @@ pub(super) async fn save_body(
 
     let outcome = write_stream(body, file, offset, &options, hasher, &mut progress).await;
     match &outcome {
-        SaveOutcome::Success => {}
+        SaveOutcome::Success | SaveOutcome::Held { .. } => {}
         SaveOutcome::HashMismatch | SaveOutcome::OffsetMismatch { .. } => return outcome,
         SaveOutcome::Interrupted { .. } if options.keep_partial => return outcome,
         SaveOutcome::Interrupted { .. } | SaveOutcome::Failed(_) => {
@@ -162,9 +173,20 @@ pub(super) async fn save_body(
             return outcome;
         }
     }
+    // The confirming request moves it into place once the digests agree.
+    if let SaveOutcome::Held { .. } = &outcome {
+        return outcome;
+    }
 
-    apply_timestamps(&part, options.timestamps);
-    match tokio::fs::rename(&part, path).await {
+    finish_part(&part, path, options.timestamps).await
+}
+
+/// Apply the sender's timestamps and move the part file into place. Called at
+/// the end of a plain upload, and from the confirming request of a deferred
+/// checksum (ADR-0017).
+pub(super) async fn finish_part(part: &Path, path: &Path, timestamps: Timestamps) -> SaveOutcome {
+    apply_timestamps(part, timestamps);
+    match tokio::fs::rename(part, path).await {
         Ok(()) => SaveOutcome::Success,
         Err(err) => SaveOutcome::Failed(format!("could not move into place: {err}")),
     }
@@ -256,18 +278,23 @@ async fn write_stream(
             reason: format!("Expected {expected_size} bytes, received {written}"),
         };
     }
-    if let (Some(hasher), Some(expected)) = (hasher, options.expected_sha256) {
-        let actual: String = hasher
+    let digest = hasher.map(|hasher| {
+        hasher
             .finalize()
             .iter()
             .map(|byte| format!("{byte:02x}"))
-            .collect();
+            .collect::<String>()
+    });
+    if let (Some(actual), Some(expected)) = (&digest, options.expected_sha256) {
         if !actual.eq_ignore_ascii_case(expected.trim()) {
             tracing::warn!("checksum mismatch: expected {expected}, got {actual}");
             return SaveOutcome::HashMismatch;
         }
     }
-    SaveOutcome::Success
+    match (options.defer_checksum, digest) {
+        (true, Some(sha256)) => SaveOutcome::Held { sha256 },
+        _ => SaveOutcome::Success,
+    }
 }
 
 /// Best effort: a file whose timestamps could not be set is still received.
@@ -305,6 +332,7 @@ mod tests {
             expected_sha256: sha,
             timestamps: Timestamps::default(),
             resume_from: None,
+            defer_checksum: false,
             keep_partial: false,
             idle_timeout: std::time::Duration::from_secs(30),
         }

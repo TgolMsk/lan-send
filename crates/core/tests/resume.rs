@@ -122,6 +122,7 @@ async fn interrupted_upload_resumes_with_range() {
         size: content.len() as u64,
         file_type: "application/octet-stream".into(),
         sha256: Some(sha),
+        content_id: None,
         preview: None,
         metadata: None,
     };
@@ -228,6 +229,7 @@ async fn interrupted_upload_resumes_with_range() {
                 offset,
                 token: &resume_token,
             }),
+            false,
             move |sent| seen.lock().push(sent),
         )
         .await
@@ -273,6 +275,7 @@ async fn plain_v2_sender_gets_no_resume_fields() {
         size: content.len() as u64,
         file_type: "text/plain".into(),
         sha256: Some(hex(&Sha256::digest(&content))),
+        content_id: None,
         preview: None,
         metadata: None,
     };

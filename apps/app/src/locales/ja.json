@@ -56,6 +56,7 @@
   "transfers.files": "ファイル",
   "transfers.filesLabel": "ファイル",
   "transfers.state.preparing": "準備中",
+  "transfers.state.hashing": "チェックサム計算中",
   "transfers.state.waiting-pin": "PIN待ち",
   "transfers.state.waiting-accept": "承認待ち",
   "transfers.state.active": "転送中",

@@ -4,6 +4,17 @@
 
 ## [Unreleased]
 
+### Changed
+- 大文件传输不再有开头那段「什么都没发生」的等待。三处改动，2.1 GB 文件在同一台 Mac 上回环实测：接收端看到请求从 4.5 秒降到 0.15 秒，总耗时从 9.5 秒降到 2.0 秒（关掉校验和的理论下限是 1.35 秒）。
+  - `sha2` 在 aarch64 上默认用的是软件实现（521 MiB/s），按 `target_arch` 打开 `asm` 特性后走 ARMv8 加密指令（2330 MiB/s）。Apple Silicon 与 iPhone 都受益；x86 本来就靠运行时检测用上了 SHA-NI，Windows 仍不引入 `sha2-asm`，它的 GNU 语法汇编 MSVC 编不了。
+  - 单遍流式校验和（ADR-0017，私有扩展 `checksum-stream`）：发送方不再在 `prepare-upload` 之前把整个文件读一遍算摘要，而是边传边算、传完补发确认，接收端把文件暂存在 `.part` 里直到摘要对上。于是接收端立刻收到请求，文件在发送端也只读一遍。跨会话续传改用新的 `x-content-id`（大小加首尾各 1 MiB 的摘要）做匹配键，读 2 MiB 即可算出。与官方 LocalSend 互传时自动退回原来的预先哈希路径。
+  - 仍需预先哈希时（对端不支持该扩展），传输状态多了「校验中」并上报字节进度，不再显示成静止的「准备中」。
+
+
+### Added
+- `lansend_web/`：LanSend 官网（中文 + English 两套首页，外加隐私政策与技术支持内容页）。版式参照 electerm.org——白底、窄内容栏、分区交替底色、圆角描边卡片、实心主按钮、首屏局域网星座背景，配色取应用自己的品牌色。纯静态零依赖，不引用任何 CDN / 外部字体 / 统计脚本，路径全相对，双击 `index.html` 即可查看；`build.mjs` 从 `content.mjs`（文案 + 版本号 + 下载链接 + 备案号）渲染 HTML，`SITE_URL` / `SITE_ICP` 与 `scripts/build-site.mjs` 同名同义。配图自带工具链：`tools/shots.mjs` 用 `apps/app` 的 mock 前端重出中英两套各端界面截图并压成 WebP（与商店截图同源），`tools/icons.py` 从应用图标生成站点图标与 favicon，`tools/og.mjs` 生成 1200×630 分享图。样式表与脚本的 URL 带内容指纹，服务器可以放心给 `assets/` 配长缓存。部署步骤（构建变量、rsync 排除项、nginx 配置与 `add_header` 继承 / WebP MIME 两个坑、Caddy / 对象存储 / Pages 的替代方案）写在 `docs/release.md` 的“官网：lansend_web 的部署”一节。它自带 `/privacy/` 与 `/support/`，路径与 `site/` 一致，可以整个顶替掉后者，App Store Connect 里填的链接不用动。
+- `scripts/build-site.mjs`：把 `docs/` 里的首页、隐私政策、支持页渲染成自包含静态站点（零依赖，CSS 内联，不引用任何 CDN / 外部字体 / 统计脚本，深浅色自适应），输出到 `site/`，用于部署到备案域名 <https://ls.mixduo.cn/>。`SITE_ICP` / `SITE_POLICE` 环境变量在页脚渲染备案编号并链接备案系统（工信部要求）。GitHub Pages 与该站点共用同一份 Markdown 源文件；上架中国大陆需要隐私政策与技术支持链接在国内可访问，而备案域名不能指向 GitHub Pages。部署与 nginx 配置见 `docs/release.md`。
+
 ### Fixed
 - “本地网络”（`NSLocalNetworkUsageDescription`，macOS 与 iOS）和 iOS “照片图库”（`NSPhotoLibraryUsageDescription`）的用途说明改成与“下载”文件夹同款的“用途 + 具体例子”写法，Info.plist、Info.ios.plist 与八种语言的 `InfoPlist.strings` 同步。0.4.1 只补了下载文件夹那条；这两条随下一个构建带上，不为此单独出版本（0.4.0 / 0.4.1 的审核都没有对它们提出异议）。
 

@@ -7,7 +7,7 @@ use lan_send_core::clipboard::PeerTarget;
 use lan_send_core::discovery::{Device, Discovery, DiscoveryConfig, DiscoveryEvent};
 use lan_send_core::protocol::{
     DeviceInfo, DeviceType, Extensions, FEATURE_CLIPBOARD, FEATURE_PAIRING, FEATURE_RESUME,
-    Fingerprint, PROTOCOL_VERSION, ProtocolType,
+    FEATURE_STREAM_CHECKSUM, Fingerprint, PROTOCOL_VERSION, ProtocolType,
 };
 use lan_send_core::store::{
     AppPaths, ClipboardRecord, Database, KnownDevice, Settings, TransferRecord,
@@ -92,6 +92,9 @@ impl App {
     /// Extension features this device announces.
     pub fn features(&self) -> Vec<&'static str> {
         let mut features = vec![FEATURE_PAIRING];
+        if self.settings.verify_checksums {
+            features.push(FEATURE_STREAM_CHECKSUM);
+        }
         if self.settings.resume {
             features.push(FEATURE_RESUME);
         }
