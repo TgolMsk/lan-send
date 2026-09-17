@@ -144,3 +144,193 @@ cd apps/app && pnpm install
 pnpm tauri build                      # 当前平台的安装包，在 target/release/bundle/
 pnpm tauri build --target universal-apple-darwin   # macOS 通用二进制
 ```
+
+## 网站：ls.mixduo.cn（中国大陆可访问的隐私政策 / 支持页）
+
+App Store 的隐私政策与技术支持链接必须能打开，而 `tgolmsk.github.io` 在国内访问不稳定；中国大陆上架又要求备案，备案域名 `mixduo.cn` 的解析必须指向接入商（阿里云）名下的内地服务器，**不能 CNAME 到 GitHub Pages**，否则备案会被注销。所以同一份 Markdown 出两份站点：
+
+| 站点 | 面向 | 来源 | 部署 |
+|---|---|---|---|
+| <https://tgolmsk.github.io/lan-send/> | 全球 | `docs/*.md`（Jekyll） | push 到 main 自动 |
+| <https://ls.mixduo.cn/> | 中国大陆 | 同样的 `docs/*.md` | `scripts/build-site.mjs` + rsync，手动 |
+
+改文案只改 `docs/index.md` / `docs/privacy.md` / `docs/support.md`，GitHub Pages 自动更新，`ls.mixduo.cn` 要重新构建并上传。
+
+### 构建
+
+```bash
+node scripts/build-site.mjs                       # 输出 site/（已 gitignore）
+SITE_ICP='蜀ICP备2026054850号-2A' node scripts/build-site.mjs   # 带备案号
+```
+
+零依赖（只用 Node 标准库），渲染 `docs/` 里那三页 Markdown 成自包含 HTML：CSS 内联，不引用任何 CDN、外部字体或统计脚本，深浅色自适应，手机端单栏。输出 `index.html`、`privacy/index.html`、`support/index.html`、`screenshots/`、`robots.txt`、`sitemap.xml`，目录式路径让任何静态服务器都能直接用 `/privacy`、`/support`。
+
+环境变量：
+
+- `SITE_ICP` —— 工信部备案编号，渲染在页脚并链接 <https://beian.miit.gov.cn/>（备案要求网站底部标明并可查询）。留空则不渲染该行，构建时会提示。
+- `SITE_POLICE` / `SITE_POLICE_URL` —— 公安联网备案编号（上线 30 天内办理），同样渲染在页脚。
+
+拿到备案号后把它写进部署命令或 CI 的环境变量，别只存在某个人的 shell 历史里。
+
+### 部署
+
+```bash
+node scripts/build-site.mjs
+rsync -avz --delete site/ <user>@<内地服务器>:/var/www/ls.mixduo.cn/
+```
+
+nginx：
+
+```nginx
+server {
+    listen 80;
+    server_name ls.mixduo.cn;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ls.mixduo.cn;
+
+    ssl_certificate     /etc/nginx/ssl/ls.mixduo.cn.pem;
+    ssl_certificate_key /etc/nginx/ssl/ls.mixduo.cn.key;
+
+    root /var/www/ls.mixduo.cn;
+    index index.html;
+    charset utf-8;
+
+    location / {
+        try_files $uri $uri/ $uri.html =404;
+    }
+
+    location /screenshots/ {
+        expires 7d;
+    }
+}
+```
+
+证书用阿里云的免费 DV 证书或 certbot 都行；App Store Connect 里的链接必须是 https。
+
+### 上架中国大陆时要同步改的
+
+1. 二级域名 `ls.mixduo.cn` 解析到内地服务器（备案在 `mixduo.cn` 主域名下，子域名无需单独备案）。
+2. App Store Connect › App 信息 › 隐私政策 URL，简体中文本地化填 <https://ls.mixduo.cn/privacy>；版本页的技术支持 URL 填 <https://ls.mixduo.cn/support>（其他语言可继续用 GitHub Pages，或一并换成新域名）。
+3. 阿里云备案表里"具体使用的域名"填 `mixduo.cn`，这两页就是该域名提供的服务内容，前后自洽。
+4. 备案通过后用 `SITE_ICP=...` 重新构建上传，页脚出现备案号再去 ASC 填写备案号字段。
+
+## 官网：lansend_web 的部署
+
+`lansend_web/` 是完整的产品官网（中英首页 + 隐私政策 + 技术支持），纯静态、路径全相对，
+放到任何能发静态文件的地方都能跑，不需要 Node、不需要数据库。
+
+它已经**包含** `/privacy/` 与 `/support/` 两页（从同一份 `docs/*.md` 生成），路径和
+`scripts/build-site.mjs` 出的 `site/` 完全一致，所以可以整个顶替掉 `site/`，
+App Store Connect 里填的 <https://ls.mixduo.cn/privacy> 与 `/support` 不用改。
+
+### 1. 构建
+
+```bash
+node lansend_web/build.mjs
+```
+
+- 域名 `https://ls.mixduo.cn` 与备案号 `蜀ICP备2026054850号-2A` 已经记在 `lansend_web/content.mjs`
+  里，默认构建就带上，不用再传环境变量。
+- `SITE_URL` 写进 canonical、`og:url`、`hreflang` 与 `sitemap.xml`；页面之间全是相对路径，
+  所以放在子目录（如 GitHub Pages 的 `/lan-send/`）也不会断。
+- **备案号按域名查表**（`content.mjs` 里的 `BEIAN`）：备案号绑在备案域名上，`SITE_URL`
+  一旦换成别的域名，页脚就不会再印它。公安联网备案（上线 30 天内办）拿到号后填进同一张表的
+  `police` 字段。`SITE_ICP` / `SITE_POLICE` 仍可临时覆盖。
+- CSS 与 JS 的 URL 带内容指纹（`site.css?v=43ca6a47`），所以改了样式或脚本也要重新构建，
+  否则 HTML 里还是旧指纹。
+
+### 2. 上传
+
+```bash
+rsync -avz --delete \
+  --exclude 'tools/' --exclude '*.mjs' --exclude 'README.md' \
+  lansend_web/ <user>@<服务器>:/var/www/lansend/
+```
+
+三个 `--exclude` 把构建脚本挡在站外（没有密钥，但没必要公开）。`--delete` 会清掉目标目录里
+多余的文件，第一次跑之前确认路径没写错。
+
+### 3. nginx
+
+```nginx
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ls.mixduo.cn;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name ls.mixduo.cn;
+
+    ssl_certificate     /etc/letsencrypt/live/ls.mixduo.cn/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/ls.mixduo.cn/privkey.pem;
+
+    root /var/www/lansend;
+    index index.html;
+    charset utf-8;
+
+    # 目录式路径：/privacy -> /privacy/index.html，/en -> /en/index.html
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    # HTML 每次回源校验：版本号、下载链接都写在页面里
+    location ~* \.html$ { expires -1; }
+    # 带指纹的样式表与脚本可以长缓存
+    location ~* \.(css|js)$ { expires 30d; }
+    # 图片文件名固定（重出配图不改名），给一周
+    location ^~ /assets/img/ { expires 7d; }
+
+    gzip on;
+    gzip_min_length 1024;
+    gzip_types text/css application/javascript application/xml image/svg+xml text/plain;
+
+    add_header X-Content-Type-Options nosniff always;
+}
+```
+
+几个容易踩的点：
+
+- **别在 `location` 里写 `add_header`**。nginx 的 `add_header` 一旦出现在子层级，会**丢掉**父层级
+  所有的 `add_header`，`nosniff` 就没了。缓存用 `expires` 指令设置，不受这个规则影响。
+- **确认 `image/webp` 在 MIME 表里**：界面截图全是 WebP，配了 `nosniff` 之后类型发错浏览器就不显示了。
+  `grep webp /etc/nginx/mime.types` 有输出就行（nginx 1.11.6 起自带）；没有就在 server 块里补
+  `types { image/webp webp; }`。
+- 证书用 certbot 最省事：`sudo certbot --nginx -d ls.mixduo.cn`，它会自己改上面的 ssl 两行并配好续期。
+  App Store Connect 里的链接必须是 https。
+- 内容变了记得让 CDN 刷新（阿里云 CDN / Cloudflare 都要手动刷 `/index.html`、`/en/index.html`）。
+
+### 其它落地方式
+
+| 方式 | 适合 | 做法 |
+|---|---|---|
+| Caddy | 想省掉证书配置 | Caddyfile 两行：`ls.mixduo.cn { root * /var/www/lansend<br>file_server }`，证书自动申请续期 |
+| 对象存储 + CDN（阿里云 OSS / 腾讯 COS） | 不想维护服务器 | 上传整个目录，开静态网站托管，默认首页 `index.html`、默认 404 页留空；注意子目录索引要开，否则 `/privacy` 404 |
+| GitHub Pages | 全球访问、免备案 | Pages 的源目录只能是仓库根或 `/docs`，所以要加一个 workflow 把 `lansend_web/` 当 artifact 上传（`actions/upload-pages-artifact` + `actions/deploy-pages`）；会和现在 `docs/` 的 Jekyll 站冲突，二选一 |
+| Cloudflare Pages / Vercel | 想要自动部署 | 连仓库，构建命令 `node lansend_web/build.mjs`，输出目录 `lansend_web` |
+
+备案域名（`mixduo.cn` 及其子域名）**必须**解析到接入商名下的内地服务器，不能指向 GitHub Pages /
+Cloudflare，否则备案会被注销——这条见上一节。
+
+### 4. 发版后更新站点
+
+```bash
+# 1. 改版本号与下载文件信息
+$EDITOR lansend_web/content.mjs          # config.version / config.released / download.files
+# 2. 重新构建并上传
+node lansend_web/build.mjs
+rsync -avz --delete --exclude 'tools/' --exclude '*.mjs' --exclude 'README.md' \
+  lansend_web/ <user>@<服务器>:/var/www/lansend/
+```
+
+界面改版之后还要重出配图（`node lansend_web/tools/shots.mjs`，需要 `apps/app` 的依赖 + 本机 Chrome + cwebp），
+详见 `lansend_web/README.md`。

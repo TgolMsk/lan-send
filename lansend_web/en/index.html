@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LanSend — Wi‑Fi file and clipboard transfer, no cloud</title>
+<meta name="description" content="Send photos, videos, whole folders and your clipboard between iPhone, Mac and Windows on the same Wi‑Fi. No account, no cloud, no size limits. Speaks the LocalSend protocol. MIT licensed.">
+<meta name="theme-color" content="#14144a">
+<link rel="canonical" href="https://ls.mixduo.cn/en/">
+<link rel="alternate" hreflang="en" href="https://ls.mixduo.cn/en/">
+<link rel="alternate" hreflang="zh-Hans" href="https://ls.mixduo.cn/">
+<link rel="icon" href="../assets/img/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="../assets/img/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="LanSend">
+<meta property="og:title" content="LanSend — Wi‑Fi file and clipboard transfer, no cloud">
+<meta property="og:description" content="Send photos, videos, whole folders and your clipboard between iPhone, Mac and Windows on the same Wi‑Fi. No account, no cloud, no size limits. Speaks the LocalSend protocol. MIT licensed.">
+<meta property="og:url" content="https://ls.mixduo.cn/en/">
+<meta property="og:image" content="https://ls.mixduo.cn/assets/img/og-en.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="LanSend: local network file and clipboard transfer">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="../assets/css/site.css?v=43ca6a47">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="../"><img src="../assets/img/icon-128.png" width="28" height="28" alt=""><span>LanSend</span></a>
+    <nav class="nav" id="site-nav" hidden>
+      <a href="#features">Features</a>
+      <a href="#screens">Screenshots</a>
+      <a href="#how">How it works</a>
+      <a href="#download">Download</a>
+      <a href="#cli">CLI</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <div class="header-side">
+      <a class="lang-switch" href="../" hreflang="zh-Hans" rel="alternate">中文</a>
+      <a class="header-ghost" href="https://github.com/TgolMsk/lan-send" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19.2c-4.3 1.3-4.3-2.2-6-2.7m12 4.7v-3.3c0-.9.1-1.3-.5-1.9 2.7-.3 5.4-1.3 5.4-5.8a4.5 4.5 0 00-1.3-3.1 4.1 4.1 0 00-.1-3.1s-1-.3-3.4 1.2a11.7 11.7 0 00-6.2 0C6.5 3.7 5.5 4 5.5 4a4.1 4.1 0 00-.1 3.1 4.5 4.5 0 00-1.3 3.1c0 4.5 2.7 5.5 5.4 5.8-.6.6-.6 1.2-.5 1.9v3.3"/></svg><span>GitHub</span></a>
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Menu"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+    </div>
+  </div>
+</header>
+<main id="main">
+<section class="hero" id="top">
+  <canvas class="hero-net" aria-hidden="true"></canvas>
+  <div class="wrap hero-inner">
+    <a class="chip" href="https://github.com/TgolMsk/lan-send/releases/tag/v0.4.1" rel="noopener"><span class="dot"></span>Version v0.4.1 · 2026-09-13<span class="sep">·</span>What’s new</a>
+    <h1 class="wordmark"><img src="../assets/img/icon-256.png" width="84" height="84" alt="LanSend"><span>LanSend</span></h1>
+    <p class="hero-lead">Files and clipboard across your devices, never across the internet</p>
+    <p class="hero-sub">Send photos, videos, whole folders and your clipboard between iPhone, Mac and Windows on the same Wi‑Fi. No account, no cloud, no size limits — the data goes straight from one device to the other.</p>
+    <div class="hero-cta">
+      <a class="btn btn-primary" href="#download"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7.4 10.8L12 15.4l4.6-4.6M5 19.4h14"/></svg>Download v0.4.1</a>
+      <a class="btn" href="https://apps.apple.com/app/id6809459213" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M16.2 12.6c0-2.4 2-3.5 2.1-3.6-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-1.9-.9-3.1-.8-1.6 0-3.1.9-3.9 2.4-1.7 2.9-.4 7.2 1.2 9.5.8 1.2 1.7 2.4 3 2.4 1.2 0 1.7-.8 3.1-.8s1.9.8 3.1.8c1.3 0 2.1-1.2 2.9-2.3.9-1.3 1.3-2.6 1.3-2.7-.1 0-2.5-1-2.5-3.9zM14 5.6c.7-.8 1.1-1.9 1-3-1 0-2.2.7-2.9 1.5-.6.7-1.2 1.9-1 3 1.1.1 2.2-.6 2.9-1.5z"/></svg>App Store (iOS)</a>
+      <a class="btn" href="https://github.com/TgolMsk/lan-send" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19.2c-4.3 1.3-4.3-2.2-6-2.7m12 4.7v-3.3c0-.9.1-1.3-.5-1.9 2.7-.3 5.4-1.3 5.4-5.8a4.5 4.5 0 00-1.3-3.1 4.1 4.1 0 00-.1-3.1s-1-.3-3.4 1.2a11.7 11.7 0 00-6.2 0C6.5 3.7 5.5 4 5.5 4a4.1 4.1 0 00-.1 3.1 4.5 4.5 0 00-1.3 3.1c0 4.5 2.7 5.5 5.4 5.8-.6.6-.6 1.2-.5 1.9v3.3"/></svg>View source</a>
+    </div>
+    <p class="hero-meta">macOS 12+ · Windows 10+ · iOS 15+ · MIT licensed · no telemetry</p>
+  </div>
+  <div class="wrap hero-shot">
+    <figure class="frame frame-desktop">
+      <div class="frame-bar"><i></i><i></i><i></i><span>LanSend — Devices</span></div>
+      <img src="../assets/img/shots/en/desktop/1-devices.webp" width="1360" height="780" alt="Desktop devices page listing the devices on the same network" fetchpriority="high">
+    </figure>
+    <figure class="frame frame-phone">
+      <img src="../assets/img/shots/en/iphone/2-incoming.webp" width="390" height="844" alt="Incoming file request on iPhone" loading="lazy">
+    </figure>
+  </div>
+</section>
+<section id="features">
+  <div class="wrap">
+    <div class="section-head">
+    <span class="eyebrow">Features</span>
+    <h2>What sending a file should feel like</h2>
+    <p>One network, one tap, and it is on the other device.</p>
+  </div>
+    <div class="card-grid">
+      <article class="feature">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 14.5l5-5M10.6 7.4l1.7-1.7a3.9 3.9 0 115.5 5.5l-1.7 1.7M13.4 16.6l-1.7 1.7a3.9 3.9 0 11-5.5-5.5l1.7-1.7"/></svg></span>
+        <h3>Speaks LocalSend</h3>
+        <p>Implements LocalSend protocol v2.2, so it discovers and exchanges files with the official clients — including LocalSend on Android and Linux.</p>
+      </article>
+      <article class="feature">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 18.5h9.5a3.4 3.4 0 000-6.8 5.2 5.2 0 00-9.8-1.4 3.8 3.8 0 00.3 8.2zM3.5 3.5l17 17"/></svg></span>
+        <h3>No cloud in the middle</h3>
+        <p>Devices talk directly to each other. No server, no account, no telemetry, no size limit. It works on a network with no internet at all.</p>
+      </article>
+      <article class="feature">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6.5h12v8.5H3zM2 18.5h14M18.5 9.5h3v9h-3zM19.4 16.6h1.2"/></svg></span>
+        <h3>One design, three platforms</h3>
+        <p>macOS, Windows and iOS share the same interface: a sidebar on the desktop, a tab bar on the phone.</p>
+      </article>
+      <article class="feature">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2l7.3 2.9v5c0 4.3-2.9 8-7.3 9.5-4.4-1.5-7.3-5.2-7.3-9.5v-5zM9 11.8l2.1 2.1 4-4"/></svg></span>
+        <h3>Encrypted and verified</h3>
+        <p>Mutual TLS with fingerprint checks, an optional PIN before anyone can send to you, and a SHA‑256 check on every file received.</p>
+      </article>
+      <article class="feature">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9.2 3.8h5.6v3.1H9.2zM9.2 5.4H7.4A1.6 1.6 0 005.8 7v12.2a1.6 1.6 0 001.6 1.6h9.2a1.6 1.6 0 001.6-1.6V7a1.6 1.6 0 00-1.6-1.6h-1.8"/></svg></span>
+        <h3>Clipboard sync</h3>
+        <p>Once two computers are paired, text, images and file lists follow you between them (macOS and Windows).</p>
+      </article>
+      <article class="feature">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 12a8.4 8.4 0 103-6.4M3.4 4v5h5"/></svg></span>
+        <h3>Resumable transfers</h3>
+        <p>A dropped Wi‑Fi, a sleeping laptop or a cancelled transfer picks up where it left off instead of starting over.</p>
+      </article>
+      <article class="feature">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.4 7.6A1.6 1.6 0 015 6h3.7l2 2.5h7.3a1.6 1.6 0 011.6 1.6v8a1.6 1.6 0 01-1.6 1.6H5a1.6 1.6 0 01-1.6-1.6z"/></svg></span>
+        <h3>Folders, sorted on arrival</h3>
+        <p>Send a whole directory with its structure intact; the receiving side can file everything by device, date or type.</p>
+      </article>
+      <article class="feature">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.2h16v13.6H4zM4 15.6l4.6-4.6 4 4 3-3L20 15.6M9.6 9.4a1.3 1.3 0 11-2.6 0 1.3 1.3 0 012.6 0z"/></svg></span>
+        <h3>Media aware</h3>
+        <p>Types are detected from content. History shows real thumbnails (HEIC / AVIF through the system decoders) and music shows title and duration.</p>
+      </article>
+      <article class="feature">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20.4 12a8.4 8.4 0 11-16.8 0 8.4 8.4 0 0116.8 0zM12 7.2V12l3.2 1.9"/></svg></span>
+        <h3>Transfer history</h3>
+        <p>Everything you sent and received, ready to re-send, remove or clear.</p>
+      </article>
+      <article class="feature">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 6.5l5 5.2-5 5.2M12.5 17h7"/></svg></span>
+        <h3>Command line tool</h3>
+        <p><code>lan-send</code> covers discovery, transfers, pairing, clipboard and history on macOS, Windows and Linux.</p>
+      </article>
+      <article class="feature">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20.4 12a8.4 8.4 0 11-16.8 0 8.4 8.4 0 0116.8 0zM3.8 12h16.4M12 3.6c2.6 3.2 2.6 13.6 0 16.8M12 3.6c-2.6 3.2-2.6 13.6 0 16.8"/></svg></span>
+        <h3>Eight languages · light &amp; dark</h3>
+        <p>English, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Français, Español — following the system theme or your choice.</p>
+      </article>
+      <article class="feature">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13.2 3L5.4 13.2h5.6L10 21l8.2-10.4h-5.6z"/></svg></span>
+        <h3>Rust core</h3>
+        <p>Streamed end to end, so a 50 GB file costs no more memory than a small one. File names are sanitised and nothing is written outside your receive folder.</p>
+      </article>
+    </div>
+  </div>
+</section>
+<section id="screens" class="alt">
+  <div class="wrap">
+    <div class="section-head">
+    <span class="eyebrow">Screenshots</span>
+    <h2>The same app on every screen</h2>
+    <p>Taken from the app itself, not retouched.</p>
+  </div>
+    <div class="tabs" data-tabs role="tablist" aria-label="The same app on every screen">
+      <button type="button" role="tab" id="tab-screens-desktop" aria-controls="screens-desktop" aria-selected="true" tabindex="0">Desktop</button>
+      <button type="button" role="tab" id="tab-screens-iphone" aria-controls="screens-iphone" aria-selected="false" tabindex="-1">iPhone</button>
+      <button type="button" role="tab" id="tab-screens-ipad" aria-controls="screens-ipad" aria-selected="false" tabindex="-1">iPad</button>
+    </div>
+    <div class="panel panel-desktop" id="screens-desktop" role="tabpanel" aria-labelledby="tab-screens-desktop">
+      <div class="strip">
+        <figure class="shot">
+          <div class="frame frame-desktop"><div class="frame-bar"><i></i><i></i><i></i><span>LanSend — Devices</span></div><img src="../assets/img/shots/en/desktop/1-devices.webp" width="1360" height="780" alt="Devices — Everything on your network with its online, paired and favourite state — or type an address when discovery is blocked." loading="lazy" decoding="async"></div>
+          <figcaption><b>Devices</b>Everything on your network with its online, paired and favourite state — or type an address when discovery is blocked.</figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="frame frame-desktop"><div class="frame-bar"><i></i><i></i><i></i><span>LanSend — Transfers</span></div><img src="../assets/img/shots/en/desktop/2-transfer.webp" width="1360" height="780" alt="Transfers — One big number for the whole batch, plus progress, speed and time left per file." loading="lazy" decoding="async"></div>
+          <figcaption><b>Transfers</b>One big number for the whole batch, plus progress, speed and time left per file.</figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="frame frame-desktop"><div class="frame-bar"><i></i><i></i><i></i><span>LanSend — Clipboard</span></div><img src="../assets/img/shots/en/desktop/3-clipboard.webp" width="1360" height="780" alt="Clipboard — Two-way sync with paired computers for text and images, with a history you can copy from again." loading="lazy" decoding="async"></div>
+          <figcaption><b>Clipboard</b>Two-way sync with paired computers for text and images, with a history you can copy from again.</figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="frame frame-desktop"><div class="frame-bar"><i></i><i></i><i></i><span>LanSend — History</span></div><img src="../assets/img/shots/en/desktop/4-history.webp" width="1360" height="780" alt="History — What you sent and received, with thumbnails, checksums and where it went." loading="lazy" decoding="async"></div>
+          <figcaption><b>History</b>What you sent and received, with thumbnails, checksums and where it went.</figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="frame frame-desktop"><div class="frame-bar"><i></i><i></i><i></i><span>LanSend — Settings</span></div><img src="../assets/img/shots/en/desktop/5-settings.webp" width="1360" height="780" alt="Settings — Device name, receive folder, auto-accept, PIN, sorting rules and language." loading="lazy" decoding="async"></div>
+          <figcaption><b>Settings</b>Device name, receive folder, auto-accept, PIN, sorting rules and language.</figcaption>
+        </figure>
+      </div>
+    </div>
+    <div class="panel panel-iphone" id="screens-iphone" role="tabpanel" aria-labelledby="tab-screens-iphone" hidden>
+      <div class="strip">
+        <figure class="shot">
+          <div class="frame frame-phone"><img src="../assets/img/shots/en/iphone/1-devices.webp" width="390" height="844" alt="Devices — Open the app and the computers and phones nearby are already there." loading="lazy" decoding="async"></div>
+          <figcaption><b>Devices</b>Open the app and the computers and phones nearby are already there.</figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="frame frame-phone"><img src="../assets/img/shots/en/iphone/2-incoming.webp" width="390" height="844" alt="Incoming — You see what is coming before you accept — and can take only some of it." loading="lazy" decoding="async"></div>
+          <figcaption><b>Incoming</b>You see what is coming before you accept — and can take only some of it.</figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="frame frame-phone"><img src="../assets/img/shots/en/iphone/3-transfer.webp" width="390" height="844" alt="Transfer — Progress, speed and per-file detail, with a notification when you switch away." loading="lazy" decoding="async"></div>
+          <figcaption><b>Transfer</b>Progress, speed and per-file detail, with a notification when you switch away.</figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="frame frame-phone"><img src="../assets/img/shots/en/iphone/4-history.webp" width="390" height="844" alt="History — Received files land in the Files app under LanSend." loading="lazy" decoding="async"></div>
+          <figcaption><b>History</b>Received files land in the Files app under LanSend.</figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="frame frame-phone"><img src="../assets/img/shots/en/iphone/5-settings.webp" width="390" height="844" alt="Settings — Auto-accept, PIN, language and appearance." loading="lazy" decoding="async"></div>
+          <figcaption><b>Settings</b>Auto-accept, PIN, language and appearance.</figcaption>
+        </figure>
+      </div>
+    </div>
+    <div class="panel panel-ipad" id="screens-ipad" role="tabpanel" aria-labelledby="tab-screens-ipad" hidden>
+      <div class="strip">
+        <figure class="shot">
+          <div class="frame frame-tablet"><img src="../assets/img/shots/en/ipad/1-devices.webp" width="1032" height="1376" alt="Devices — The wider layout fills the screen with device cards." loading="lazy" decoding="async"></div>
+          <figcaption><b>Devices</b>The wider layout fills the screen with device cards.</figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="frame frame-tablet"><img src="../assets/img/shots/en/ipad/2-transfer.webp" width="1032" height="1376" alt="Transfers — Progress and the file list side by side." loading="lazy" decoding="async"></div>
+          <figcaption><b>Transfers</b>Progress and the file list side by side.</figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="frame frame-tablet"><img src="../assets/img/shots/en/ipad/3-history.webp" width="1032" height="1376" alt="History — Bigger thumbnails make finding an old transfer quick." loading="lazy" decoding="async"></div>
+          <figcaption><b>History</b>Bigger thumbnails make finding an old transfer quick.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </div>
+</section>
+<section id="how">
+  <div class="wrap">
+    <div class="section-head">
+    <span class="eyebrow">How it works</span>
+    <h2>Three steps, all of them on your network</h2>
+    <p>The same protocol as the official LocalSend: UDP multicast discovery, then a direct HTTPS transfer.</p>
+  </div>
+    <div class="diagram">
+  <svg viewBox="0 0 880 320" role="img" aria-label="iPhone ↔ Wi‑Fi router ↔ MacBook · direct mTLS transfer · no server involved">
+    <defs>
+      <linearGradient id="lansend-screen" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#14144a"/><stop offset="1" stop-color="#4444a3"/>
+      </linearGradient>
+    </defs>
+
+    <path class="d-cloud" d="M78 62h44a17 17 0 001-34 25 25 0 00-46-7 19 19 0 001 41z"/>
+    <path class="d-slash" d="M60 68l64-56"/>
+    <text class="d-label d-start" x="152" y="52">no server involved</text>
+
+    <rect class="d-body" x="50" y="118" width="86" height="168" rx="17"/>
+    <rect class="d-screen" x="58" y="126" width="70" height="152" rx="11"/>
+    <path class="d-screen-line" d="M70 152h46M70 168h30M70 184h46"/>
+    <text class="d-name" x="93" y="308">iPhone</text>
+
+    <path class="d-body" d="M648 268h204l10 15H638z"/>
+    <rect class="d-body" x="668" y="160" width="164" height="108" rx="9"/>
+    <rect class="d-screen" x="676" y="168" width="148" height="92" rx="5"/>
+    <path class="d-screen-line" d="M692 194h60M692 210h96M692 226h44"/>
+    <text class="d-name" x="750" y="308">MacBook</text>
+
+    <path class="d-wifi" d="M412 192a40 40 0 0156 0M424 202a24 24 0 0132 0"/>
+    <path class="d-wire" d="M414 216l-6-18M466 216l6-18"/>
+    <rect class="d-body" x="388" y="216" width="104" height="40" rx="11"/>
+    <circle class="d-led" cx="408" cy="236" r="4"/>
+    <path class="d-wire" d="M424 236h52"/>
+    <text class="d-label" x="440" y="280">Wi‑Fi router</text>
+
+    <path class="d-hop" d="M138 212h248M494 234h172"/>
+    <path class="d-flow" d="M136 160Q440 60 668 172"/>
+    <g class="d-pill">
+      <rect x="348" y="98" width="184" height="30" rx="15"/>
+      <text x="440" y="118">direct mTLS transfer</text>
+    </g>
+  </svg>
+</div>
+    <div class="steps">
+      <article class="step">
+        <span class="n">1</span>
+        <h3>Discover</h3>
+        <p>Each device announces its alias and fingerprint over UDP multicast and shows up within a few hundred milliseconds. Where a corporate or public Wi‑Fi blocks multicast, typing the other device’s IP still works.</p>
+      </article>
+      <article class="step">
+        <span class="n">2</span>
+        <h3>Accept</h3>
+        <p>The receiving side sees the file list before anything is written and can accept only part of it. You can require a PIN, or a one-time pairing where both ends confirm the same six-digit code.</p>
+      </article>
+      <article class="step">
+        <span class="n">3</span>
+        <h3>Transfer</h3>
+        <p>The two devices open a mutually authenticated TLS connection, stream the files into the folder you chose, and verify every one with SHA‑256. An interrupted transfer resumes later.</p>
+      </article>
+    </div>
+    <p class="note">The protocol details are in the <a href="https://github.com/TgolMsk/lan-send/blob/main/docs/localsend-v2-interface-checklist.md">LocalSend interface checklist</a> and <a href="https://github.com/TgolMsk/lan-send/blob/main/docs/protocol-extensions.md">protocol extensions</a>: resume, pairing and clipboard sync are private extensions that official clients simply ignore.</p>
+  </div>
+</section>
+<section id="download" class="alt">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Download</span>
+      <h2>Download LanSend v0.4.1</h2>
+      <p>Free and open source. Every installer is built, signed and notarised by GitHub Actions.</p>
+    </div>
+    <div class="tabs" data-tabs role="tablist" aria-label="Download">
+      <button type="button" role="tab" id="tab-download-macos" aria-controls="download-macos" aria-selected="true" tabindex="0">macOS</button>
+      <button type="button" role="tab" id="tab-download-windows" aria-controls="download-windows" aria-selected="false" tabindex="-1">Windows</button>
+      <button type="button" role="tab" id="tab-download-ios" aria-controls="download-ios" aria-selected="false" tabindex="-1">iOS</button>
+      <button type="button" role="tab" id="tab-download-cli" aria-controls="download-cli" aria-selected="false" tabindex="-1">CLI</button>
+    </div>
+    <div class="panel" id="download-macos" role="tabpanel" aria-labelledby="tab-download-macos">
+      <div class="files">
+      <a class="file" href="https://github.com/TgolMsk/lan-send/releases/download/v0.4.1/lan-send-0.4.1-macos-universal.dmg" rel="noopener">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6.4h14v9.2H5zM2.8 18.4h18.4"/></svg></span>
+        <span><b>LanSend.dmg</b><small>lan-send-0.4.1-macos-universal.dmg · 19.5 MB</small></span>
+        <span class="tag">recommended</span>
+      </a>
+      <a class="file" href="https://github.com/TgolMsk/lan-send/releases/download/v0.4.1/lan-send-0.4.1-macos-universal.app.zip" rel="noopener">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6.4h14v9.2H5zM2.8 18.4h18.4"/></svg></span>
+        <span><b>Portable .app.zip</b><small>lan-send-0.4.1-macos-universal.app.zip · 18.8 MB</small></span>
+        
+      </a>
+      </div>
+      <p class="dl-note">Universal binary for Apple Silicon and Intel. Requires macOS 12 or newer.</p>
+    </div>
+    <div class="panel" id="download-windows" role="tabpanel" aria-labelledby="tab-download-windows" hidden>
+      <div class="files">
+      <a class="file" href="https://github.com/TgolMsk/lan-send/releases/download/v0.4.1/lan-send-0.4.1-windows-x86_64-setup.exe" rel="noopener">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.4h16v13.2H4zM4 9.6h16M9.2 9.6v9"/></svg></span>
+        <span><b>Installer .exe</b><small>lan-send-0.4.1-windows-x86_64-setup.exe · 6.3 MB</small></span>
+        <span class="tag">recommended</span>
+      </a>
+      <a class="file" href="https://github.com/TgolMsk/lan-send/releases/download/v0.4.1/lan-send-0.4.1-windows-x86_64.msi" rel="noopener">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.4h16v13.2H4zM4 9.6h16M9.2 9.6v9"/></svg></span>
+        <span><b>Silent deploy .msi</b><small>lan-send-0.4.1-windows-x86_64.msi · 9.1 MB</small></span>
+        
+      </a>
+      </div>
+      <p class="dl-note">Requires Windows 10 or newer (WebView2 ships with the system; the installer offers it if missing).</p>
+    </div>
+    <div class="panel" id="download-ios" role="tabpanel" aria-labelledby="tab-download-ios" hidden>
+      <div class="appstore">
+        <img src="../assets/img/icon-256.png" width="96" height="96" alt="">
+        <div class="body">
+          <h3>Get it on the App Store</h3>
+          <p>The iPhone and iPad app is on the App Store — free, no in-app purchases, no ads.</p>
+          <a class="btn btn-primary" href="https://apps.apple.com/app/id6809459213" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M16.2 12.6c0-2.4 2-3.5 2.1-3.6-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-1.9-.9-3.1-.8-1.6 0-3.1.9-3.9 2.4-1.7 2.9-.4 7.2 1.2 9.5.8 1.2 1.7 2.4 3 2.4 1.2 0 1.7-.8 3.1-.8s1.9.8 3.1.8c1.3 0 2.1-1.2 2.9-2.3.9-1.3 1.3-2.6 1.3-2.7-.1 0-2.5-1-2.5-3.9zM14 5.6c.7-.8 1.1-1.9 1-3-1 0-2.2.7-2.9 1.5-.6.7-1.2 1.9-1 3 1.1.1 2.2-.6 2.9-1.5z"/></svg>App Store</a>
+          <p class="fine"><a href="https://github.com/TgolMsk/lan-send/releases/download/v0.4.1/lan-send-0.4.1-ios.ipa" rel="noopener">Developers can also grab the .ipa from the GitHub release.</a></p>
+        </div>
+      </div>
+      <p class="dl-note">Requires iOS 15 or newer, on iPhone and iPad. Allow the Local Network permission on first launch or no devices will show up.</p>
+    </div>
+    <div class="panel" id="download-cli" role="tabpanel" aria-labelledby="tab-download-cli" hidden>
+      <div class="files">
+      <a class="file" href="https://github.com/TgolMsk/lan-send/releases/download/v0.4.1/lan-send-cli-0.4.1-macos-universal.pkg" rel="noopener">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6.4h14v9.2H5zM2.8 18.4h18.4"/></svg></span>
+        <span><b>macOS .pkg (installs to /usr/local/bin)</b><small>lan-send-cli-0.4.1-macos-universal.pkg · 11.0 MB</small></span>
+        <span class="tag">recommended</span>
+      </a>
+      <a class="file" href="https://github.com/TgolMsk/lan-send/releases/download/v0.4.1/lan-send-cli-0.4.1-windows-x86_64.msi" rel="noopener">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.4h16v13.2H4zM4 9.6h16M9.2 9.6v9"/></svg></span>
+        <span><b>Windows .msi (adds to PATH)</b><small>lan-send-cli-0.4.1-windows-x86_64.msi · 6.0 MB</small></span>
+        <span class="tag">recommended</span>
+      </a>
+      <a class="file" href="https://github.com/TgolMsk/lan-send/releases/download/v0.4.1/lan-send-cli-0.4.1-linux-x86_64.tar.gz" rel="noopener">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 6.5l5 5.2-5 5.2M12.5 17h7"/></svg></span>
+        <span><b>Linux x86_64 .tar.gz</b><small>lan-send-cli-0.4.1-linux-x86_64.tar.gz · 6.0 MB</small></span>
+        
+      </a>
+      <a class="file" href="https://github.com/TgolMsk/lan-send/releases/download/v0.4.1/lan-send-cli-0.4.1-linux-aarch64.tar.gz" rel="noopener">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 6.5l5 5.2-5 5.2M12.5 17h7"/></svg></span>
+        <span><b>Linux aarch64 .tar.gz</b><small>lan-send-cli-0.4.1-linux-aarch64.tar.gz · 6.0 MB</small></span>
+        
+      </a>
+      </div>
+      <p class="dl-note">The same Rust core without a window — for scripts and servers. Linux is command line only.</p>
+    </div>
+    <p class="dl-links">
+      <a href="https://github.com/TgolMsk/lan-send/releases" rel="noopener">All installers and checksums<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 16.5l9-9M9 7.5h7.5V15"/></svg></a>
+      <a href="https://github.com/TgolMsk/lan-send/releases/download/v0.4.1/SHA256SUMS.txt" rel="noopener">Checksums SHA256SUMS.txt</a>
+    </p>
+  </div>
+</section>
+<section id="cli">
+  <div class="wrap">
+    <div class="section-head">
+    <span class="eyebrow">Command line</span>
+    <h2>When there is no window, there is lan-send</h2>
+    <p>Same core, same config as the app: same discovery, same encryption, same history.</p>
+  </div>
+    <div class="terminal">
+      <div class="frame-bar"><i></i><i></i><i></i><span>lan-send</span></div>
+      <ol>
+        <li>
+          <span class="cmd">lan-send discover<span class="what">list the devices on this network</span></span>
+          <button class="copy" type="button" data-copy="lan-send discover" data-done="Copied">Copy</button>
+        </li>
+        <li>
+          <span class="cmd">lan-send send &quot;Nice Orange&quot; a.jpg photos/<span class="what">send files and folders by alias, fingerprint or IP</span></span>
+          <button class="copy" type="button" data-copy="lan-send send &quot;Nice Orange&quot; a.jpg photos/" data-done="Copied">Copy</button>
+        </li>
+        <li>
+          <span class="cmd">lan-send receive --dir ~/Downloads<span class="what">receive in the foreground, confirming each request</span></span>
+          <button class="copy" type="button" data-copy="lan-send receive --dir ~/Downloads" data-done="Copied">Copy</button>
+        </li>
+        <li>
+          <span class="cmd">lan-send receive --organize device,type<span class="what">file everything by device and type</span></span>
+          <button class="copy" type="button" data-copy="lan-send receive --organize device,type" data-done="Copied">Copy</button>
+        </li>
+        <li>
+          <span class="cmd">lan-send pair &quot;Nice Orange&quot;<span class="what">pair: both ends confirm the same six-digit code</span></span>
+          <button class="copy" type="button" data-copy="lan-send pair &quot;Nice Orange&quot;" data-done="Copied">Copy</button>
+        </li>
+        <li>
+          <span class="cmd">lan-send clip watch<span class="what">two-way clipboard sync with paired devices</span></span>
+          <button class="copy" type="button" data-copy="lan-send clip watch" data-done="Copied">Copy</button>
+        </li>
+        <li>
+          <span class="cmd">lan-send history --limit 20<span class="what">show the transfer history</span></span>
+          <button class="copy" type="button" data-copy="lan-send history --limit 20" data-done="Copied">Copy</button>
+        </li>
+      </ol>
+    </div>
+    <p class="cli-more">Full usage in <code>lan-send --help</code> and the repository README.</p>
+  </div>
+</section>
+<section id="faq" class="alt">
+  <div class="wrap">
+    <div class="section-head">
+    <span class="eyebrow">FAQ</span>
+    <h2>Before you download</h2>
+    
+  </div>
+    <div class="faq">
+      <details>
+        <summary>Does it really work with the official LocalSend?</summary>
+        <p>Yes. LanSend implements the same LocalSend protocol v2.2, so both sides discover each other and transfer in either direction — including LocalSend on Android and Linux. Resume, pairing and clipboard sync are private extensions; official clients ignore those fields and transfer normally.</p>
+      </details>
+      <details>
+        <summary>Do files pass through a server? Do I need an account?</summary>
+        <p>Neither. Files go straight from one device to the other with no relay in between. There is no sign-up, no sign-in, no telemetry, no ads and no in-app purchases.</p>
+      </details>
+      <details>
+        <summary>The other device does not show up.</summary>
+        <p>Check that both devices are on the same Wi‑Fi with LanSend or LocalSend open, and that iOS was granted the Local Network permission. Some corporate and public networks block multicast between clients; in that case use “Send by address” on the Devices page and type the other device’s IP.</p>
+      </details>
+      <details>
+        <summary>Where do received files go?</summary>
+        <p>To the Downloads folder on macOS and Windows by default, configurable in Settings, optionally sorted into folders by device, date or type. On iOS they are in the Files app under “On My iPhone › LanSend”.</p>
+      </details>
+      <details>
+        <summary>Is clipboard sync available on iOS?</summary>
+        <p>No. iOS does not let an app read the clipboard in the background, and a half-working version would be worse than none, so clipboard sync is macOS and Windows only.</p>
+      </details>
+      <details>
+        <summary>Is it open source? Under which licence?</summary>
+        <p>MIT. The core library, the desktop and iOS app and the command line tool are all on GitHub; issues and pull requests are welcome.</p>
+      </details>
+    </div>
+  </div>
+</section>
+<section id="links">
+  <div class="wrap">
+    <div class="section-head">
+    <span class="eyebrow">Resources</span>
+    <h2>Read on</h2>
+    
+  </div>
+    <div class="link-cols">
+      <div>
+        <h3>Project</h3>
+        <ul>
+          <li><a href="https://github.com/TgolMsk/lan-send">GitHub repository</a></li>
+          <li><a href="https://github.com/TgolMsk/lan-send/releases">All releases</a></li>
+          <li><a href="https://github.com/TgolMsk/lan-send/blob/main/CHANGELOG.md">Changelog</a></li>
+          <li><a href="https://github.com/TgolMsk/lan-send/issues">Report an issue</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3>Documentation</h3>
+        <ul>
+          <li><a href="https://github.com/TgolMsk/lan-send/blob/main/docs/localsend-v2-interface-checklist.md">LocalSend interface checklist</a></li>
+          <li><a href="https://github.com/TgolMsk/lan-send/blob/main/docs/protocol-extensions.md">Protocol extensions</a></li>
+          <li><a href="https://github.com/TgolMsk/lan-send/blob/main/docs/platforms.md">Platform constraints</a></li>
+          <li><a href="https://github.com/TgolMsk/lan-send/tree/main/docs/adr">Architecture decision records</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3>Support</h3>
+        <ul>
+          <li><a href="../support/">Support and FAQ</a></li>
+          <li><a href="../privacy/">Privacy policy</a></li>
+          <li><a href="mailto:511297735@qq.com">Email us</a></li>
+          <li><a href="https://localsend.org">LocalSend</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-top">
+      <div>
+        <span class="footer-brand"><img src="../assets/img/icon-128.png" width="26" height="26" alt="">LanSend</span>
+        <p>Files and clipboard across your own network, never the cloud.</p>
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/TgolMsk/lan-send" rel="noopener">GitHub</a>
+        <a href="https://github.com/TgolMsk/lan-send/releases" rel="noopener">Downloads</a>
+        <a href="../support/">Support</a>
+        <a href="../privacy/">Privacy</a>
+        <a href="mailto:511297735@qq.com">511297735@qq.com</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 Wang Sheng · <a href="https://github.com/TgolMsk/lan-send/blob/main/LICENSE" rel="noopener">MIT licence</a></p>
+      <p>The protocol comes from <a href="https://github.com/localsend/localsend">LocalSend</a> (Apache‑2.0). This is an independent implementation and reuses none of its code.</p>
+      <p><a href="https://beian.miit.gov.cn/" rel="nofollow noopener" target="_blank">蜀ICP备2026054850号-2A</a></p>
+    </div>
+  </div>
+</footer>
+<script src="../assets/js/site.js?v=9ec15c59" defer></script>
+</body>
+</html>

@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://ls.mixduo.cn/sitemap.xml

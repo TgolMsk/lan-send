@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LanSend —— 局域网文件与剪贴板互传，不经云端</title>
+<meta name="description" content="在同一 Wi‑Fi 下的 iPhone、Mac 和 Windows 之间发送照片、视频、整个文件夹和剪贴板。不用账号，不经云端，没有大小限制，兼容 LocalSend 协议。MIT 开源。">
+<meta name="theme-color" content="#14144a">
+<link rel="canonical" href="https://ls.mixduo.cn/">
+<link rel="alternate" hreflang="zh-Hans" href="https://ls.mixduo.cn/">
+<link rel="alternate" hreflang="en" href="https://ls.mixduo.cn/en/">
+<link rel="icon" href="assets/img/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="LanSend">
+<meta property="og:title" content="LanSend —— 局域网文件与剪贴板互传，不经云端">
+<meta property="og:description" content="在同一 Wi‑Fi 下的 iPhone、Mac 和 Windows 之间发送照片、视频、整个文件夹和剪贴板。不用账号，不经云端，没有大小限制，兼容 LocalSend 协议。MIT 开源。">
+<meta property="og:url" content="https://ls.mixduo.cn/">
+<meta property="og:image" content="https://ls.mixduo.cn/assets/img/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="LanSend：局域网文件与剪贴板互传">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="assets/css/site.css?v=43ca6a47">
+</head>
+<body>
+<a class="skip" href="#main">跳到正文</a>
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="./"><img src="assets/img/icon-128.png" width="28" height="28" alt=""><span>LanSend</span></a>
+    <nav class="nav" id="site-nav" hidden>
+      <a href="#features">特性</a>
+      <a href="#screens">界面</a>
+      <a href="#how">工作原理</a>
+      <a href="#download">下载</a>
+      <a href="#cli">命令行</a>
+      <a href="#faq">常见问题</a>
+    </nav>
+    <div class="header-side">
+      <a class="lang-switch" href="en/" hreflang="en" rel="alternate">English</a>
+      <a class="header-ghost" href="https://github.com/TgolMsk/lan-send" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19.2c-4.3 1.3-4.3-2.2-6-2.7m12 4.7v-3.3c0-.9.1-1.3-.5-1.9 2.7-.3 5.4-1.3 5.4-5.8a4.5 4.5 0 00-1.3-3.1 4.1 4.1 0 00-.1-3.1s-1-.3-3.4 1.2a11.7 11.7 0 00-6.2 0C6.5 3.7 5.5 4 5.5 4a4.1 4.1 0 00-.1 3.1 4.5 4.5 0 00-1.3 3.1c0 4.5 2.7 5.5 5.4 5.8-.6.6-.6 1.2-.5 1.9v3.3"/></svg><span>GitHub</span></a>
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="菜单"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+    </div>
+  </div>
+</header>
+<main id="main">
+<section class="hero" id="top">
+  <canvas class="hero-net" aria-hidden="true"></canvas>
+  <div class="wrap hero-inner">
+    <a class="chip" href="https://github.com/TgolMsk/lan-send/releases/tag/v0.4.1" rel="noopener"><span class="dot"></span>版本 v0.4.1 · 2026-09-13<span class="sep">·</span>更新内容</a>
+    <h1 class="wordmark"><img src="assets/img/icon-256.png" width="84" height="84" alt="LanSend"><span>LanSend</span></h1>
+    <p class="hero-lead">局域网文件与剪贴板互传，数据不出你的网络</p>
+    <p class="hero-sub">在同一 Wi‑Fi 下的 iPhone、Mac 和 Windows 之间发送照片、视频、整个文件夹与剪贴板。不用账号，不经云端，没有大小限制——数据直接从一台设备到另一台。</p>
+    <div class="hero-cta">
+      <a class="btn btn-primary" href="#download"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7.4 10.8L12 15.4l4.6-4.6M5 19.4h14"/></svg>下载 v0.4.1</a>
+      <a class="btn" href="https://apps.apple.com/app/id6809459213" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M16.2 12.6c0-2.4 2-3.5 2.1-3.6-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-1.9-.9-3.1-.8-1.6 0-3.1.9-3.9 2.4-1.7 2.9-.4 7.2 1.2 9.5.8 1.2 1.7 2.4 3 2.4 1.2 0 1.7-.8 3.1-.8s1.9.8 3.1.8c1.3 0 2.1-1.2 2.9-2.3.9-1.3 1.3-2.6 1.3-2.7-.1 0-2.5-1-2.5-3.9zM14 5.6c.7-.8 1.1-1.9 1-3-1 0-2.2.7-2.9 1.5-.6.7-1.2 1.9-1 3 1.1.1 2.2-.6 2.9-1.5z"/></svg>App Store（iOS）</a>
+      <a class="btn" href="https://github.com/TgolMsk/lan-send" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19.2c-4.3 1.3-4.3-2.2-6-2.7m12 4.7v-3.3c0-.9.1-1.3-.5-1.9 2.7-.3 5.4-1.3 5.4-5.8a4.5 4.5 0 00-1.3-3.1 4.1 4.1 0 00-.1-3.1s-1-.3-3.4 1.2a11.7 11.7 0 00-6.2 0C6.5 3.7 5.5 4 5.5 4a4.1 4.1 0 00-.1 3.1 4.5 4.5 0 00-1.3 3.1c0 4.5 2.7 5.5 5.4 5.8-.6.6-.6 1.2-.5 1.9v3.3"/></svg>查看源码</a>
+    </div>
+    <p class="hero-meta">macOS 12+ · Windows 10+ · iOS 15+ · MIT 开源 · 无遥测</p>
+  </div>
+  <div class="wrap hero-shot">
+    <figure class="frame frame-desktop">
+      <div class="frame-bar"><i></i><i></i><i></i><span>LanSend —— 设备</span></div>
+      <img src="assets/img/shots/zh/desktop/1-devices.webp" width="1360" height="780" alt="桌面端设备页：列出同一局域网里可以收文件的设备" fetchpriority="high">
+    </figure>
+    <figure class="frame frame-phone">
+      <img src="assets/img/shots/zh/iphone/2-incoming.webp" width="390" height="844" alt="iPhone 上收到文件请求的弹窗" loading="lazy">
+    </figure>
+  </div>
+</section>
+<section id="features">
+  <div class="wrap">
+    <div class="section-head">
+    <span class="eyebrow">特性</span>
+    <h2>传文件该有的样子</h2>
+    <p>一个局域网、一次点击，剩下的交给它。</p>
+  </div>
+    <div class="card-grid">
+      <article class="feature">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 14.5l5-5M10.6 7.4l1.7-1.7a3.9 3.9 0 115.5 5.5l-1.7 1.7M13.4 16.6l-1.7 1.7a3.9 3.9 0 11-5.5-5.5l1.7-1.7"/></svg></span>
+        <h3>兼容 LocalSend</h3>
+        <p>实现 LocalSend 协议 v2.2，与官方客户端互相发现、互相收发，也就能和 Android、Linux 上的 LocalSend 互传。</p>
+      </article>
+      <article class="feature">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 18.5h9.5a3.4 3.4 0 000-6.8 5.2 5.2 0 00-9.8-1.4 3.8 3.8 0 00.3 8.2zM3.5 3.5l17 17"/></svg></span>
+        <h3>不经云端</h3>
+        <p>设备之间直连，没有服务器、没有账号、没有遥测，也没有文件大小限制。断网的局域网里照样能用。</p>
+      </article>
+      <article class="feature">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6.5h12v8.5H3zM2 18.5h14M18.5 9.5h3v9h-3zM19.4 16.6h1.2"/></svg></span>
+        <h3>三端一套界面</h3>
+        <p>macOS、Windows 与 iOS 同一套设计：桌面端侧栏，手机端自动换成底部标签栏。</p>
+      </article>
+      <article class="feature">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2l7.3 2.9v5c0 4.3-2.9 8-7.3 9.5-4.4-1.5-7.3-5.2-7.3-9.5v-5zM9 11.8l2.1 2.1 4-4"/></svg></span>
+        <h3>加密与校验</h3>
+        <p>双向 TLS（mTLS）加密，指纹核对；可要求对方输入 PIN，每个文件收完核对 SHA‑256。</p>
+      </article>
+      <article class="feature">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9.2 3.8h5.6v3.1H9.2zM9.2 5.4H7.4A1.6 1.6 0 005.8 7v12.2a1.6 1.6 0 001.6 1.6h9.2a1.6 1.6 0 001.6-1.6V7a1.6 1.6 0 00-1.6-1.6h-1.8"/></svg></span>
+        <h3>剪贴板同步</h3>
+        <p>配对后，文本、图片与文件列表在电脑之间自动同步（macOS 与 Windows）。</p>
+      </article>
+      <article class="feature">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 12a8.4 8.4 0 103-6.4M3.4 4v5h5"/></svg></span>
+        <h3>断点续传</h3>
+        <p>传输中断、设备睡眠、Wi‑Fi 抖动之后从断点继续，不用从头再来。</p>
+      </article>
+      <article class="feature">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.4 7.6A1.6 1.6 0 015 6h3.7l2 2.5h7.3a1.6 1.6 0 011.6 1.6v8a1.6 1.6 0 01-1.6 1.6H5a1.6 1.6 0 01-1.6-1.6z"/></svg></span>
+        <h3>文件夹与自动分类</h3>
+        <p>整个目录一起发，目录结构原样保留；接收端可按设备、日期或类型分目录存放。</p>
+      </article>
+      <article class="feature">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.2h16v13.6H4zM4 15.6l4.6-4.6 4 4 3-3L20 15.6M9.6 9.4a1.3 1.3 0 11-2.6 0 1.3 1.3 0 012.6 0z"/></svg></span>
+        <h3>媒体缩略图</h3>
+        <p>按内容识别类型，历史里直接显示图片缩略图（HEIC / AVIF 走系统解码器），音乐显示标题与时长。</p>
+      </article>
+      <article class="feature">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20.4 12a8.4 8.4 0 11-16.8 0 8.4 8.4 0 0116.8 0zM12 7.2V12l3.2 1.9"/></svg></span>
+        <h3>传输历史</h3>
+        <p>收发记录可查、可重发、可删除，也可以一键清空。</p>
+      </article>
+      <article class="feature">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 6.5l5 5.2-5 5.2M12.5 17h7"/></svg></span>
+        <h3>命令行工具</h3>
+        <p><code>lan-send</code> 带发现、收发、配对、剪贴板与历史子命令，macOS、Windows 与 Linux 都有。</p>
+      </article>
+      <article class="feature">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20.4 12a8.4 8.4 0 11-16.8 0 8.4 8.4 0 0116.8 0zM3.8 12h16.4M12 3.6c2.6 3.2 2.6 13.6 0 16.8M12 3.6c-2.6 3.2-2.6 13.6 0 16.8"/></svg></span>
+        <h3>八种语言 · 深浅色</h3>
+        <p>简中、繁中、英、日、韩、德、法、西；跟随系统深浅色，也可以手动指定。</p>
+      </article>
+      <article class="feature">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13.2 3L5.4 13.2h5.6L10 21l8.2-10.4h-5.6z"/></svg></span>
+        <h3>Rust 内核</h3>
+        <p>流式读写，几十 GB 的文件也不占内存；文件名净化，接收目录之外零写入。</p>
+      </article>
+    </div>
+  </div>
+</section>
+<section id="screens" class="alt">
+  <div class="wrap">
+    <div class="section-head">
+    <span class="eyebrow">界面</span>
+    <h2>三端同一套设计</h2>
+    <p>截图取自应用本身，未经修饰。</p>
+  </div>
+    <div class="tabs" data-tabs role="tablist" aria-label="三端同一套设计">
+      <button type="button" role="tab" id="tab-screens-desktop" aria-controls="screens-desktop" aria-selected="true" tabindex="0">桌面端</button>
+      <button type="button" role="tab" id="tab-screens-iphone" aria-controls="screens-iphone" aria-selected="false" tabindex="-1">iPhone</button>
+      <button type="button" role="tab" id="tab-screens-ipad" aria-controls="screens-ipad" aria-selected="false" tabindex="-1">iPad</button>
+    </div>
+    <div class="panel panel-desktop" id="screens-desktop" role="tabpanel" aria-labelledby="tab-screens-desktop">
+      <div class="strip">
+        <figure class="shot">
+          <div class="frame frame-desktop"><div class="frame-bar"><i></i><i></i><i></i><span>LanSend — 设备</span></div><img src="assets/img/shots/zh/desktop/1-devices.webp" width="1360" height="780" alt="设备 — 同一局域网里的设备，在线状态、配对与收藏一目了然；网络禁止发现时可以直接输入 IP。" loading="lazy" decoding="async"></div>
+          <figcaption><b>设备</b>同一局域网里的设备，在线状态、配对与收藏一目了然；网络禁止发现时可以直接输入 IP。</figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="frame frame-desktop"><div class="frame-bar"><i></i><i></i><i></i><span>LanSend — 传输</span></div><img src="assets/img/shots/zh/desktop/2-transfer.webp" width="1360" height="780" alt="传输 — 大数字总进度，外加逐个文件的进度、速度与剩余时间。" loading="lazy" decoding="async"></div>
+          <figcaption><b>传输</b>大数字总进度，外加逐个文件的进度、速度与剩余时间。</figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="frame frame-desktop"><div class="frame-bar"><i></i><i></i><i></i><span>LanSend — 剪贴板</span></div><img src="assets/img/shots/zh/desktop/3-clipboard.webp" width="1360" height="780" alt="剪贴板 — 与已配对的电脑双向同步，文本与图片都可以，历史里能重新复制。" loading="lazy" decoding="async"></div>
+          <figcaption><b>剪贴板</b>与已配对的电脑双向同步，文本与图片都可以，历史里能重新复制。</figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="frame frame-desktop"><div class="frame-bar"><i></i><i></i><i></i><span>LanSend — 历史</span></div><img src="assets/img/shots/zh/desktop/4-history.webp" width="1360" height="780" alt="历史 — 收发过的文件，带缩略图、校验结果与去向。" loading="lazy" decoding="async"></div>
+          <figcaption><b>历史</b>收发过的文件，带缩略图、校验结果与去向。</figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="frame frame-desktop"><div class="frame-bar"><i></i><i></i><i></i><span>LanSend — 设置</span></div><img src="assets/img/shots/zh/desktop/5-settings.webp" width="1360" height="780" alt="设置 — 设备名、接收目录、自动接收、PIN、分类规则与语言。" loading="lazy" decoding="async"></div>
+          <figcaption><b>设置</b>设备名、接收目录、自动接收、PIN、分类规则与语言。</figcaption>
+        </figure>
+      </div>
+    </div>
+    <div class="panel panel-iphone" id="screens-iphone" role="tabpanel" aria-labelledby="tab-screens-iphone" hidden>
+      <div class="strip">
+        <figure class="shot">
+          <div class="frame frame-phone"><img src="assets/img/shots/zh/iphone/1-devices.webp" width="390" height="844" alt="设备 — 打开就能看到附近的电脑与手机。" loading="lazy" decoding="async"></div>
+          <figcaption><b>设备</b>打开就能看到附近的电脑与手机。</figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="frame frame-phone"><img src="assets/img/shots/zh/iphone/2-incoming.webp" width="390" height="844" alt="接收请求 — 对方发过来时先问你，可以只收其中几个文件。" loading="lazy" decoding="async"></div>
+          <figcaption><b>接收请求</b>对方发过来时先问你，可以只收其中几个文件。</figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="frame frame-phone"><img src="assets/img/shots/zh/iphone/3-transfer.webp" width="390" height="844" alt="传输 — 进度、速度与逐文件明细，切到后台也会提示。" loading="lazy" decoding="async"></div>
+          <figcaption><b>传输</b>进度、速度与逐文件明细，切到后台也会提示。</figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="frame frame-phone"><img src="assets/img/shots/zh/iphone/4-history.webp" width="390" height="844" alt="历史 — 收到的文件存在“文件”App 的 LanSend 目录里。" loading="lazy" decoding="async"></div>
+          <figcaption><b>历史</b>收到的文件存在“文件”App 的 LanSend 目录里。</figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="frame frame-phone"><img src="assets/img/shots/zh/iphone/5-settings.webp" width="390" height="844" alt="设置 — 自动接收、PIN、语言与外观。" loading="lazy" decoding="async"></div>
+          <figcaption><b>设置</b>自动接收、PIN、语言与外观。</figcaption>
+        </figure>
+      </div>
+    </div>
+    <div class="panel panel-ipad" id="screens-ipad" role="tabpanel" aria-labelledby="tab-screens-ipad" hidden>
+      <div class="strip">
+        <figure class="shot">
+          <div class="frame frame-tablet"><img src="assets/img/shots/zh/ipad/1-devices.webp" width="1032" height="1376" alt="设备 — iPad 上用更宽的布局，卡片自动铺满。" loading="lazy" decoding="async"></div>
+          <figcaption><b>设备</b>iPad 上用更宽的布局，卡片自动铺满。</figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="frame frame-tablet"><img src="assets/img/shots/zh/ipad/2-transfer.webp" width="1032" height="1376" alt="传输 — 大屏上进度与文件列表一起看。" loading="lazy" decoding="async"></div>
+          <figcaption><b>传输</b>大屏上进度与文件列表一起看。</figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="frame frame-tablet"><img src="assets/img/shots/zh/ipad/3-history.webp" width="1032" height="1376" alt="历史 — 缩略图更大，翻找更快。" loading="lazy" decoding="async"></div>
+          <figcaption><b>历史</b>缩略图更大，翻找更快。</figcaption>
+        </figure>
+      </div>
+    </div>
+  </div>
+</section>
+<section id="how">
+  <div class="wrap">
+    <div class="section-head">
+    <span class="eyebrow">工作原理</span>
+    <h2>三步，全程不出局域网</h2>
+    <p>和官方 LocalSend 一样的协议：UDP 组播发现 + HTTPS 直传。</p>
+  </div>
+    <div class="diagram">
+  <svg viewBox="0 0 880 320" role="img" aria-label="iPhone ↔ Wi‑Fi 路由器 ↔ MacBook · mTLS 直连传输 · 不经过任何服务器">
+    <defs>
+      <linearGradient id="lansend-screen" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#14144a"/><stop offset="1" stop-color="#4444a3"/>
+      </linearGradient>
+    </defs>
+
+    <path class="d-cloud" d="M78 62h44a17 17 0 001-34 25 25 0 00-46-7 19 19 0 001 41z"/>
+    <path class="d-slash" d="M60 68l64-56"/>
+    <text class="d-label d-start" x="152" y="52">不经过任何服务器</text>
+
+    <rect class="d-body" x="50" y="118" width="86" height="168" rx="17"/>
+    <rect class="d-screen" x="58" y="126" width="70" height="152" rx="11"/>
+    <path class="d-screen-line" d="M70 152h46M70 168h30M70 184h46"/>
+    <text class="d-name" x="93" y="308">iPhone</text>
+
+    <path class="d-body" d="M648 268h204l10 15H638z"/>
+    <rect class="d-body" x="668" y="160" width="164" height="108" rx="9"/>
+    <rect class="d-screen" x="676" y="168" width="148" height="92" rx="5"/>
+    <path class="d-screen-line" d="M692 194h60M692 210h96M692 226h44"/>
+    <text class="d-name" x="750" y="308">MacBook</text>
+
+    <path class="d-wifi" d="M412 192a40 40 0 0156 0M424 202a24 24 0 0132 0"/>
+    <path class="d-wire" d="M414 216l-6-18M466 216l6-18"/>
+    <rect class="d-body" x="388" y="216" width="104" height="40" rx="11"/>
+    <circle class="d-led" cx="408" cy="236" r="4"/>
+    <path class="d-wire" d="M424 236h52"/>
+    <text class="d-label" x="440" y="280">Wi‑Fi 路由器</text>
+
+    <path class="d-hop" d="M138 212h248M494 234h172"/>
+    <path class="d-flow" d="M136 160Q440 60 668 172"/>
+    <g class="d-pill">
+      <rect x="348" y="98" width="184" height="30" rx="15"/>
+      <text x="440" y="118">mTLS 直连传输</text>
+    </g>
+  </svg>
+</div>
+    <div class="steps">
+      <article class="step">
+        <span class="n">1</span>
+        <h3>发现</h3>
+        <p>每台设备用 UDP 组播在局域网里播报自己的别名与指纹，几百毫秒就互相看见。公司或公共 Wi‑Fi 屏蔽组播时，直接输入对方 IP 也能发。</p>
+      </article>
+      <article class="step">
+        <span class="n">2</span>
+        <h3>确认</h3>
+        <p>接收端先看到文件清单再决定收不收，可以只收其中几个。可以要求对方输 PIN，或者先配对一次（两端显示同一个 6 位码）。</p>
+      </article>
+      <article class="step">
+        <span class="n">3</span>
+        <h3>直传</h3>
+        <p>两台设备之间建 mTLS 加密连接，文件流式写入你指定的目录，收完逐个核对 SHA‑256。中途断了下次接着传。</p>
+      </article>
+    </div>
+    <p class="note">协议细节见 <a href="https://github.com/TgolMsk/lan-send/blob/main/docs/localsend-v2-interface-checklist.md">LocalSend 接口清单</a> 与 <a href="https://github.com/TgolMsk/lan-send/blob/main/docs/protocol-extensions.md">协议扩展说明</a>：断点续传、配对与剪贴板同步是私有扩展，官方客户端会自动忽略。</p>
+  </div>
+</section>
+<section id="download" class="alt">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">下载</span>
+      <h2>下载 LanSend v0.4.1</h2>
+      <p>免费、开源，安装包由 GitHub Actions 构建、签名并公证。</p>
+    </div>
+    <div class="tabs" data-tabs role="tablist" aria-label="下载">
+      <button type="button" role="tab" id="tab-download-macos" aria-controls="download-macos" aria-selected="true" tabindex="0">macOS</button>
+      <button type="button" role="tab" id="tab-download-windows" aria-controls="download-windows" aria-selected="false" tabindex="-1">Windows</button>
+      <button type="button" role="tab" id="tab-download-ios" aria-controls="download-ios" aria-selected="false" tabindex="-1">iOS</button>
+      <button type="button" role="tab" id="tab-download-cli" aria-controls="download-cli" aria-selected="false" tabindex="-1">命令行</button>
+    </div>
+    <div class="panel" id="download-macos" role="tabpanel" aria-labelledby="tab-download-macos">
+      <div class="files">
+      <a class="file" href="https://github.com/TgolMsk/lan-send/releases/download/v0.4.1/lan-send-0.4.1-macos-universal.dmg" rel="noopener">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6.4h14v9.2H5zM2.8 18.4h18.4"/></svg></span>
+        <span><b>LanSend.dmg</b><small>lan-send-0.4.1-macos-universal.dmg · 19.5 MB</small></span>
+        <span class="tag">推荐</span>
+      </a>
+      <a class="file" href="https://github.com/TgolMsk/lan-send/releases/download/v0.4.1/lan-send-0.4.1-macos-universal.app.zip" rel="noopener">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6.4h14v9.2H5zM2.8 18.4h18.4"/></svg></span>
+        <span><b>免安装 .app.zip</b><small>lan-send-0.4.1-macos-universal.app.zip · 18.8 MB</small></span>
+        
+      </a>
+      </div>
+      <p class="dl-note">通用二进制，Apple Silicon 与 Intel 都能装。要求 macOS 12 或更新。</p>
+    </div>
+    <div class="panel" id="download-windows" role="tabpanel" aria-labelledby="tab-download-windows" hidden>
+      <div class="files">
+      <a class="file" href="https://github.com/TgolMsk/lan-send/releases/download/v0.4.1/lan-send-0.4.1-windows-x86_64-setup.exe" rel="noopener">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.4h16v13.2H4zM4 9.6h16M9.2 9.6v9"/></svg></span>
+        <span><b>安装程序 .exe</b><small>lan-send-0.4.1-windows-x86_64-setup.exe · 6.3 MB</small></span>
+        <span class="tag">推荐</span>
+      </a>
+      <a class="file" href="https://github.com/TgolMsk/lan-send/releases/download/v0.4.1/lan-send-0.4.1-windows-x86_64.msi" rel="noopener">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.4h16v13.2H4zM4 9.6h16M9.2 9.6v9"/></svg></span>
+        <span><b>静默部署 .msi</b><small>lan-send-0.4.1-windows-x86_64.msi · 9.1 MB</small></span>
+        
+      </a>
+      </div>
+      <p class="dl-note">要求 Windows 10 或更新（系统自带 WebView2；没有的话安装程序会提示）。</p>
+    </div>
+    <div class="panel" id="download-ios" role="tabpanel" aria-labelledby="tab-download-ios" hidden>
+      <div class="appstore">
+        <img src="assets/img/icon-256.png" width="96" height="96" alt="">
+        <div class="body">
+          <h3>在 App Store 上获取</h3>
+          <p>iPhone 与 iPad 版已经上架 App Store，免费、无内购、无广告。</p>
+          <a class="btn btn-primary" href="https://apps.apple.com/app/id6809459213" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M16.2 12.6c0-2.4 2-3.5 2.1-3.6-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-1.9-.9-3.1-.8-1.6 0-3.1.9-3.9 2.4-1.7 2.9-.4 7.2 1.2 9.5.8 1.2 1.7 2.4 3 2.4 1.2 0 1.7-.8 3.1-.8s1.9.8 3.1.8c1.3 0 2.1-1.2 2.9-2.3.9-1.3 1.3-2.6 1.3-2.7-.1 0-2.5-1-2.5-3.9zM14 5.6c.7-.8 1.1-1.9 1-3-1 0-2.2.7-2.9 1.5-.6.7-1.2 1.9-1 3 1.1.1 2.2-.6 2.9-1.5z"/></svg>App Store</a>
+          <p class="fine"><a href="https://github.com/TgolMsk/lan-send/releases/download/v0.4.1/lan-send-0.4.1-ios.ipa" rel="noopener">开发者也可以从 Releases 取 .ipa 自行安装。</a></p>
+        </div>
+      </div>
+      <p class="dl-note">要求 iOS 15 或更新，iPhone 与 iPad 通用。首次启动请允许“本地网络”，否则看不到其他设备。</p>
+    </div>
+    <div class="panel" id="download-cli" role="tabpanel" aria-labelledby="tab-download-cli" hidden>
+      <div class="files">
+      <a class="file" href="https://github.com/TgolMsk/lan-send/releases/download/v0.4.1/lan-send-cli-0.4.1-macos-universal.pkg" rel="noopener">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6.4h14v9.2H5zM2.8 18.4h18.4"/></svg></span>
+        <span><b>macOS .pkg（装到 /usr/local/bin）</b><small>lan-send-cli-0.4.1-macos-universal.pkg · 11.0 MB</small></span>
+        <span class="tag">推荐</span>
+      </a>
+      <a class="file" href="https://github.com/TgolMsk/lan-send/releases/download/v0.4.1/lan-send-cli-0.4.1-windows-x86_64.msi" rel="noopener">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.4h16v13.2H4zM4 9.6h16M9.2 9.6v9"/></svg></span>
+        <span><b>Windows .msi（加入 PATH）</b><small>lan-send-cli-0.4.1-windows-x86_64.msi · 6.0 MB</small></span>
+        <span class="tag">推荐</span>
+      </a>
+      <a class="file" href="https://github.com/TgolMsk/lan-send/releases/download/v0.4.1/lan-send-cli-0.4.1-linux-x86_64.tar.gz" rel="noopener">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 6.5l5 5.2-5 5.2M12.5 17h7"/></svg></span>
+        <span><b>Linux x86_64 .tar.gz</b><small>lan-send-cli-0.4.1-linux-x86_64.tar.gz · 6.0 MB</small></span>
+        
+      </a>
+      <a class="file" href="https://github.com/TgolMsk/lan-send/releases/download/v0.4.1/lan-send-cli-0.4.1-linux-aarch64.tar.gz" rel="noopener">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 6.5l5 5.2-5 5.2M12.5 17h7"/></svg></span>
+        <span><b>Linux aarch64 .tar.gz</b><small>lan-send-cli-0.4.1-linux-aarch64.tar.gz · 6.0 MB</small></span>
+        
+      </a>
+      </div>
+      <p class="dl-note">同一套 Rust 核心，不带界面，适合脚本与服务器。Linux 只有命令行版。</p>
+    </div>
+    <p class="dl-links">
+      <a href="https://github.com/TgolMsk/lan-send/releases" rel="noopener">全部安装包与校验和<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 16.5l9-9M9 7.5h7.5V15"/></svg></a>
+      <a href="https://github.com/TgolMsk/lan-send/releases/download/v0.4.1/SHA256SUMS.txt" rel="noopener">校验和 SHA256SUMS.txt</a>
+    </p>
+  </div>
+</section>
+<section id="cli">
+  <div class="wrap">
+    <div class="section-head">
+    <span class="eyebrow">命令行</span>
+    <h2>没有界面的时候用 lan-send</h2>
+    <p>和应用共用一套核心与配置：同样的发现、同样的加密、同样的历史。</p>
+  </div>
+    <div class="terminal">
+      <div class="frame-bar"><i></i><i></i><i></i><span>lan-send</span></div>
+      <ol>
+        <li>
+          <span class="cmd">lan-send discover<span class="what">列出局域网里的设备</span></span>
+          <button class="copy" type="button" data-copy="lan-send discover" data-done="已复制">复制</button>
+        </li>
+        <li>
+          <span class="cmd">lan-send send &quot;Nice Orange&quot; a.jpg photos/<span class="what">按别名、指纹前缀或 IP 发送文件与文件夹</span></span>
+          <button class="copy" type="button" data-copy="lan-send send &quot;Nice Orange&quot; a.jpg photos/" data-done="已复制">复制</button>
+        </li>
+        <li>
+          <span class="cmd">lan-send receive --dir ~/Downloads<span class="what">前台接收，逐个请求确认</span></span>
+          <button class="copy" type="button" data-copy="lan-send receive --dir ~/Downloads" data-done="已复制">复制</button>
+        </li>
+        <li>
+          <span class="cmd">lan-send receive --organize device,type<span class="what">按设备与类型分目录存放</span></span>
+          <button class="copy" type="button" data-copy="lan-send receive --organize device,type" data-done="已复制">复制</button>
+        </li>
+        <li>
+          <span class="cmd">lan-send pair &quot;Nice Orange&quot;<span class="what">配对：两端核对同一个 6 位码</span></span>
+          <button class="copy" type="button" data-copy="lan-send pair &quot;Nice Orange&quot;" data-done="已复制">复制</button>
+        </li>
+        <li>
+          <span class="cmd">lan-send clip watch<span class="what">与已配对设备双向同步剪贴板</span></span>
+          <button class="copy" type="button" data-copy="lan-send clip watch" data-done="已复制">复制</button>
+        </li>
+        <li>
+          <span class="cmd">lan-send history --limit 20<span class="what">查看传输历史</span></span>
+          <button class="copy" type="button" data-copy="lan-send history --limit 20" data-done="已复制">复制</button>
+        </li>
+      </ol>
+    </div>
+    <p class="cli-more">完整用法见 <code>lan-send --help</code> 与仓库 README。</p>
+  </div>
+</section>
+<section id="faq" class="alt">
+  <div class="wrap">
+    <div class="section-head">
+    <span class="eyebrow">常见问题</span>
+    <h2>你可能想先知道</h2>
+    
+  </div>
+    <div class="faq">
+      <details>
+        <summary>能和官方 LocalSend 互传吗？</summary>
+        <p>可以。LanSend 实现的是同一套 LocalSend 协议 v2.2，双方互相发现、互相收发都没问题，也包括 Android 和 Linux 上的 LocalSend。断点续传、配对和剪贴板同步是私有扩展，官方客户端会忽略这些字段，不影响正常传输。</p>
+      </details>
+      <details>
+        <summary>文件会经过服务器吗？要账号吗？</summary>
+        <p>都不会。文件在两台设备之间直连传输，没有中转服务器，不需要注册和登录，应用也不收集任何数据、不含广告与内购。</p>
+      </details>
+      <details>
+        <summary>找不到对方设备怎么办？</summary>
+        <p>先确认两台设备连的是同一个 Wi‑Fi、都打开了 LanSend 或 LocalSend；iOS 首次使用要允许“本地网络”权限。有些公司或公共 Wi‑Fi 会禁止设备之间的组播，这时在“设备”页的“按地址发送”里直接输入对方 IP 即可。</p>
+      </details>
+      <details>
+        <summary>收到的文件存在哪里？</summary>
+        <p>macOS 与 Windows 默认放在“下载”文件夹，可以在设置里改；还能按设备、日期或类型自动分目录。iOS 上在“文件”App 的“我的 iPhone › LanSend”里。</p>
+      </details>
+      <details>
+        <summary>iOS 支持剪贴板同步吗？</summary>
+        <p>不支持。iOS 不允许应用在后台读剪贴板，强行做出来也不可靠，所以剪贴板同步只在 macOS 与 Windows 上提供。</p>
+      </details>
+      <details>
+        <summary>开源吗？用的什么许可证？</summary>
+        <p>MIT。核心库、桌面应用、iOS 应用与命令行工具的完整源码都在 GitHub 上，欢迎提 issue 和 PR。</p>
+      </details>
+    </div>
+  </div>
+</section>
+<section id="links">
+  <div class="wrap">
+    <div class="section-head">
+    <span class="eyebrow">资源</span>
+    <h2>接着看</h2>
+    
+  </div>
+    <div class="link-cols">
+      <div>
+        <h3>项目</h3>
+        <ul>
+          <li><a href="https://github.com/TgolMsk/lan-send">GitHub 仓库</a></li>
+          <li><a href="https://github.com/TgolMsk/lan-send/releases">全部版本与安装包</a></li>
+          <li><a href="https://github.com/TgolMsk/lan-send/blob/main/CHANGELOG.md">更新日志</a></li>
+          <li><a href="https://github.com/TgolMsk/lan-send/issues">提交问题</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3>文档</h3>
+        <ul>
+          <li><a href="https://github.com/TgolMsk/lan-send/blob/main/docs/localsend-v2-interface-checklist.md">LocalSend 接口清单</a></li>
+          <li><a href="https://github.com/TgolMsk/lan-send/blob/main/docs/protocol-extensions.md">协议扩展与差异</a></li>
+          <li><a href="https://github.com/TgolMsk/lan-send/blob/main/docs/platforms.md">三端平台约束</a></li>
+          <li><a href="https://github.com/TgolMsk/lan-send/tree/main/docs/adr">架构决策记录（ADR）</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3>支持</h3>
+        <ul>
+          <li><a href="support/">技术支持与 FAQ</a></li>
+          <li><a href="privacy/">隐私政策</a></li>
+          <li><a href="mailto:511297735@qq.com">写邮件给我们</a></li>
+          <li><a href="https://localsend.org">LocalSend 官网</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-top">
+      <div>
+        <span class="footer-brand"><img src="assets/img/icon-128.png" width="26" height="26" alt="">LanSend</span>
+        <p>局域网文件与剪贴板互传，不经云端。</p>
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/TgolMsk/lan-send" rel="noopener">GitHub</a>
+        <a href="https://github.com/TgolMsk/lan-send/releases" rel="noopener">下载</a>
+        <a href="support/">技术支持</a>
+        <a href="privacy/">隐私政策</a>
+        <a href="mailto:511297735@qq.com">511297735@qq.com</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 Wang Sheng · <a href="https://github.com/TgolMsk/lan-send/blob/main/LICENSE" rel="noopener">MIT 许可证</a></p>
+      <p>协议来自 <a href="https://github.com/localsend/localsend">LocalSend</a>（Apache‑2.0）。本项目是独立实现，不复用其代码。</p>
+      <p><a href="https://beian.miit.gov.cn/" rel="nofollow noopener" target="_blank">蜀ICP备2026054850号-2A</a></p>
+    </div>
+  </div>
+</footer>
+<script src="assets/js/site.js?v=9ec15c59" defer></script>
+</body>
+</html>
