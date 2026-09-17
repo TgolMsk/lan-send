@@ -74,8 +74,10 @@ objc2-image-io = { version = "0.3", default-features = false, features = ["std",
 # ARMv8 crypto backend is compiled only when the `asm` feature is on, which
 # is worth ~4.5x (521 -> 2330 MiB/s on an M-series Mac). The feature stays
 # off elsewhere because `sha2-asm` assembles GNU-syntax .S files with
-# `cc -c`, which the MSVC toolchain used by the Windows CI job rejects.
-[target.'cfg(target_arch = "aarch64")'.dependencies]
+# `cc -c`, which the MSVC toolchain rejects -- and that includes
+# aarch64-pc-windows-msvc, which the CLI release job builds for the arm64
+# zip, so the target_os check has to be here and not just target_arch.
+[target.'cfg(all(target_arch = "aarch64", not(target_os = "windows")))'.dependencies]
 sha2 = { workspace = true, features = ["asm"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
