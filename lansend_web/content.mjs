@@ -17,8 +17,8 @@ const BEIAN = {
 const beian = BEIAN[SITE_URL] ?? {}
 
 export const config = {
-  version: '0.4.1',
-  released: '2026-09-13',
+  version: '0.5.0',
+  released: '2026-09-17',
   repo: 'https://github.com/TgolMsk/lan-send',
   releases: 'https://github.com/TgolMsk/lan-send/releases',
   releaseTag: (v) => `https://github.com/TgolMsk/lan-send/releases/tag/v${v}`,
@@ -170,16 +170,16 @@ export const content = {
       files: {
         macos: [
           ['dmg', 'lan-send-{v}-macos-universal.dmg', 'LanSend.dmg', '19.5 MB', true],
-          ['zip', 'lan-send-{v}-macos-universal.app.zip', '免安装 .app.zip', '18.8 MB', false],
+          ['zip', 'lan-send-{v}-macos-universal.app.zip', '免安装 .app.zip', '18.9 MB', false],
         ],
         windows: [
-          ['exe', 'lan-send-{v}-windows-x86_64-setup.exe', '安装程序 .exe', '6.3 MB', true],
+          ['exe', 'lan-send-{v}-windows-x86_64-setup.exe', '安装程序 .exe', '6.4 MB', true],
           ['msi', 'lan-send-{v}-windows-x86_64.msi', '静默部署 .msi', '9.1 MB', false],
         ],
         cli: [
-          ['pkg', 'lan-send-cli-{v}-macos-universal.pkg', 'macOS .pkg（装到 /usr/local/bin）', '11.0 MB', true],
+          ['pkg', 'lan-send-cli-{v}-macos-universal.pkg', 'macOS .pkg（装到 /usr/local/bin）', '11.1 MB', true],
           ['msi', 'lan-send-cli-{v}-windows-x86_64.msi', 'Windows .msi（加入 PATH）', '6.0 MB', true],
-          ['tar', 'lan-send-cli-{v}-linux-x86_64.tar.gz', 'Linux x86_64 .tar.gz', '6.0 MB', false],
+          ['tar', 'lan-send-cli-{v}-linux-x86_64.tar.gz', 'Linux x86_64 .tar.gz', '6.1 MB', false],
           ['tar', 'lan-send-cli-{v}-linux-aarch64.tar.gz', 'Linux aarch64 .tar.gz', '6.0 MB', false],
         ],
       },
@@ -377,16 +377,16 @@ export const content = {
       files: {
         macos: [
           ['dmg', 'lan-send-{v}-macos-universal.dmg', 'LanSend.dmg', '19.5 MB', true],
-          ['zip', 'lan-send-{v}-macos-universal.app.zip', 'Portable .app.zip', '18.8 MB', false],
+          ['zip', 'lan-send-{v}-macos-universal.app.zip', 'Portable .app.zip', '18.9 MB', false],
         ],
         windows: [
-          ['exe', 'lan-send-{v}-windows-x86_64-setup.exe', 'Installer .exe', '6.3 MB', true],
+          ['exe', 'lan-send-{v}-windows-x86_64-setup.exe', 'Installer .exe', '6.4 MB', true],
           ['msi', 'lan-send-{v}-windows-x86_64.msi', 'Silent deploy .msi', '9.1 MB', false],
         ],
         cli: [
-          ['pkg', 'lan-send-cli-{v}-macos-universal.pkg', 'macOS .pkg (installs to /usr/local/bin)', '11.0 MB', true],
+          ['pkg', 'lan-send-cli-{v}-macos-universal.pkg', 'macOS .pkg (installs to /usr/local/bin)', '11.1 MB', true],
           ['msi', 'lan-send-cli-{v}-windows-x86_64.msi', 'Windows .msi (adds to PATH)', '6.0 MB', true],
-          ['tar', 'lan-send-cli-{v}-linux-x86_64.tar.gz', 'Linux x86_64 .tar.gz', '6.0 MB', false],
+          ['tar', 'lan-send-cli-{v}-linux-x86_64.tar.gz', 'Linux x86_64 .tar.gz', '6.1 MB', false],
           ['tar', 'lan-send-cli-{v}-linux-aarch64.tar.gz', 'Linux aarch64 .tar.gz', '6.0 MB', false],
         ],
       },
