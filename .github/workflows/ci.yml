@@ -32,7 +32,7 @@ jobs:
       - name: Test (Linux, without the app)
         if: runner.os == 'Linux'
         run: cargo test --workspace --exclude lan-send-app
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         if: runner.os != 'Linux'
         with:
           version: 11
@@ -64,7 +64,7 @@ jobs:
         with:
           targets: aarch64-apple-ios, aarch64-apple-ios-sim
       - uses: Swatinem/rust-cache@v2
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 11
       - uses: actions/setup-node@v6
