@@ -29,7 +29,17 @@
 6. **iOS 的 App 特征信息**（阿里云备案表要填，取自 `Apple Distribution` 分发证书 `~/Downloads/lan-send-mas/distribution.pem`）：Bundle ID `com.wangsheng.lansend`；证书 SHA-1 指纹 `40B1CD46D7594201055BF282459090CE45B36B80`（`openssl x509 -in distribution.pem -noout -fingerprint -sha1 | sed 's/.*=//; s/://g'`）；公钥为该证书的 RSA modulus 十六进制串（`openssl x509 -in distribution.pem -noout -pubkey | openssl rsa -pubin -noout -modulus`）。证书 2027-09-08 到期，续期换证后这两个值都变，备案信息要同步更新。
 7. **不上中国大陆商店**则完全不需要备案：在 App Store Connect › 定价与销售范围里把“中国大陆”取消勾选即可，其余国家/地区正常上架。
 
-**进度（2026-09-14）**：已决定上架中国大陆，个人主体备案，备案域名 `mixduo.cn` 与内地服务器已就绪，正在阿里云填 APP 备案的 iOS 平台特征信息。剩下的顺序是：备案通过拿到号 → 用 `SITE_ICP` 重新构建并部署 `ls.mixduo.cn` → ASC 填备案号 → 价格与销售范围勾上中国大陆（约 24 小时生效）→ 上线 30 天内办公安联网备案。ASC 侧的改动建议等当前排队中的 iOS 0.4.0 (22) 与 macOS 0.4.1 (23) 审核出结果后再动。
+**进度（2026-09-16，已办到 ASC 侧全部可做的步骤）**：
+
+1. ✅ APP 备案通过，备案号 `蜀ICP备2026054850号-2A`（`-2A` 后缀那条才是 APP 备案号，网站备案是另一条）。
+2. ✅ 官网 `lansend_web` 已部署到 <https://ls.mixduo.cn/>，`/privacy`、`/support`、`/en/` 与配图实测全部可访问，HTTP 跳 HTTPS，证书 TrustAsia（2026-12-16 到期，注意续期）。
+3. ✅ ASC「分发 › App 信息 › App Store 法规和许可 › 中国大陆 ICP 备案号」已填 `蜀ICP备2026054850号-2A`。填写时 Apple 会弹「确认 ICP 备案号信息」——提供商名称是拼音（`wang sheng|11312728820|1`），与备案主体的中文姓名不符属正常，需勾选确认自己是 App 所有者才能保存；保存后无工信部校验报错。
+4. ✅ ASC「价格与销售范围 › App 供应情况 › 管理供应情况」已勾上中国大陆，147 → 148 个国家或地区，状态「正在处理为可用」，24 小时内生效。
+5. ⏳ 简体中文的**隐私政策 URL**（App 隐私页，App 级）现在改不了：macOS 0.4.1 正在审核，整个 App 信息被锁，页面提示要改就得把 0.4.1 从审核列表移除——不值得，等审核出结果再换成 <https://ls.mixduo.cn/privacy>。
+6. ⏳ **技术支持 URL** 是版本级字段，已发布版本（iOS 0.4.0）上是只读的，随下一个版本（0.4.2/0.5.0）提交时改成 <https://ls.mixduo.cn/support>。当前值仍是 github.io，国内访问不稳，这是下个版本必须带上的改动。
+7. 📋 **公安联网备案**：App 在中国大陆上线后 30 天内办（<https://beian.mps.gov.cn/>），拿到号后填进 `lansend_web/content.mjs` 的 `BEIAN` 表重新构建部署。
+
+注意区分两个备案号：ASC 填的是 **APP 备案号**（`-2A`），网站页脚要印的是 **ls.mixduo.cn 的网站备案号**（另一条，通常是 `-1` 这种不带 A 的后缀）。
 
 ## 三、Mac App Store 的技术改动（已完成，2026-09-08）
 
