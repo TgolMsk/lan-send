@@ -61,8 +61,9 @@ rsync -avz --delete --exclude 'tools/' --exclude '*.mjs' --exclude 'README.md' \
   lansend_web/ <user>@<服务器>:/var/www/lansend/
 ```
 
-- 域名 `https://ls.mixduo.cn` 与备案号 `蜀ICP备2026054850号-2A` 记在 `content.mjs` 的 `SITE_URL` / `BEIAN`
-  里，默认构建就带上。备案号按域名查表——换成别的域名（GitHub Pages 之类）页脚就不印它，
+- 域名 `https://ls.mixduo.cn` 与网站备案号 `蜀ICP备2026054850号` 记在 `content.mjs` 的 `SITE_URL` / `BEIAN`
+  里，默认构建就带上。页脚印的是**网站**备案号，别和 App Store Connect 里填的 **APP** 备案号
+  `蜀ICP备2026054850号-2A`（带 A 后缀）弄混。备案号按域名查表——换成别的域名（GitHub Pages 之类）页脚就不印它，
   因为备案号绑在备案域名上。
 - `SITE_URL` 写进 canonical、og:url、hreflang 与 sitemap；页面之间全是相对路径，
   放在子目录（GitHub Pages 的 `/lan-send/`）也不会断。

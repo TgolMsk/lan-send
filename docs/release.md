@@ -160,7 +160,7 @@ App Store 的隐私政策与技术支持链接必须能打开，而 `tgolmsk.git
 
 ```bash
 node scripts/build-site.mjs                       # 输出 site/（已 gitignore）
-SITE_ICP='蜀ICP备2026054850号-2A' node scripts/build-site.mjs   # 带备案号
+SITE_ICP='蜀ICP备2026054850号' node scripts/build-site.mjs   # 带备案号
 ```
 
 零依赖（只用 Node 标准库），渲染 `docs/` 里那三页 Markdown 成自包含 HTML：CSS 内联，不引用任何 CDN、外部字体或统计脚本，深浅色自适应，手机端单栏。输出 `index.html`、`privacy/index.html`、`support/index.html`、`screenshots/`、`robots.txt`、`sitemap.xml`，目录式路径让任何静态服务器都能直接用 `/privacy`、`/support`。
@@ -234,8 +234,9 @@ App Store Connect 里填的 <https://ls.mixduo.cn/privacy> 与 `/support` 不用
 node lansend_web/build.mjs
 ```
 
-- 域名 `https://ls.mixduo.cn` 与备案号 `蜀ICP备2026054850号-2A` 已经记在 `lansend_web/content.mjs`
-  里，默认构建就带上，不用再传环境变量。
+- 域名 `https://ls.mixduo.cn` 与网站备案号 `蜀ICP备2026054850号` 已经记在 `lansend_web/content.mjs`
+  里，默认构建就带上，不用再传环境变量。页脚印的是**网站**备案号；App Store Connect 里
+  填的是 **APP** 备案号 `蜀ICP备2026054850号-2A`（带 A 后缀的那条），两者不是一回事。
 - `SITE_URL` 写进 canonical、`og:url`、`hreflang` 与 `sitemap.xml`；页面之间全是相对路径，
   所以放在子目录（如 GitHub Pages 的 `/lan-send/`）也不会断。
 - **备案号按域名查表**（`content.mjs` 里的 `BEIAN`）：备案号绑在备案域名上，`SITE_URL`

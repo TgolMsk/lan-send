@@ -10,7 +10,9 @@ const SITE_URL = process.env.SITE_URL ?? 'https://ls.mixduo.cn'
 // 就不能带着它走。所以按域名查表，而不是写死一个默认值；`SITE_ICP` / `SITE_POLICE` 仍可覆盖。
 // 公安联网备案要在上线 30 天内办，办下来后把号填到这里的 police 字段。
 const BEIAN = {
-  'https://ls.mixduo.cn': { icp: '蜀ICP备2026054850号-2A', police: '' },
+  // 页脚印的是这个域名的网站备案号；App Store Connect 里填的是 APP 备案号
+  // 蜀ICP备2026054850号-2A（带 A 后缀的那条），两者不是一回事，别弄混。
+  'https://ls.mixduo.cn': { icp: '蜀ICP备2026054850号', police: '' },
 }
 const beian = BEIAN[SITE_URL] ?? {}
 
