@@ -46,7 +46,7 @@ gethostname = "1"
 rusqlite = { version = "0.40", features = ["bundled"] }
 walkdir = "2"
 mime_guess = "2"
-base64 = "0.22"
+base64 = "0.23"
 # media (ADR-0015): magic-byte sniffing, pure-Rust decoders for the common
 # formats, EXIF orientation, audio tags. HEIC / AVIF come from the OS decoders.
 infer = "0.22"
