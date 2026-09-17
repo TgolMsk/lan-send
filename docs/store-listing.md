@@ -323,6 +323,58 @@ App Store Connect › App › 左侧“App 信息 / 版本信息”右上角语�
   > • Nuevo nombre e icono
   > • Descubrimiento de dispositivos más rápido en iPhone
 
+### 0.5.0 的“新功能”文案（2026-09-17，8 种语言）
+
+每种语言三条，避开其他平台名与苹果商标。macOS 是首个上架版本时「新功能」字段不可填，只用在 iOS。
+
+- **en-US**：
+
+  > • Large files start transferring right away — the other device sees the request instantly
+  > • Fixed: notifications no longer cover the tab bar on iPhone
+  > • Tap anywhere to dismiss notifications
+
+- **zh-Hans**：
+
+  > • 大文件发出后对方立刻看到请求，整体传输更快
+  > • 修复：手机上提示条不再挡住底部标签栏
+  > • 点任意空白处即可消掉提示条
+
+- **zh-Hant**：
+
+  > • 大檔案送出後對方立即看到請求，整體傳輸更快
+  > • 修正：手機上提示列不再擋住底部標籤列
+  > • 點任意空白處即可關閉提示
+
+- **ja**：
+
+  > • 大きなファイルでもすぐに転送が始まり、相手にはリクエストが即座に表示されます
+  > • 修正：iPhone で通知がタブバーを覆う問題
+  > • 画面の空いている場所をタップすると通知を消せます
+
+- **ko**：
+
+  > • 대용량 파일도 즉시 전송이 시작되고 상대 기기에 요청이 바로 표시됩니다
+  > • 수정: iPhone에서 알림이 탭 바를 가리던 문제
+  > • 빈 곳을 탭하면 알림이 사라집니다
+
+- **de-DE**：
+
+  > • Große Dateien starten sofort – die Gegenstelle sieht die Anfrage unmittelbar
+  > • Behoben: Hinweise verdecken auf dem iPhone nicht mehr die Tab-Leiste
+  > • Zum Ausblenden der Hinweise auf eine freie Stelle tippen
+
+- **fr-FR**：
+
+  > • Les gros fichiers partent immédiatement : l'autre appareil voit la demande sans attendre
+  > • Correction : les notifications ne masquent plus la barre d'onglets sur iPhone
+  > • Touchez une zone vide pour masquer les notifications
+
+- **es-ES / es-MX**：
+
+  > • Los archivos grandes empiezan a enviarse de inmediato: el otro dispositivo ve la solicitud al instante
+  > • Corregido: los avisos ya no tapan la barra de pestañas en el iPhone
+  > • Toca cualquier zona vacía para descartar los avisos
+
 ### 0.4.0 提交记录（2026-09-13）
 
 - iOS 0.4.0（构建 22）与 macOS 0.4.0（构建 22）均已提交审核，审核后自动发布。macOS 0.3.0（构建 20）先"从审核中移除"（状态变为"被开发者拒绝"），该状态下不能新建版本，只能把这个版本的版本号改成 0.4.0、换构建后重新提交。
