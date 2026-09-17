@@ -507,7 +507,7 @@ jobs:
       - uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ env.TAG }}
-          name: lan-send ${{ env.VERSION }}
+          name: LanSend ${{ env.VERSION }}
           body_path: release-notes.md
           prerelease: ${{ contains(env.VERSION, '-') || startsWith(env.VERSION, '0.') }}
           files: dist/*
