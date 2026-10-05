@@ -45,6 +45,7 @@ env:
 
 jobs:
   version:
+    if: github.event_name != 'workflow_dispatch' || inputs.store_action == 'build'
     name: Resolve version
     runs-on: ubuntu-latest
     outputs:
@@ -373,13 +374,11 @@ jobs:
   ios-store:
     if: github.event_name == 'workflow_dispatch' && inputs.ios_only && inputs.store_action != 'build'
     name: iOS App Store Connect metadata
-    needs: version
     runs-on: ubuntu-latest
     env:
       APPLE_API_ISSUER: ${{ secrets.APPSTORE_ISSUER_ID }}
       APPLE_API_KEY: ${{ secrets.APPSTORE_KEY_ID }}
       APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
-      VERSION: ${{ needs.version.outputs.version }}
       STORE_ACTION: ${{ inputs.store_action }}
       BUILD_NUMBER: ${{ inputs.build_number }}
     steps:
@@ -393,7 +392,10 @@ jobs:
         shell: bash
         run: |
           args=("$STORE_ACTION")
-          if [ "$STORE_ACTION" != inspect ]; then args+=(--version "${VERSION%%-*}"); fi
+          if [ "$STORE_ACTION" != inspect ]; then
+            store_version=$(python -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["workspace"]["package"]["version"])')
+            args+=(--version "$store_version")
+          fi
           if [ "$STORE_ACTION" == submit ]; then args+=(--build "$BUILD_NUMBER"); fi
           python scripts/app-store-ios.py "${args[@]}"
 

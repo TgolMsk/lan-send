@@ -165,6 +165,12 @@ class AppStore:
             raise RuntimeError("Review information did not persist")
         print(json.dumps({"version": version, "id": target["id"], "state": version_state(target),
                           "locales": sorted(new_by_locale), "screenshots": "unchanged"}))
+        builds = self.collection("/v1/builds", {
+            "filter[app]": APP_ID, "filter[preReleaseVersion.version]": version,
+            "filter[preReleaseVersion.platform]": "IOS", "sort": "-uploadedDate", "limit": 10,
+        })
+        print(json.dumps({"builds": [{"id": b["id"], "number": b["attributes"]["version"],
+                                     "processingState": b["attributes"]["processingState"]} for b in builds]}))
         return target
 
     def submit(self, version, build_number):
