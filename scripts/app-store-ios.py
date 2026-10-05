@@ -175,13 +175,25 @@ class AppStore:
 
     def submit(self, version, build_number):
         target = self.prepare(version)
-        builds = self.collection("/v1/builds", {
-            "filter[app]": APP_ID, "filter[preReleaseVersion.version]": version,
-            "filter[preReleaseVersion.platform]": "IOS", "filter[version]": build_number,
-            "include": "preReleaseVersion", "limit": 200,
-        })
-        if len(builds) != 1:
-            raise RuntimeError("Expected one iOS build with the exact version and build number")
+        deadline = time.monotonic() + 600
+        last_state = None
+        while True:
+            builds = self.collection("/v1/builds", {
+                "filter[app]": APP_ID, "filter[preReleaseVersion.version]": version,
+                "filter[preReleaseVersion.platform]": "IOS", "filter[version]": build_number,
+                "include": "preReleaseVersion", "limit": 200,
+            })
+            if len(builds) > 1:
+                raise RuntimeError("Ambiguous iOS build")
+            state = builds[0]["attributes"]["processingState"] if builds else "NOT_VISIBLE"
+            if state != last_state:
+                print(f"Build {version} ({build_number}): {state}", flush=True)
+                last_state = state
+            if state in ("VALID", "FAILED", "INVALID"):
+                break
+            if time.monotonic() >= deadline:
+                raise RuntimeError("Apple build processing did not complete within 10 minutes")
+            time.sleep(30)
         build = builds[0]
         validate_build(build, build_number)
         pre_release = self.request("GET", f"/v1/builds/{build['id']}/preReleaseVersion")["data"]
