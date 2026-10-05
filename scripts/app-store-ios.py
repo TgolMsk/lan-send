@@ -98,9 +98,13 @@ class AppStore:
         versions = self.ios_versions()
         previous = [v for v in versions if version_state(v) in
                     ("READY_FOR_SALE", "READY_FOR_DISTRIBUTION")]
-        if len(previous) != 1:
-            raise RuntimeError("Expected exactly one published iOS version")
-        previous = previous[0]
+        # ASC retains READY_FOR_DISTRIBUTION on historical releases as well.
+        # Choose the greatest numeric version instead of assuming one row.
+        if not previous:
+            raise RuntimeError("No published iOS version to inherit")
+        previous = max(previous, key=lambda v: version_number(v["attributes"]["versionString"]))
+        if version_number(version) <= version_number(previous["attributes"]["versionString"]):
+            raise RuntimeError("New version must be newer than the published version")
         target = [v for v in versions if v["attributes"]["versionString"] == version]
         if not target:
             # ASC carries forward the published version's listing and assets.
@@ -222,6 +226,10 @@ def relation(kind, identifier):
 
 def version_state(version):
     return version["attributes"].get("appVersionState") or version["attributes"]["appStoreState"]
+
+
+def version_number(value):
+    return tuple(int(component) for component in value.split("."))
 
 
 def validate_build(build, build_number):

@@ -72,6 +72,8 @@ git push origin v0.1.0
 
 获批后的启用步骤（**三步均已于 2026-09-13 完成**：App ID 已勾选 Multicast Networking，`Lan-Send Mac App Store` 描述文件已重建并更新 `MAS_PROVISIONING_PROFILE`，本地副本在 `~/Downloads/lan-send-mas/LanSend_Mac_App_Store.provisionprofile`；entitlements 已于 2026-09-13 加上 `com.apple.developer.networking.multicast`：iOS 在 `apps/app/src-tauri/gen/apple/lan-send-app_iOS/lan-send-app_iOS.entitlements`，沙盒版 macOS 在 `apps/app/src-tauri/entitlements/mas.plist`）：
 
+2026-10-05 复查发现 iOS 权利文件已变为空字典，与上述历史记录不符。0.5.1 恢复了声明，并同步写入 XcodeGen 模板；发布上传前由 `scripts/check-ios-networking.py --ipa` 校验实际签名和描述文件，不能只凭 App ID 获批或源码声明认定成品已具备组播权限。
+
 1. developer.apple.com › Identifiers › `com.wangsheng.lansend` › Capabilities 勾选 **Multicast Networking** › Save（获批后该项才会出现）。App ID 的能力变了，旧的描述文件全部失效。
 2. iOS：不用做别的，Release 的云端自动签名会重新生成带该能力的描述文件。
 3. 沙盒版 macOS：描述文件是手动建的，必须重建——developer.apple.com › Profiles › `LanSend Mac App Store` › Edit › Save（或按下文 Mac App Store 一节第 4 步重新生成）› 下载，再更新 secret：

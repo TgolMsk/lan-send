@@ -17,11 +17,14 @@ class InheritedListing(store.AppStore):
 
     def ios_versions(self):
         return [
+            {"id": "older", "attributes": {"versionString": "0.4.0", "appVersionState": "READY_FOR_DISTRIBUTION"}},
             {"id": "old", "attributes": {"versionString": "0.5.0", "appVersionState": "READY_FOR_DISTRIBUTION"}},
             {"id": "new", "attributes": {"versionString": "0.5.1", "appVersionState": "PREPARE_FOR_SUBMISSION"}},
         ]
 
     def collection(self, path, query=None):
+        if "/older/" in path:
+            raise AssertionError("Must inherit the latest published version")
         is_new = "/new/" in path
         result = []
         for locale in NOTES["whatsNew"]:
