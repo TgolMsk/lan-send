@@ -28,3 +28,11 @@
 源代码修复、回归测试、iOS 原生构建及签名核验见 [ios-network-validation.md](../ios-network-validation.md)。此次没有连通用户的实体 iPhone，Windows / Mac 与真实 iPhone 的发现和互传仍需安装新构建后复测。
 
 「等待审核」证明提交已经持久保存，不代表 Apple 已批准或 0.5.1 已经公开上架。审核通过后将按已保存设置自动发布。
+
+## TestFlight 分发核对
+
+同日按用户要求检查 TestFlight，既有 **Internal** 内部测试组已包含 iOS `0.5.1 (26)`，页面状态为 **正在测试**，显示 90 天后过期。该组有 1 位现有测试员，可通过 TestFlight 安装或更新；此次无需再次上传或添加构建。
+
+- 测试组 ID：`511f2591-e025-48ee-aec0-8f9183116df3`。
+- [测试组构建列表](https://appstoreconnect.apple.com/teams/2cd8deef-1942-4bd5-ae9e-378117ec977f/apps/6809459213/testflight/groups/511f2591-e025-48ee-aec0-8f9183116df3/builds)。
+- 状态截图：`dist/ios-0.5.1-26/testflight-testing.jpg`（不纳入 Git）。
