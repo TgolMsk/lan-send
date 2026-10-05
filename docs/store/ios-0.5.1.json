@@ -1,0 +1,14 @@
+{
+  "version": "0.5.1",
+  "whatsNew": {
+    "zh-Hans": "• 改善局域网设备发现，修复部分 Windows 设备未显示的问题。\n• 修复返回应用后无法接收文件的问题。\n• 提高连接恢复与接收确认的可靠性。",
+    "zh-Hant": "• 改善區域網路裝置探索，修正部分 Windows 裝置未顯示的問題。\n• 修正返回 App 後無法接收檔案的問題。\n• 提高連線恢復與接收確認的可靠性。",
+    "en-US": "• Improved local network discovery, including Windows devices that were sometimes missing.\n• Fixed receiving files after returning to the app.\n• Improved connection recovery and incoming transfer confirmations.",
+    "de-DE": "• Verbesserte Gerätesuche im lokalen Netzwerk, einschließlich zuvor nicht angezeigter Windows-Geräte.\n• Fehler beim Dateiempfang nach der Rückkehr zur App behoben.\n• Zuverlässigere Wiederherstellung von Verbindungen und Empfangsbestätigungen.",
+    "fr-FR": "• Amélioration de la découverte des appareils sur le réseau local, y compris certains appareils Windows qui n’apparaissaient pas.\n• Correction de la réception de fichiers après le retour dans l’app.\n• Rétablissement des connexions et confirmations de réception plus fiables.",
+    "es-ES": "• Mejora del descubrimiento de dispositivos en la red local, incluidos algunos dispositivos Windows que no aparecían.\n• Corregida la recepción de archivos al volver a la app.\n• Mayor fiabilidad al restablecer conexiones y confirmar transferencias entrantes.",
+    "ja": "• ローカルネットワークでのデバイス検出を改善し、一部の Windows デバイスが表示されない問題を修正しました。\n• アプリに戻った後にファイルを受信できない問題を修正しました。\n• 接続の復旧と受信確認の信頼性を向上しました。",
+    "ko": "• 로컬 네트워크 기기 검색을 개선하고 일부 Windows 기기가 표시되지 않던 문제를 수정했습니다.\n• 앱으로 돌아온 후 파일을 받지 못하던 문제를 수정했습니다.\n• 연결 복구와 수신 확인의 안정성을 개선했습니다."
+  },
+  "reviewNotes": "LanSend 0.5.1 fixes local network discovery and file receiving on iOS. No login, account, subscription, or internet service is required.\n\nTo test: put an iPhone and a Mac or Windows computer on the same Wi-Fi network. Open LanSend on both devices and allow Local Network access. Keep LanSend in the foreground on the iPhone. Send a small file to the iPhone, accept the incoming request, then find the received file in Files > On My iPhone > LanSend. Switch to another app, return to LanSend, and repeat the transfer to verify that the receiving service resumes.\n\nThe com.apple.developer.networking.multicast entitlement is used to discover nearby peers through UDP multicast. The App ID has Apple's approved Multicast Networking capability, and the submitted app and provisioning profile include it. If a network blocks multicast, active subnet discovery is also used. The network implementation is in Rust and uses HTTPS/TLS for transfers.\n\nLocal Network permission is used only for discovering and transferring files between devices on the same network. Photos selected by the user can be sent to another device. The app does not collect user data. Transfer confirmations, optional PIN protection, and paired-device certificate checks remain available.\n\nSupport: https://ls.mixduo.cn/support\nPrivacy: https://ls.mixduo.cn/privacy"
+}

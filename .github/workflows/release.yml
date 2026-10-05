@@ -30,8 +30,12 @@ on:
       store_action:
         description: "iOS build/upload or App Store Connect metadata operation"
         type: choice
-        options: [build, inspect]
+        options: [build, inspect, prepare, submit]
         default: build
+      build_number:
+        description: "Uploaded iOS build number (required only for submit)"
+        type: string
+        default: ''
 
 permissions:
   contents: write
@@ -365,20 +369,31 @@ jobs:
           if-no-files-found: error
 
   ios-store:
-    if: github.event_name == 'workflow_dispatch' && inputs.ios_only && inputs.store_action == 'inspect'
-    name: Inspect iOS App Store Connect
+    if: github.event_name == 'workflow_dispatch' && inputs.ios_only && inputs.store_action != 'build'
+    name: iOS App Store Connect metadata
+    needs: version
     runs-on: ubuntu-latest
     env:
       APPLE_API_ISSUER: ${{ secrets.APPSTORE_ISSUER_ID }}
       APPLE_API_KEY: ${{ secrets.APPSTORE_KEY_ID }}
       APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+      VERSION: ${{ needs.version.outputs.version }}
+      STORE_ACTION: ${{ inputs.store_action }}
+      BUILD_NUMBER: ${{ inputs.build_number }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
       - run: python -m pip install 'PyJWT[crypto]==2.10.1'
-      - run: python scripts/app-store-ios.py inspect
+      - run: python -m unittest discover -s scripts/tests -p 'test_app_store_ios.py'
+      - name: Manage iOS version
+        shell: bash
+        run: |
+          args=("$STORE_ACTION")
+          if [ "$STORE_ACTION" != inspect ]; then args+=(--version "${VERSION%%-*}"); fi
+          if [ "$STORE_ACTION" == submit ]; then args+=(--build "$BUILD_NUMBER"); fi
+          python scripts/app-store-ios.py "${args[@]}"
 
   app-mas:
     if: github.event_name != 'workflow_dispatch' || !inputs.ios_only
