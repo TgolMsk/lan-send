@@ -313,6 +313,8 @@ jobs:
         if: steps.gate.outputs.ready == 'true'
         with:
           targets: aarch64-apple-ios
+          # swift-rs restores Swift @_cdecl visibility with llvm-objcopy on Xcode 27.
+          components: llvm-tools
       - uses: Swatinem/rust-cache@v2
         if: steps.gate.outputs.ready == 'true'
       - uses: pnpm/action-setup@v4

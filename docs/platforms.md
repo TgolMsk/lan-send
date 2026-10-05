@@ -25,6 +25,7 @@
 - 后台：App 挂起后不能假设原监听 socket 仍可用。iOS 平台层处理 Tauri `WindowEvent::Resumed`，回到前台重建 HTTP 服务与组播，重启串行化并保留持久化身份；旧会话弹窗随重启清除。当前仍以前台收发为准，切换后台可能中断传输。长时间后台传输需要 `beginBackgroundTask` 争取有限时间，超时即中断——断点续传扩展在 iOS 上价值最大。
 - 发现：移动端每次刷新都执行 HTTP `/24` 扫描，即使已通过组播或已知地址找到 Mac；前台运行时每 30 s 重试，覆盖延迟授权、Windows 的组播不可达及后来启动的设备。同一时间只运行一个发现流程。
 - 签名校验：`python3 scripts/check-ios-networking.py` 检查源码声明；发布任务在上传前以 `--ipa` 检查导出包的签名权利和嵌入描述文件。源码含组播 key 不等于签名已获该能力。
+- Xcode 27 正式构建：安装 `rustup component add llvm-tools`。swift-rs 1.0.8 用 `llvm-objcopy` 恢复 Swift `@_cdecl` 符号的可见性；缺少工具时 release 链接会找不到 `_init_plugin_dialog`、`_register_plugin` 等符号。安装后需清理 tauri、tauri-plugin-dialog、tauri-plugin-opener 的 iOS release 构建缓存再重编；CI/Release 已显式安装该组件。
 - 剪贴板：`UIPasteboard` 只能在前台轮询 `changeCount`；iOS 16+ 读取他人写入的剪贴板会弹"允许粘贴"提示。"后台持续同步"在 iOS 上不可行，产品上应定义为"前台同步 + 手动推送"。
 - 文件：接收目录是 App 沙盒的 `Documents/`（可通过"文件"App 访问），没有系统"下载目录"。
 - 构建：Tauri 2 iOS 目标，`apps/app/src-tauri/gen/apple`。需要完整 Xcode；真机安装与 TestFlight 另需开发者证书及含组播能力的描述文件。2026-10-05 本机已完成无签名 arm64 iOS 归档，验证范围见 `docs/ios-network-validation.md`。
