@@ -8,7 +8,7 @@ authors = ["MrWang (TgolMsk)"]
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/TgolMsk/lan-send"
-rust-version = "1.88"
+rust-version = "1.90"
 
 # Shared dependency versions. Every crate refers to these with `workspace = true`
 # so the whole repository moves together. Add new entries here, not in crates.

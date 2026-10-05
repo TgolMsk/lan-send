@@ -19,8 +19,9 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 lan-send-core = { path = "../../../crates/core", version = "0.5.1" }
-# 2.11 for `data-tauri-drag-region="deep"` (the window has no title bar on macOS).
-tauri = { version = "2.11", features = ["protocol-asset", "tray-icon"] }
+# 2.12.1 pulls in tao 0.37's single-scene lifecycle and retained scene config
+# fixes, required for startup on iOS 27 when building with the iOS 27 SDK.
+tauri = { version = "2.12.1", features = ["protocol-asset", "tray-icon"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-opener = "2"
 # System language for the tray menu and dialogs (MIT OR Apache-2.0).

@@ -17,6 +17,26 @@ def check_permissions(info, entitlements, label):
         raise ValueError(f"{label}: missing local-network usage description")
     if entitlements.get(MULTICAST) is not True:
         raise ValueError(f"{label}: missing multicast networking entitlement")
+    check_scene_lifecycle(info, label)
+
+
+def check_scene_lifecycle(info, label):
+    # The iOS 27 SDK traps during UIApplicationMain without a static scene
+    # configuration, before any Rust network code or Tauri UI can run.
+    manifest = info.get("UIApplicationSceneManifest", {})
+    if not isinstance(manifest, dict):
+        raise ValueError(f"{label}: invalid scene manifest")
+    configurations = manifest.get("UISceneConfigurations", {})
+    scenes = configurations.get("UIWindowSceneSessionRoleApplication", []) if isinstance(configurations, dict) else []
+    if not isinstance(scenes, list) or not any(
+        isinstance(scene, dict)
+        and scene.get("UISceneConfigurationName")
+        and scene.get("UISceneDelegateClassName") == "TaoSceneDelegate"
+        for scene in scenes
+    ):
+        raise ValueError(f"{label}: missing TaoSceneDelegate scene configuration (iOS 27 launch crash)")
+    if manifest.get("UIApplicationSupportsMultipleScenes") is not False:
+        raise ValueError(f"{label}: LanSend must retain its single-window scene configuration")
 
 
 def check_app(app):
@@ -47,6 +67,10 @@ def main():
         (TAURI / "gen/apple/lan-send-app_iOS/lan-send-app_iOS.entitlements").read_bytes()
     )
     check_permissions(info, entitlements, "iOS source")
+    generated_info = plistlib.loads(
+        (TAURI / "gen/apple/lan-send-app_iOS/Info.plist").read_bytes()
+    )
+    check_scene_lifecycle(generated_info, "generated iOS source")
     if args.app:
         check_app(args.app)
     elif args.ipa:
@@ -57,7 +81,7 @@ def main():
             if len(apps) != 1:
                 raise ValueError("IPA must contain exactly one application")
             check_app(apps[0])
-    print("iOS networking permissions OK" + (" (signature and profile)" if args.app or args.ipa else " (source)"))
+    print("iOS networking permissions and scene lifecycle OK" + (" (signature and profile)" if args.app or args.ipa else " (source)"))
 
 
 if __name__ == "__main__":

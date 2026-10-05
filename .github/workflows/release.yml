@@ -336,7 +336,7 @@ jobs:
         if: steps.gate.outputs.ready == 'true'
         run: |
           curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
-          cargo binstall tauri-cli --version 2.11.4 --no-confirm
+          cargo binstall tauri-cli --version 2.12.1 --no-confirm
           cargo tauri --version
       - name: App Store Connect API key
         if: steps.gate.outputs.ready == 'true'

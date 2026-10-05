@@ -52,15 +52,9 @@ ignore = [
     # transport/identity.rs. Remote TLS signing/decryption uses rustls/ring,
     # not rsa's vulnerable private-key operations. No upstream fix exists.
     "RUSTSEC-2023-0071",
-    # Unmaintained transitive dependencies without replacements exposed by
-    # our direct dependencies: paste through lofty; unic through Tauri's
-    # urlpattern. These notices do not report exploitable vulnerabilities.
+    # paste remains an unmaintained transitive dependency through lofty.
+    # Tauri 2.12 removed unic, so its five historical exceptions were removed.
     "RUSTSEC-2024-0436",
-    "RUSTSEC-2025-0075",
-    "RUSTSEC-2025-0080",
-    "RUSTSEC-2025-0081",
-    "RUSTSEC-2025-0098",
-    "RUSTSEC-2025-0100",
 ]
 
 [sources]

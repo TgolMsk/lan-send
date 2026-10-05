@@ -68,6 +68,12 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+          UISceneConfigurations:
+            UIWindowSceneSessionRoleApplication:
+              - UISceneConfigurationName: TaoScene
+                UISceneDelegateClassName: TaoSceneDelegate
     entitlements:
       path: lan-send-app_iOS/lan-send-app_iOS.entitlements
       properties:

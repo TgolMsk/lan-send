@@ -1,5 +1,7 @@
 # iOS 0.5.1（26）App Store 提交记录
 
+> 2026-10-05 更新：用户报告构建 26 在 iOS 27 上打开立即闪退，已获取真实 TestFlight 报告并确认 Scene 生命周期缺失。原提交已撤回，ASC 显示「已移除」，版本显示「被开发者拒绝」。替代构建为 0.5.1（27）；修复与验证见 [ios-startup-validation.md](../ios-startup-validation.md)。下文保留构建 26 的历史提交记录。
+
 2026-10-05 13:51 PDT（20:51 UTC），通过用户已登录的 Chrome 在 App Store Connect 创建 iOS 0.5.1、关联构建 26，并完成「提交以供审核」。提交详情页已显示 **等待审核**。
 
 | 项目 | 已核对值 |
