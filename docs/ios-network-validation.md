@@ -34,6 +34,10 @@
 
 `deny.toml` 对无补丁条目作了具体范围评估：RSA crate 仅在 `transport/identity.rs` 生成本地密钥、编码 PKCS#8，网络 TLS 私钥操作走 rustls/ring，不调用 rsa 的易受攻击私钥运算（RUSTSEC-2023-0071）；paste（lofty）和 unic（Tauri/urlpattern）的六项告警为停止维护通知。仅忽略上述具体 ID，仍检查其余漏洞、撤回版本、许可证与来源。
 
+正式发布构建额外复现了 Xcode 27 / swift-rs 的符号可见性问题：安装 llvm-tools 后，插件入口已恢复，但三个共享 SwiftRs C 函数仍未导出。`vendor/swift-rs` 以发布的 1.0.8 crate 为基准，仅修改全局符号恢复的成员筛选，SwiftRs 导出只在 Tauri 主库恢复；保留 MIT/Apache 许可证。补丁后完整正式签名构建、归档及 IPA 导出通过，workspace 的 85 项测试、fmt、Clippy 与 cargo-deny 再次通过。
+
+本机导出 `LanSend 0.5.1 (26)`，`check-ios-networking.py --ipa` 已通过实际签名与分发描述文件的组播权利校验。IPA SHA-256：`5c02ef05061561e7dfaf91a1d9584f998d2d0072fc0eb572b052e3aba8fbdbcd`；保留路径 `dist/ios-0.5.1-26/LanSend.ipa`。这仍不替代下一节的真机互传验收。
+
 ## 真机验收待完成
 
 本次 `xcrun devicectl list devices` 中用户 iPhone 状态为 `unavailable`，无法安装或读取当前 App 签名。Windows 真机未由本任务接入。

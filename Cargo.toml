@@ -46,3 +46,8 @@ opt-level = 2
 
 [profile.dev.package.num-bigint-dig]
 opt-level = 2
+
+# Xcode 27 internalizes SwiftRs's C bridge as well as the plugin exports.
+# Keep the three shared bridge symbols global only in Tauri's archive.
+[patch.crates-io]
+swift-rs = { path = "vendor/swift-rs" }
