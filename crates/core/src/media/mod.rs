@@ -103,12 +103,11 @@ pub fn probe(path: &Path, cache: &ThumbnailCache) -> MediaInfo {
                 info.duration_ms = audio.duration_ms;
                 if let Some(existing) = cache.lookup(path) {
                     info.thumbnail = Some(existing.path);
-                } else if let Some(cover) = audio.cover {
-                    if let Some(pixels) = decode::thumbnail_from_bytes(&cover, THUMBNAIL_MAX_PX) {
-                        if let Ok(stored) = cache.store(path, &pixels) {
-                            info.thumbnail = Some(stored);
-                        }
-                    }
+                } else if let Some(cover) = audio.cover
+                    && let Some(pixels) = decode::thumbnail_from_bytes(&cover, THUMBNAIL_MAX_PX)
+                    && let Ok(stored) = cache.store(path, &pixels)
+                {
+                    info.thumbnail = Some(stored);
                 }
             }
         }

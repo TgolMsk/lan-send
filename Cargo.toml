@@ -3,12 +3,12 @@ resolver = "3"
 members = ["crates/core", "crates/cli", "apps/app/src-tauri"]
 
 [workspace.package]
-version = "0.5.0"
+version = "0.5.1"
 authors = ["MrWang (TgolMsk)"]
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/TgolMsk/lan-send"
-rust-version = "1.85"
+rust-version = "1.88"
 
 # Shared dependency versions. Every crate refers to these with `workspace = true`
 # so the whole repository moves together. Add new entries here, not in crates.

@@ -51,6 +51,8 @@ pub fn on_receive_dir_chosen(dir: Option<&std::path::Path>) {
 pub fn on_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
     #[cfg(desktop)]
     desktop::on_window_event(window, event);
+    #[cfg(target_os = "ios")]
+    ios::on_window_event(window, event);
     #[cfg(mobile)]
     {
         let _ = (window, event);

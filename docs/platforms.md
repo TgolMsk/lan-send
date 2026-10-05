@@ -22,10 +22,12 @@
 
 - 组播需要 `com.apple.developer.networking.multicast` 权利，且该权利必须向 Apple 申请（2026-09-13 已获批，entitlements 已加）。没有该权利的构建（例如本机开发签名的 App ID 未勾选该能力时）iOS 端**只能**依赖 HTTP 扫描、收藏/配对设备直连，以及"被别人发现"（别的设备公告时，iOS 端同样收不到组播）。发现模块必须把"无组播"当作正常路径。
 - 本地网络隐私：`NSLocalNetworkUsageDescription` 必填；`NSBonjourServices` 仅在用 Bonjour 时需要（当前不用）。权限弹窗文案按 `apps/app/src-tauri/locales/<locale>.lproj/InfoPlist.strings` 本地化，通过 `gen/apple/project.yml` 的 `locales` 资源进入 bundle 根目录（ADR-0016）。
-- 后台：App 挂起时系统会回收监听 socket，回到前台必须重建 HTTP 服务与组播（官方 LocalSend 的 `ListenerFailed` / `SocketsFailed` 事件就是为此设计）。长时间传输需要 `beginBackgroundTask` 争取几分钟，超时即中断——断点续传扩展在 iOS 上价值最大。
+- 后台：App 挂起后不能假设原监听 socket 仍可用。iOS 平台层处理 Tauri `WindowEvent::Resumed`，回到前台重建 HTTP 服务与组播，重启串行化并保留持久化身份；旧会话弹窗随重启清除。当前仍以前台收发为准，切换后台可能中断传输。长时间后台传输需要 `beginBackgroundTask` 争取有限时间，超时即中断——断点续传扩展在 iOS 上价值最大。
+- 发现：移动端每次刷新都执行 HTTP `/24` 扫描，即使已通过组播或已知地址找到 Mac；前台运行时每 30 s 重试，覆盖延迟授权、Windows 的组播不可达及后来启动的设备。同一时间只运行一个发现流程。
+- 签名校验：`python3 scripts/check-ios-networking.py` 检查源码声明；发布任务在上传前以 `--ipa` 检查导出包的签名权利和嵌入描述文件。源码含组播 key 不等于签名已获该能力。
 - 剪贴板：`UIPasteboard` 只能在前台轮询 `changeCount`；iOS 16+ 读取他人写入的剪贴板会弹"允许粘贴"提示。"后台持续同步"在 iOS 上不可行，产品上应定义为"前台同步 + 手动推送"。
 - 文件：接收目录是 App 沙盒的 `Documents/`（可通过"文件"App 访问），没有系统"下载目录"。
-- 构建：Tauri 2 iOS 目标，`apps/app/src-tauri/gen/apple`。需要 Xcode（本机目前仅 Command Line Tools）与开发者证书；CI 先做核心库交叉 `cargo check`，真机/TestFlight 打包待证书就绪。
+- 构建：Tauri 2 iOS 目标，`apps/app/src-tauri/gen/apple`。需要完整 Xcode；真机安装与 TestFlight 另需开发者证书及含组播能力的描述文件。2026-10-05 本机已完成无签名 arm64 iOS 归档，验证范围见 `docs/ios-network-validation.md`。
 - CLI 不发布到 iOS。
 
 ## 三端共同

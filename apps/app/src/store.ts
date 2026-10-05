@@ -346,7 +346,9 @@ export async function bootstrap() {
   }
   void listen("runtime-state", (payload) => {
     const runtime = payload as RuntimeStateView;
-    set({ runtime });
+    // Runtime restarts invalidate the decision channels behind these dialogs.
+    // In particular, iOS now restarts its listeners on foreground recovery.
+    set({ runtime, incoming: [], pinRequests: [], conflicts: [], pair: null });
     if (runtime.running) void loadAll();
     else toast("error", runtime.message ?? t("app.runtimeStopped"));
   });

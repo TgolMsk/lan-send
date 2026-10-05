@@ -2,6 +2,8 @@
 
 打 `v<版本>` 标签即触发 `.github/workflows/release.yml`：三端构建安装包并发布到 GitHub Releases。`Actions › Release › Run workflow` 可手动跑一次构建（勾选 publish 才发布）。
 
+仅更新 iOS 时可手动指定 `ios_only=true`、`publish=false`、`store_action=build`，只签名并上传 iOS，其他安装包任务跳过。`store_action=inspect` 在 runner 内使用已有 App Store Connect secrets 读取 iOS 版本和构建状态，私钥及令牌不写入日志或产物。
+
 ## 产物
 
 | 平台 | 文件 | 说明 |

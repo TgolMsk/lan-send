@@ -18,6 +18,10 @@ struct Node {
 }
 
 async fn node(alias: &str, pin: Option<&str>) -> Node {
+    node_of_type(alias, pin, DeviceType::Headless).await
+}
+
+async fn node_of_type(alias: &str, pin: Option<&str>, device_type: DeviceType) -> Node {
     let dir = tempfile::tempdir().unwrap();
     let paths = AppPaths::under(dir.path());
     paths.ensure_dirs().unwrap();
@@ -30,7 +34,7 @@ async fn node(alias: &str, pin: Option<&str>) -> Node {
     settings.clipboard.sync_enabled = false;
     settings.save(&paths.settings_file()).unwrap();
     let (tx, events) = mpsc::channel(256);
-    let mut config = RuntimeConfig::new(paths, DeviceType::Headless, tx);
+    let mut config = RuntimeConfig::new(paths, device_type, tx);
     config.alias = Some(alias.to_string());
     config.port = Some(0);
     config.active_discovery = false;
@@ -41,6 +45,81 @@ async fn node(alias: &str, pin: Option<&str>) -> Node {
         receive_dir,
         _dir: dir,
     }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn desktop_sends_to_mobile_after_listener_restart() {
+    let mut desktop = node_of_type("desktop", None, DeviceType::Desktop).await;
+    let mut mobile = node_of_type("ios", None, DeviceType::Mobile).await;
+    let original = mobile.runtime.identity();
+    mobile.runtime.stop().await;
+
+    let paths = AppPaths::under(mobile._dir.path());
+    let (tx, events) = mpsc::channel(256);
+    let mut config = RuntimeConfig::new(paths, DeviceType::Mobile, tx);
+    config.alias = Some("ios".into());
+    config.port = Some(original.port);
+    config.active_discovery = false;
+    mobile.runtime = Runtime::start(config).await.unwrap();
+    mobile.events = events;
+    assert_eq!(mobile.runtime.identity().fingerprint, original.fingerprint);
+    assert_eq!(mobile.runtime.identity().port, original.port);
+
+    let bytes = b"desktop to iOS after returning to the foreground";
+    let source = desktop._dir.path().join("restart.txt");
+    std::fs::write(&source, bytes).unwrap();
+    let transfer_id = desktop
+        .runtime
+        .send(SendRequest {
+            device: format!("127.0.0.1:{}", original.port),
+            paths: vec![source],
+            pin: None,
+            intent: None,
+        })
+        .unwrap();
+    let request = wait_for(
+        &mut mobile.events,
+        "mobile incoming request",
+        |event| match event {
+            RuntimeEvent::IncomingRequest { request } => Some(request.clone()),
+            _ => None,
+        },
+    )
+    .await;
+    mobile
+        .runtime
+        .respond_incoming(&request.session_id, true)
+        .unwrap();
+    let sent = wait_for(
+        &mut desktop.events,
+        "desktop completion",
+        |event| match event {
+            RuntimeEvent::TransferCompleted { transfer } if transfer.id == transfer_id => {
+                Some(transfer.state)
+            }
+            _ => None,
+        },
+    )
+    .await;
+    assert_eq!(sent, TransferState::Finished);
+    let received = wait_for(
+        &mut mobile.events,
+        "mobile completion",
+        |event| match event {
+            RuntimeEvent::TransferCompleted { transfer } if transfer.id == request.session_id => {
+                Some(transfer.state)
+            }
+            _ => None,
+        },
+    )
+    .await;
+    assert_eq!(received, TransferState::Finished);
+    assert_eq!(
+        std::fs::read(mobile.receive_dir.join("restart.txt")).unwrap(),
+        bytes
+    );
+    desktop.runtime.stop().await;
+    mobile.runtime.stop().await;
 }
 
 async fn wait_for<T>(

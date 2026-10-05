@@ -2,7 +2,7 @@
 
 use super::{Inner, RECENT_DEVICE_WINDOW};
 use crate::discovery::{Device, DiscoveryEvent};
-use crate::protocol::{Fingerprint, ProtocolType};
+use crate::protocol::{DeviceType, Fingerprint, ProtocolType};
 use crate::runtime::{DeviceView, RuntimeEvent};
 use crate::store::KnownDevice;
 use crate::transport::Target;
@@ -118,7 +118,7 @@ impl Inner {
             .collect()
     }
 
-    /// Announce, probe known addresses, scan when nothing answers.
+    /// Announce, probe known addresses and run the configured scan fallback.
     pub(crate) fn kick_discovery(self: &Arc<Self>) {
         if !self.active_discovery {
             return;
@@ -230,6 +230,12 @@ pub(crate) async fn liveness(inner: Arc<Inner>) {
         tokio::select! {
             _ = inner.cancel.cancelled() => break,
             _ = interval.tick() => {}
+        }
+        // A mobile app can start before local-network permission is granted,
+        // and Windows peers may never reach it over multicast. Retry active
+        // discovery instead of probing only peers we already know.
+        if inner.device_type == DeviceType::Mobile {
+            inner.kick_discovery();
         }
         let me = inner.identity.fingerprint().clone();
         let devices: Vec<Device> = inner

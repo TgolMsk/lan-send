@@ -106,7 +106,7 @@ unsafe fn number(dict: &CFDictionary, key: &CFString) -> Option<i64> {
 unsafe fn draw_rgbx(image: &CGImage, width: usize, height: usize) -> Option<Vec<u8>> {
     let bytes_per_row = width.checked_mul(4)?;
     let mut buffer = vec![0u8; bytes_per_row.checked_mul(height)?];
-    for px in buffer.chunks_exact_mut(4) {
+    for px in buffer.as_chunks_mut::<4>().0 {
         px[..3].copy_from_slice(&MATTE);
         px[3] = 255;
     }
@@ -138,7 +138,7 @@ unsafe fn draw_rgbx(image: &CGImage, width: usize, height: usize) -> Option<Vec<
     // Everything CoreGraphics wrote went into `buffer`; the context is
     // released here, before the buffer is returned.
     drop(context);
-    for px in buffer.chunks_exact_mut(4) {
+    for px in buffer.as_chunks_mut::<4>().0 {
         px[3] = 255;
     }
     Some(buffer)

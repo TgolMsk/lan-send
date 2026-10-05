@@ -70,6 +70,8 @@ targets:
         LSSupportsOpeningDocumentsInPlace: true
     entitlements:
       path: lan-send-app_iOS/lan-send-app_iOS.entitlements
+      properties:
+        com.apple.developer.networking.multicast: true
     scheme:
       environmentVariables:
         RUST_BACKTRACE: full

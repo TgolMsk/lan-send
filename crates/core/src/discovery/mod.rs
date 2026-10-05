@@ -58,6 +58,9 @@ pub struct DiscoveryConfig {
     /// Whether announcements of other devices are answered. Turn off when
     /// the HTTP server is not running.
     pub answer_announcements: bool,
+    /// Scan even when a peer answered. Mobile networks can deliver some
+    /// peers' announcements while silently dropping others.
+    pub always_scan_subnets: bool,
 }
 
 impl DiscoveryConfig {
@@ -71,6 +74,7 @@ impl DiscoveryConfig {
             multicast_port: MULTICAST_PORT,
             probe_timeout: DEFAULT_PROBE_TIMEOUT,
             answer_announcements: true,
+            always_scan_subnets: false,
         }
     }
 }
@@ -92,6 +96,8 @@ struct Inner {
     sockets: Vec<multicast::BoundSocket>,
     multicast_error: Option<String>,
     answering: AtomicBool,
+    always_scan_subnets: bool,
+    discovering: AtomicBool,
     scanning: parking_lot::Mutex<HashSet<Ipv4Addr>>,
     recently_answered: parking_lot::Mutex<HashMap<String, Instant>>,
     confirmations: AtomicU64,
@@ -118,6 +124,14 @@ impl Discovery {
                     (Vec::new(), Some(err.to_string()))
                 }
             };
+        Self::with_sockets(config, sockets, multicast_error)
+    }
+
+    fn with_sockets(
+        config: DiscoveryConfig,
+        sockets: Vec<multicast::BoundSocket>,
+        multicast_error: Option<String>,
+    ) -> Self {
         let (events, _) = broadcast::channel(EVENT_CAPACITY);
         let inner = Arc::new(Inner {
             identity: config.identity,
@@ -128,6 +142,8 @@ impl Discovery {
             sockets,
             multicast_error,
             answering: AtomicBool::new(config.answer_announcements),
+            always_scan_subnets: config.always_scan_subnets,
+            discovering: AtomicBool::new(false),
             scanning: parking_lot::Mutex::new(HashSet::new()),
             recently_answered: parking_lot::Mutex::new(HashMap::new()),
             confirmations: AtomicU64::new(0),
@@ -299,21 +315,40 @@ impl Discovery {
         self.probe_many(targets).await
     }
 
-    /// Cheapest first: announce and probe `known` addresses; when nothing
-    /// was confirmed within `grace` afterwards, scan the local `/24`
-    /// subnets on the protocol's default port and, when different, on our
-    /// own port. Returns once every stage finished.
+    /// Announce and probe known addresses, then scan the local `/24`
+    /// subnets when multicast is unavailable, no peer answered, or
+    /// `always_scan_subnets` is enabled. One reachable peer does not prove
+    /// multicast works for every device. Concurrent refreshes share the
+    /// running discovery pass.
     pub async fn discover_staged(&self, known: Vec<Target>, grace: Duration) {
-        let before = self.inner.confirmations.load(Ordering::Relaxed);
         let mut ports = vec![crate::protocol::DEFAULT_PORT];
         if self.inner.device.port != crate::protocol::DEFAULT_PORT {
             ports.push(self.inner.device.port);
         }
+        self.discover_on(known, grace, multicast::local_ipv4_addresses(), ports)
+            .await;
+    }
+
+    async fn discover_on(
+        &self,
+        known: Vec<Target>,
+        grace: Duration,
+        interfaces: Vec<Ipv4Addr>,
+        ports: Vec<u16>,
+    ) {
+        if self.inner.discovering.swap(true, Ordering::AcqRel) {
+            return;
+        }
+        let _guard = DiscoveryGuard(&self.inner.discovering);
+        let before = self.inner.confirmations.load(Ordering::Relaxed);
         let escalate = async {
             self.probe_many(known).await;
             tokio::time::sleep(grace).await;
-            if self.inner.confirmations.load(Ordering::Relaxed) == before {
-                for interface in multicast::local_ipv4_addresses() {
+            if self.inner.always_scan_subnets
+                || self.inner.sockets.is_empty()
+                || self.inner.confirmations.load(Ordering::Relaxed) == before
+            {
+                for interface in interfaces {
                     for port in &ports {
                         self.scan_subnet(interface, *port, ProtocolType::Https)
                             .await;
@@ -321,7 +356,10 @@ impl Discovery {
                 }
             }
         };
-        tokio::join!(self.announce(), escalate);
+        tokio::select! {
+            _ = self.cancel.cancelled() => {}
+            _ = async { tokio::join!(self.announce(), escalate); } => {}
+        }
     }
 
     /// The non-loopback IPv4 addresses of this machine.
@@ -334,6 +372,14 @@ impl Discovery {
         self.cancel.cancel();
         self.tasks.close();
         self.tasks.wait().await;
+    }
+}
+
+struct DiscoveryGuard<'a>(&'a AtomicBool);
+
+impl Drop for DiscoveryGuard<'_> {
+    fn drop(&mut self) {
+        self.0.store(false, Ordering::Release);
     }
 }
 
@@ -543,6 +589,101 @@ async fn answer_announcement(inner: Arc<Inner>, host: String, announcement: Mult
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::protocol::{DeviceType, PROTOCOL_VERSION};
+    use crate::transport::server::{self, DEFAULT_UPLOAD_IDLE_TIMEOUT};
+    use crate::transport::{ClientCertPolicy, ServerConfig, ServerHandle};
+    use tokio::sync::mpsc;
+
+    fn info(identity: &Identity, alias: &str, port: u16) -> DeviceInfo {
+        DeviceInfo {
+            alias: alias.into(),
+            version: PROTOCOL_VERSION.into(),
+            device_model: None,
+            device_type: Some(DeviceType::Desktop),
+            fingerprint: identity.fingerprint().to_string(),
+            port,
+            protocol: ProtocolType::Https,
+            download: false,
+            ext: None,
+        }
+    }
+
+    async fn peer(alias: &str) -> ServerHandle {
+        let identity = Arc::new(Identity::generate().unwrap());
+        let (tx, mut rx) = mpsc::channel(1024);
+        tokio::spawn(async move { while rx.recv().await.is_some() {} });
+        server::start(ServerConfig {
+            port: 0,
+            device: info(&identity, alias, 0),
+            identity,
+            client_cert_policy: ClientCertPolicy::Required,
+            pin: None,
+            verify_checksums: true,
+            upload_idle_timeout: DEFAULT_UPLOAD_IDLE_TIMEOUT,
+            ipv6: false,
+            paired: HashSet::new(),
+            clipboard_limits: Default::default(),
+            events: tx,
+        })
+        .await
+        .unwrap()
+    }
+
+    async fn discovers_unknown_peer_after_known_peer(always_scan: bool, multicast: bool) {
+        let mac = peer("known-mac").await;
+        let windows = peer("unknown-windows").await;
+        let identity = Arc::new(Identity::generate().unwrap());
+        let mut config = DiscoveryConfig::new(identity.clone(), info(&identity, "ios", 53317));
+        config.always_scan_subnets = always_scan;
+        // Only loopback traffic: no dependence on the test host's LAN or
+        // multicast permissions. A working socket models partial delivery.
+        let sockets = if multicast {
+            let socket = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+            vec![multicast::BoundSocket {
+                target: socket.local_addr().unwrap(),
+                socket: Arc::new(socket),
+                description: "test loopback".into(),
+            }]
+        } else {
+            Vec::new()
+        };
+        let discovery = Discovery::with_sockets(config, sockets, None);
+        let known = Target {
+            host: "127.0.0.1".into(),
+            port: mac.port(),
+            protocol: ProtocolType::Https,
+        };
+        discovery
+            .discover_on(
+                vec![known],
+                Duration::ZERO,
+                vec![Ipv4Addr::new(127, 0, 0, 2)],
+                vec![windows.port()],
+            )
+            .await;
+        let devices = discovery.devices();
+        assert!(devices.iter().any(|d| d.alias == "known-mac"));
+        assert!(
+            devices.iter().any(|d| d.alias == "unknown-windows"),
+            "a known Mac must not prevent the HTTP scan from finding Windows"
+        );
+        // Scan guards also release on completion so a later refresh can run.
+        assert!(!discovery.inner.discovering.load(Ordering::Acquire));
+        assert!(discovery.inner.scanning.lock().is_empty());
+        discovery.stop().await;
+        mac.stop().await;
+        windows.stop().await;
+    }
+
+    #[tokio::test]
+    async fn mobile_scans_even_when_multicast_and_known_peer_work() {
+        discovers_unknown_peer_after_known_peer(true, true).await;
+    }
+
+    #[tokio::test]
+    async fn no_multicast_scans_even_when_known_peer_answers() {
+        discovers_unknown_peer_after_known_peer(false, false).await;
+    }
 
     #[test]
     fn parses_address_queries() {

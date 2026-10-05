@@ -23,6 +23,15 @@ on:
         description: "Create a GitHub Release (otherwise only build artifacts)"
         type: boolean
         default: false
+      ios_only:
+        description: "Only sign and upload the iOS app to App Store Connect"
+        type: boolean
+        default: false
+      store_action:
+        description: "iOS build/upload or App Store Connect metadata operation"
+        type: choice
+        options: [build, inspect]
+        default: build
 
 permissions:
   contents: write
@@ -52,6 +61,7 @@ jobs:
           echo "version $tag"
 
   macos:
+    if: github.event_name != 'workflow_dispatch' || !inputs.ios_only
     name: CLI package (macOS)
     needs: version
     runs-on: macos-latest
@@ -126,6 +136,7 @@ jobs:
           if-no-files-found: error
 
   windows:
+    if: github.event_name != 'workflow_dispatch' || !inputs.ios_only
     name: CLI package (Windows)
     needs: version
     runs-on: windows-latest
@@ -166,6 +177,7 @@ jobs:
           if-no-files-found: error
 
   app-macos:
+    if: github.event_name != 'workflow_dispatch' || !inputs.ios_only
     name: App bundle (macOS universal)
     needs: version
     runs-on: macos-latest
@@ -229,6 +241,7 @@ jobs:
           if-no-files-found: error
 
   app-windows:
+    if: github.event_name != 'workflow_dispatch' || !inputs.ios_only
     name: App bundle (Windows x86_64)
     needs: version
     runs-on: windows-latest
@@ -267,6 +280,7 @@ jobs:
           if-no-files-found: error
 
   ios-testflight:
+    if: github.event_name != 'workflow_dispatch' || inputs.store_action == 'build'
     name: iOS (TestFlight)
     needs: version
     runs-on: macos-latest
@@ -340,6 +354,7 @@ jobs:
         shell: bash
         run: |
           IPA=$(ls src-tauri/gen/apple/build/arm64/*.ipa | head -1)
+          python3 ../../scripts/check-ios-networking.py --ipa "$IPA"
           xcrun altool --upload-app --type ios --file "$IPA" --apiKey "$APPLE_API_KEY" --apiIssuer "$APPLE_API_ISSUER"
           mkdir -p ../../dist && cp "$IPA" "../../dist/lan-send-${VERSION}-ios.ipa"
       - uses: actions/upload-artifact@v7
@@ -349,7 +364,24 @@ jobs:
           path: dist/*.ipa
           if-no-files-found: error
 
+  ios-store:
+    if: github.event_name == 'workflow_dispatch' && inputs.ios_only && inputs.store_action == 'inspect'
+    name: Inspect iOS App Store Connect
+    runs-on: ubuntu-latest
+    env:
+      APPLE_API_ISSUER: ${{ secrets.APPSTORE_ISSUER_ID }}
+      APPLE_API_KEY: ${{ secrets.APPSTORE_KEY_ID }}
+      APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install 'PyJWT[crypto]==2.10.1'
+      - run: python scripts/app-store-ios.py inspect
+
   app-mas:
+    if: github.event_name != 'workflow_dispatch' || !inputs.ios_only
     name: App bundle (Mac App Store)
     needs: version
     runs-on: macos-latest
@@ -443,6 +475,7 @@ jobs:
           if-no-files-found: error
 
   linux:
+    if: github.event_name != 'workflow_dispatch' || !inputs.ios_only
     name: CLI archive (Linux ${{ matrix.arch }})
     needs: version
     strategy:

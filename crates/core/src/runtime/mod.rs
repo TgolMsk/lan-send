@@ -240,6 +240,7 @@ impl Runtime {
             identity.clone(),
             device_info(&alias, &identity, device_type, port, &features),
         );
+        discovery_config.always_scan_subnets = device_type == DeviceType::Mobile;
         if !settings.ipv6 {
             discovery_config.group_v6 = None;
         }
