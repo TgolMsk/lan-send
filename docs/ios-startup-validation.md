@@ -35,4 +35,4 @@
 
 构建 27 IPA：`dist/ios-0.5.1-27/LanSend.ipa`；SHA-256 `7f40889339ad86bbd00d66acc314c86e81a2b262ff5dc715befe2a63260f3e97`。2026-10-05 14:53:09 PDT，本地 Xcode 上传完成，日志确认 `Upload succeeded`。
 
-本机实体 iPhone 仍显示 unavailable。构建 27 在用户 iPhone 上的冷启动及真实 Windows / Mac 互传，需要更新 TestFlight 后复测。
+本机实体 iPhone 仍显示 unavailable，无法直接连接调试。构建 27 发布至 TestFlight 后，用户已更新并明确确认「构建 27 能正常打开」，因此真机启动回测已获得用户确认。真实 Windows / Mac 互传仍待复测；此次确认不扩展为文件传输或长期运行已经通过。
