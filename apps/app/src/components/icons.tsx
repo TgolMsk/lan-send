@@ -45,13 +45,13 @@ const paths: Record<string, string> = {
 
 export type IconName = keyof typeof paths;
 
-export function Icon({ name, size = 18, ...rest }: { name: IconName; size?: number } & SVGProps<SVGSVGElement>) {
+export function Icon({ name, size = 18, fill, ...rest }: { name: IconName; size?: number } & SVGProps<SVGSVGElement>) {
   return (
     <svg
       width={size}
       height={size}
       viewBox="0 0 24 24"
-      fill={name === "star" && rest.fill ? rest.fill : "none"}
+      fill={name === "star" && fill ? fill : "none"}
       stroke="currentColor"
       strokeWidth={1.8}
       strokeLinecap="round"

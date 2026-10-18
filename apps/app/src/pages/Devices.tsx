@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { PageHead } from "../components/Layout";
+import { Icon } from "../components/icons";
 import { Badge, Button, Card, DeviceIcon, EmptyState, Field, IconButton, Modal, TextInput } from "../components/ui";
 import { ConfirmDialog } from "../dialogs/ConfirmDialog";
 import { formatAgo } from "../format";
@@ -47,7 +48,7 @@ export function DevicesPage() {
         subtitle={t("devices.subtitle")}
         actions={
           <>
-            <Badge tone={online > 0 ? "mint" : "muted"}>
+            <Badge tone={online > 0 ? "success" : "muted"}>
               <span className={`dot ${online > 0 ? "on" : ""}`} /> {online} {t("devices.onlineCount")}
             </Badge>
             <TextInput placeholder={t("app.search")} value={query} onChange={(e) => setQuery(e.target.value)} style={{ width: 180 }} />
@@ -103,12 +104,12 @@ export function DevicesPage() {
                 />
               </div>
               <div className="row wrap">
-                <Badge tone={device.online ? "mint" : "muted"}>
+                <Badge tone={device.online ? "success" : "muted"}>
                   <span className={`dot ${device.online ? "on" : ""}`} /> {device.online ? t("app.online") : `${t("devices.lastSeen")} ${formatAgo(device.lastSeen)}`}
                 </Badge>
                 {device.paired && (
-                  <Badge tone="indigo">
-                    <span>🔗</span> {t("devices.paired")}
+                  <Badge tone="accent">
+                    <Icon name="link" size={12} /> {t("devices.paired")}
                   </Badge>
                 )}
               </div>

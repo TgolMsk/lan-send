@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- LanSend app icon (ADR-0024): a phone hops a file over to a screen.
+       Full-bleed square; each platform applies its own rounded mask.
+       apps/app/scripts/make-icons.mjs renders it. -->
+  <defs>
+    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5fb0ff"/>
+      <stop offset="0.55" stop-color="#1f7bff"/>
+      <stop offset="1" stop-color="#0a4fe0"/>
+    </linearGradient>
+    <radialGradient id="sheen" cx="0.5" cy="0" r="0.75">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#d9e8ff"/>
+    </linearGradient>
+    <filter id="soft">
+      <feGaussianBlur stdDeviation="16"/>
+    </filter>
+    <g id="glyph">
+      <path d="M300,476 C300,236 668,236 668,452" fill="none" stroke-width="62" stroke-linecap="round"/>
+      <path d="M592,404 L668,484 L744,404" fill="none" stroke-width="62" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="236" y="566" width="128" height="208" rx="34"/>
+      <rect x="548" y="590" width="240" height="160" rx="30"/>
+      <rect x="618" y="764" width="100" height="26" rx="13"/>
+    </g>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#ground)"/>
+  <rect width="1024" height="1024" fill="url(#sheen)"/>
+  <use href="#glyph" fill="#002a80" stroke="#002a80" opacity="0.42" transform="translate(0,6)" filter="url(#soft)"/>
+  <use href="#glyph" fill="url(#glass)" stroke="url(#glass)" transform="translate(0,-14)"/>
+</svg>

@@ -107,7 +107,7 @@ const settings: Settings = {
   app: {
     globalShortcut: "CmdOrCtrl+Shift+V",
     closeToTray: true,
-    theme: "dark",
+    theme: (new URLSearchParams(location.search).get("theme") as "dark" | "light" | null) ?? "dark",
     autoAcceptPaired: false,
     notifications: true,
     menuBarDrop: true,
@@ -183,10 +183,13 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       transfers.unshift(transfer);
       emit({ type: "transfer-updated", transfer });
       let tick = 0;
+      // Uneven steps so the speed line has some shape in screenshots.
+      const steps = [0.6, 0.9, 1.3, 1.1, 1.5, 1.2, 0.8, 1.4, 1.6, 1.0, 1.2, 0.9, 1.1, 1.3, 1.0, 0.8, 1.2, 1.0, 0.9, 1.0];
+      const progressAt = (n: number) => steps.slice(0, n).reduce((a, b) => a + b, 0) / steps.reduce((a, b) => a + b, 0);
       const timer = setInterval(() => {
         tick += 1;
         for (const file of transfer.files) {
-          file.done = Math.min(file.size, Math.round((file.size * tick) / 20));
+          file.done = Math.min(file.size, Math.round(file.size * progressAt(tick)));
           file.state = file.done >= file.size ? "finished" : "active";
         }
         transfer.doneSize = transfer.files.reduce((sum, file) => sum + file.done, 0);
@@ -209,7 +212,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
           transfer.finishedAt = Date.now() / 1000;
           emit({ type: "transfer-completed", transfer });
         }
-      }, 150);
+      }, 280);
       return id as T;
     }
     case "cmd_transfer_list":

@@ -3,7 +3,7 @@
 
     python3 lansend_web/tools/icons.py
 
-源图是 `apps/app/scripts/make-icons.py` 的产物：
+源图是 `apps/app/scripts/make-icons.mjs` 的产物：
 - `source-macos.png` 是 1024 画布上居中的 824 圆角图形（四角透明），裁到图形本身就得到
   网页上用的圆角图标；白底深色底都不露方角。
 - `icon.png` 是满铺方形，苹果自己会加圆角遮罩，所以 apple-touch-icon 用它。

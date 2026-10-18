@@ -1,53 +1,54 @@
-/* Design tokens from docs/ui-style-reference.md. Dark is the reference look;
-   light keeps the same hues on the near-white ground. */
+/* Design tokens (ADR-0024, native style). Dark is the default theme and
+   lives on :root; light redefines the same names. Components only use these
+   variables, so a theme is complete when both blocks define every name. */
 :root {
-  --ink-900: #050517;
-  --indigo-800: #18185c;
-  --indigo-500: #4444a3;
-  --paper: #fafafd;
-  --slate-700: #3d434d;
-  --lavender: #9fa1d4;
-  --mint: #1bee79;
-  --coral: #ff6b6b;
-
-  --bg: linear-gradient(135deg, var(--ink-900) 0%, var(--indigo-800) 48%, var(--indigo-500) 100%);
-  --sidebar: rgba(5, 5, 23, 0.35);
-  --text: var(--paper);
-  --text-muted: var(--lavender);
-  --card: rgba(255, 255, 255, 0.06);
-  --card-strong: rgba(255, 255, 255, 0.11);
-  --card-border: rgba(255, 255, 255, 0.1);
-  --card-border-strong: rgba(255, 255, 255, 0.22);
-  --card-solid: var(--paper);
-  --card-solid-text: var(--slate-700);
-  --input: rgba(5, 5, 23, 0.3);
-  --modal: #14144a;
-  --accent: var(--mint);
-  --accent-text: #0b0b2a;
-  --danger: var(--coral);
-  --radius-lg: 22px;
-  --radius-md: 16px;
+  --window: #141416;
+  --surface: #222225;
+  --raised: #2a2a2d;
+  --glass: rgba(46, 46, 50, 0.72);
+  --glass-edge: rgba(255, 255, 255, 0.1);
+  --sep: rgba(84, 84, 88, 0.45);
+  --fill: rgba(120, 120, 128, 0.2);
+  --fill-strong: rgba(120, 120, 128, 0.32);
+  --text: #f5f5f7;
+  --text-muted: #98989d;
+  --text-faint: #636366;
+  --accent: #0a84ff;
+  --accent-text: #ffffff;
+  --success: #30d158;
+  --favorite: #ffd60a;
+  --danger: #ff453a;
+  --lift: 0 0 0 0.5px rgba(255, 255, 255, 0.07), 0 1px 3px rgba(0, 0, 0, 0.4);
+  --float: 0 0 0 0.5px rgba(0, 0, 0, 0.4), 0 10px 30px rgba(0, 0, 0, 0.45);
+  --shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.1), 0 24px 70px rgba(0, 0, 0, 0.6);
+  --radius-lg: 16px;
+  --radius-md: 12px;
+  --radius-sm: 8px;
   --radius-pill: 999px;
-  --shadow: 0 24px 60px rgba(5, 5, 23, 0.45);
-  --font: "Inter", "Manrope", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", "PingFang SC", "Hiragino Sans", "Apple SD Gothic Neo", "Microsoft YaHei UI", sans-serif;
+  --display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI Variable Display", "Segoe UI", "PingFang SC", "Hiragino Sans", "Apple SD Gothic Neo", "Microsoft YaHei UI", sans-serif;
   color-scheme: dark;
 }
 
 :root[data-theme="light"] {
-  --bg: linear-gradient(135deg, #f6f6fc 0%, #ecebf8 55%, #e3e2f5 100%);
-  --sidebar: rgba(255, 255, 255, 0.45);
-  --text: #23263a;
-  --text-muted: #6f739a;
-  --card: rgba(255, 255, 255, 0.62);
-  --card-strong: rgba(255, 255, 255, 0.9);
-  --card-border: rgba(68, 68, 163, 0.12);
-  --card-border-strong: rgba(68, 68, 163, 0.28);
-  --card-solid: #ffffff;
-  --card-solid-text: var(--slate-700);
-  --input: rgba(255, 255, 255, 0.8);
-  --modal: #ffffff;
-  --accent: #12c463;
-  --accent-text: #0b0b2a;
-  --shadow: 0 18px 48px rgba(68, 68, 163, 0.16);
+  --window: #f5f5f7;
+  --surface: #ffffff;
+  --raised: #ffffff;
+  --glass: rgba(236, 236, 240, 0.72);
+  --glass-edge: rgba(255, 255, 255, 0.55);
+  --sep: rgba(60, 60, 67, 0.12);
+  --fill: rgba(120, 120, 128, 0.12);
+  --fill-strong: rgba(120, 120, 128, 0.2);
+  --text: #1d1d1f;
+  --text-muted: #6e6e73;
+  --text-faint: #aeaeb2;
+  --accent: #0a72ff;
+  --accent-text: #ffffff;
+  --success: #28c840;
+  --favorite: #ffb800;
+  --danger: #ff3b30;
+  --lift: 0 0 0 0.5px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.05), 0 6px 16px rgba(0, 0, 0, 0.04);
+  --float: 0 0 0 0.5px rgba(0, 0, 0, 0.08), 0 10px 30px rgba(0, 0, 0, 0.1);
+  --shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.08), 0 24px 70px rgba(0, 0, 0, 0.2);
   color-scheme: light;
 }

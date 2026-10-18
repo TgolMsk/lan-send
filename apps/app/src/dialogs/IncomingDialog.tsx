@@ -32,8 +32,8 @@ export function IncomingDialog() {
           </div>
         </div>
         <span className="spacer" />
-        {request.resumable && <Badge tone="indigo">{t("incoming.resumable")}</Badge>}
-        {request.clipboardIntent && <Badge tone="mint">{t("incoming.clipboard")}</Badge>}
+        {request.resumable && <Badge tone="accent">{t("incoming.resumable")}</Badge>}
+        {request.clipboardIntent && <Badge tone="success">{t("incoming.clipboard")}</Badge>}
       </div>
       <div>
         {shown.map((file) => (

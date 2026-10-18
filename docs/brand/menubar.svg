@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- macOS menu bar template glyph (ADR-0024): the app icon's drawing in
+       solid black on transparent; macOS tints it for the menu bar. -->
+  <g transform="translate(512,512) scale(1.4) translate(-512,-526)">
+    <path d="M300,476 C300,236 668,236 668,452" fill="none" stroke="#000" stroke-width="66" stroke-linecap="round"/>
+    <path d="M592,404 L668,484 L744,404" fill="none" stroke="#000" stroke-width="66" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="236" y="566" width="128" height="208" rx="34"/>
+    <rect x="548" y="590" width="240" height="160" rx="30"/>
+    <rect x="618" y="764" width="100" height="26" rx="13"/>
+  </g>
+</svg>

@@ -25,10 +25,10 @@ export function HistoryPage() {
         subtitle={t("history.subtitle")}
         actions={
           <>
-            <Badge tone="indigo">
+            <Badge tone="accent">
               <Icon name="upload" size={13} /> {sent} {t("history.sent")}
             </Badge>
-            <Badge tone="mint">
+            <Badge tone="success">
               <Icon name="download" size={13} /> {received} {t("history.received")}
             </Badge>
             {history.length > 0 && (

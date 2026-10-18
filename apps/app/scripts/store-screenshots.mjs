@@ -7,6 +7,8 @@ import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 
 const PORT = 1421;
+// Light shows the native style (ADR-0024) best; SHOT_THEME=dark for the other.
+const THEME = process.env.SHOT_THEME ?? "light";
 const OUT = resolve("store/screenshots");
 const devices = {
   // iPhone 6.5" slot — 1284×2778 (App Store Connect also uses it for 6.9")
@@ -56,12 +58,12 @@ try {
       isMobile: spec.mobile,
       hasTouch: spec.mobile,
       locale: "zh-CN",
-      colorScheme: "dark",
+      colorScheme: THEME,
     });
     for (const [file, query] of spec.shots) {
       const page = await context.newPage();
-      await page.goto(`http://localhost:${PORT}/?${query}`, { waitUntil: "networkidle" });
-      await page.waitForTimeout(1800);
+      await page.goto(`http://localhost:${PORT}/?${query}&theme=${THEME}`, { waitUntil: "networkidle" });
+      await page.waitForTimeout(query.includes("freeze") ? 3400 : 1800);
       const path = resolve(OUT, name, `${file}.png`);
       await page.screenshot({ path });
       const size = await page.evaluate(() => `${innerWidth}x${innerHeight} @${devicePixelRatio}`);
