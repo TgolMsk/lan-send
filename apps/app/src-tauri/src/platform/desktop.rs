@@ -47,13 +47,13 @@ pub async fn apply_language_from_settings(app: &AppHandle) {
 /// for light and dark menu bars (ADR-0024); the Windows tray keeps the colour
 /// app icon.
 #[cfg(target_os = "macos")]
-fn tray_icon(_app: &AppHandle) -> anyhow::Result<(tauri::image::Image<'static>, bool)> {
+fn tray_icon(_app: &AppHandle) -> anyhow::Result<(tauri::image::Image<'_>, bool)> {
     let icon = tauri::image::Image::from_bytes(include_bytes!("../../icons/tray-template.png"))?;
     Ok((icon, true))
 }
 
 #[cfg(not(target_os = "macos"))]
-fn tray_icon(app: &AppHandle) -> anyhow::Result<(tauri::image::Image<'static>, bool)> {
+fn tray_icon(app: &AppHandle) -> anyhow::Result<(tauri::image::Image<'_>, bool)> {
     let icon = app
         .default_window_icon()
         .cloned()
