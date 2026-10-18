@@ -36,6 +36,38 @@ export function IconButton({
   );
 }
 
+/** A round glass toolbar button, as in the iOS 26 navigation bar. */
+export function GlassButton({ label, icon, className = "", ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { label: string; icon: IconName }) {
+  return (
+    <button className={`glass-btn ${className}`} type="button" title={label} aria-label={label} {...rest}>
+      <Icon name={icon} size={20} />
+    </button>
+  );
+}
+
+/** Circular progress, `value` 0–1; colours come from CSS (`.ring`). */
+export function Ring({ value, size, stroke, children }: { value: number; size: number; stroke: number; children?: ReactNode }) {
+  const radius = (size - stroke) / 2;
+  const length = 2 * Math.PI * radius;
+  const shown = Math.max(0, Math.min(1, value)) * length;
+  return (
+    <div className="ring" style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden>
+        <circle className="ring-track" cx={size / 2} cy={size / 2} r={radius} strokeWidth={stroke} />
+        <circle
+          className="ring-value"
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          strokeWidth={stroke}
+          strokeDasharray={`${shown} ${length}`}
+        />
+      </svg>
+      {children && <div className="ring-inner">{children}</div>}
+    </div>
+  );
+}
+
 export function Card({
   solid = false,
   interactive = false,
@@ -176,14 +208,26 @@ export function Sparkline({ values }: { values: number[] }) {
   );
 }
 
-export function DeviceIcon({ type, model }: { type: string | null; model: string | null }) {
+export function DeviceIcon({
+  type,
+  model,
+  online,
+  className = "",
+}: {
+  type: string | null;
+  model: string | null;
+  /** Draws the green presence dot (iOS tiles); omit to show none. */
+  online?: boolean;
+  className?: string;
+}) {
   const name: IconName =
     type === "mobile" ? "phone" : type === "server" || type === "headless" ? "server" : type === "web" ? "globe" : model?.toLowerCase().includes("mac") ? "laptop" : "desktop";
   // Tinted by kind (ADR-0024): phones blue, computers graphite, the rest teal.
   const kind = name === "phone" ? "phone" : name === "laptop" || name === "desktop" ? "computer" : "other";
   return (
-    <div className={`device-icon ${kind}`}>
+    <div className={`device-icon ${kind} ${className}`}>
       <Icon name={name} size={22} />
+      {online && <span className="presence" />}
     </div>
   );
 }

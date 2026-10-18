@@ -81,6 +81,26 @@ const devices: DeviceView[] = [
   },
 ];
 
+// On the phone the Mac above is a peer, not this device: list it too.
+if (new URLSearchParams(location.search).get("platform") === "ios") {
+  devices.splice(1, 0, {
+    fingerprint: "5C4B3A29180716F5E4D3C2B1A09F8E7D5C4B3A29180716F5E4D3C2B1A09F8E7D",
+    alias: "MacBook Pro",
+    customAlias: null,
+    displayName: "MacBook Pro",
+    deviceType: "desktop",
+    deviceModel: "macOS",
+    version: "2.1",
+    host: "192.168.1.12",
+    port: 53317,
+    online: true,
+    favorite: false,
+    paired: false,
+    features: ["pairing", "resume", "clipboard"],
+    lastSeen: Date.now() / 1000,
+  });
+}
+
 const settings: Settings = {
   alias: null,
   port: 53317,
@@ -512,7 +532,7 @@ export function mockPairConfirm(fingerprint: string, matches: boolean) {
   );
 }
 
-// ?demo=incoming|transfer|pair|clipboard&delay=ms — for screenshots.
+// ?demo=incoming|transfer|pair|clipboard|conflict&delay=ms — for screenshots.
 {
   const params = new URLSearchParams(location.search);
   const demo = params.get("demo");
@@ -521,6 +541,7 @@ export function mockPairConfirm(fingerprint: string, matches: boolean) {
       if (demo === "incoming") window.lanSendDemo?.incoming();
       else if (demo === "pair") window.lanSendDemo?.pairRequest();
       else if (demo === "clipboard") window.lanSendDemo?.clipboard();
+      else if (demo === "conflict") window.lanSendDemo?.conflict();
       else if (demo === "transfer") {
         void mockInvoke("cmd_transfer_send", { request: { device: devices[0]?.fingerprint, paths: ["/Users/me/Pictures/IMG_2041.HEIC", "/Users/me/Documents/Q3 report.pdf", "/Users/me/Movies/clip.mov"] } });
       }

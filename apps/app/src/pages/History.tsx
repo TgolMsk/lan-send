@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { PageHead } from "../components/Layout";
 import { FileThumb, useMediaCaption } from "../components/FileThumb";
 import { Icon } from "../components/icons";
-import { Badge, Button, Card, EmptyState, IconButton } from "../components/ui";
+import { Badge, Button, Card, EmptyState, GlassButton, IconButton } from "../components/ui";
 import { ConfirmDialog } from "../dialogs/ConfirmDialog";
 import { formatBytes, formatTime } from "../format";
 import { t } from "../i18n";
@@ -20,25 +20,33 @@ export function HistoryPage() {
   const received = history.filter((r) => r.direction === "receive" && r.status === "finished").length;
   return (
     <>
-      <PageHead
-        title={t("history.title")}
-        subtitle={t("history.subtitle")}
-        actions={
-          <>
-            <Badge tone="accent">
-              <Icon name="upload" size={13} /> {sent} {t("history.sent")}
-            </Badge>
-            <Badge tone="success">
-              <Icon name="download" size={13} /> {received} {t("history.received")}
-            </Badge>
-            {history.length > 0 && (
-              <Button variant="outline" icon="trash" onClick={() => setClearing(true)}>
-                {t("app.clear")}
-              </Button>
-            )}
-          </>
-        }
-      />
+      {platform.mobile ? (
+        <PageHead
+          title={t("history.title")}
+          subtitle={`${sent} ${t("history.sent")} · ${received} ${t("history.received")}`}
+          actions={history.length > 0 && <GlassButton label={t("app.clear")} icon="trash" onClick={() => setClearing(true)} />}
+        />
+      ) : (
+        <PageHead
+          title={t("history.title")}
+          subtitle={t("history.subtitle")}
+          actions={
+            <>
+              <Badge tone="accent">
+                <Icon name="upload" size={13} /> {sent} {t("history.sent")}
+              </Badge>
+              <Badge tone="success">
+                <Icon name="download" size={13} /> {received} {t("history.received")}
+              </Badge>
+              {history.length > 0 && (
+                <Button variant="outline" icon="trash" onClick={() => setClearing(true)}>
+                  {t("app.clear")}
+                </Button>
+              )}
+            </>
+          }
+        />
+      )}
       <Card>
         {history.length === 0 ? (
           <EmptyState icon="history" title={t("history.empty")} />

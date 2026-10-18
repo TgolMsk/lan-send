@@ -52,3 +52,21 @@
   --shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.08), 0 24px 70px rgba(0, 0, 0, 0.2);
   color-scheme: light;
 }
+
+/* iOS (ADR-0025): the system grouped-list grounds, pure black in dark and
+   #F2F2F7 in light, with flat surfaces. Both selectors carry the theme so
+   they outrank the blocks above in either theme. */
+:root[data-platform="ios"]:not([data-theme="light"]) {
+  --window: #000000;
+  --surface: #1c1c1e;
+  --raised: #2c2c2e;
+  --sep: rgba(84, 84, 88, 0.55);
+  --lift: none;
+}
+:root[data-platform="ios"][data-theme="light"] {
+  --window: #f2f2f7;
+  --surface: #ffffff;
+  --raised: #ffffff;
+  --sep: rgba(60, 60, 67, 0.16);
+  --lift: none;
+}

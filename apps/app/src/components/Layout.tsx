@@ -1,9 +1,9 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { Icon, type IconName } from "./icons";
 import { t } from "../i18n";
-import { navigate, useStore, type Page } from "../store";
+import { navigate, retryRuntime, useStore, type Page } from "../store";
 import { shortFingerprint } from "../format";
-import { Avatar } from "./ui";
+import { Avatar, Button } from "./ui";
 import type { PlatformInfo } from "../types";
 import logo from "../assets/logo.png";
 
@@ -92,8 +92,9 @@ export function Layout({ children }: { children: ReactNode }) {
       <nav className="tabbar" ref={tabbar}>
         {visible.map((p) => (
           <button key={p.id} className={`tab-item ${page === p.id ? "active" : ""}`} onClick={() => navigate(p.id)}>
-            <Icon name={p.icon} size={20} />
+            <Icon name={p.icon} size={22} />
             <span>{p.label()}</span>
+            {p.id === "transfers" && active > 0 && <span className="badge-count">{active}</span>}
           </button>
         ))}
       </nav>
@@ -103,6 +104,19 @@ export function Layout({ children }: { children: ReactNode }) {
 
 export function PageHead({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: ReactNode }) {
   const platform = useStore((s) => s.platform);
+  // iOS (ADR-0025): a toolbar row of glass buttons above a large title, as in
+  // the system apps. The row is there even when empty so every title starts
+  // at the same height.
+  if (platform.mobile) {
+    return (
+      <header className="m-head">
+        <div className="m-toolbar">{actions}</div>
+        <h1 className="page-title">{title}</h1>
+        {subtitle && <p className="page-subtitle">{subtitle}</p>}
+        <RuntimeBanner />
+      </header>
+    );
+  }
   return (
     <header className="page-head" {...dragRegion(platform)}>
       <div>
@@ -111,5 +125,24 @@ export function PageHead({ title, subtitle, actions }: { title: string; subtitle
       </div>
       {actions && <div className="page-actions">{actions}</div>}
     </header>
+  );
+}
+
+/** Shown while the network runtime is down: above the page on desktop, under
+ *  the large title on iOS so the toolbar row stays where it belongs. */
+export function RuntimeBanner() {
+  const runtime = useStore((s) => s.runtime);
+  if (runtime.running) return null;
+  return (
+    <div className="banner">
+      <span>
+        {t("app.runtimeStopped")}
+        {runtime.message ? ` · ${runtime.message}` : ""}
+      </span>
+      <span className="spacer" />
+      <Button size="sm" variant="outline" icon="refresh" onClick={() => void retryRuntime()}>
+        {t("app.retry")}
+      </Button>
+    </div>
   );
 }
