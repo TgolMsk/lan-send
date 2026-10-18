@@ -181,6 +181,7 @@ export interface Settings {
     theme: "dark" | "light" | "system";
     autoAcceptPaired: boolean;
     notifications: boolean;
+    menuBarDrop: boolean;
     /** A locale the app ships or "system". */
     language: string;
   };

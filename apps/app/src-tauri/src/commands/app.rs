@@ -204,3 +204,9 @@ pub fn cmd_app_reveal_path(app: AppHandle, path: PathBuf) -> CmdResult<()> {
     app.opener().reveal_item_in_dir(path)?;
     Ok(())
 }
+
+/// Shows a system notification; a no-op where the platform sends none.
+#[tauri::command]
+pub fn cmd_app_notify(app: AppHandle, title: String, body: String) {
+    crate::platform::notify(&app, &title, &body);
+}

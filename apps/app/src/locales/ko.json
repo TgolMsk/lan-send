@@ -165,6 +165,7 @@
   "settings.closeToTray": "창을 닫으면 트레이로 숨기기",
   "settings.autoAcceptPaired": "페어링된 기기의 파일 자동 수락",
   "settings.notifications": "시스템 알림",
+  "settings.menuBarDrop": "메뉴 막대 아이콘으로 파일을 끌어 보내기",
   "settings.thumbCache": "미리 보기 캐시",
   "settings.thumbCacheHint": "기록의 사진과 앨범 아트 미리 보기입니다. 최대 200MB이며 오래된 항목부터 자동으로 삭제됩니다.",
   "settings.historyLimit": "보관할 전송 기록 수",
@@ -217,5 +218,14 @@
   "error.pair-busy": "상대 기기가 다른 페어링을 진행 중입니다.",
   "error.pair-unsupported": "상대 기기가 페어링을 지원하지 않습니다(공식 LocalSend인가요?).",
   "error.pair-withdrawn": "상대 기기가 페어링을 취소했습니다.",
-  "error.pair-code-mismatch": "코드가 일치하지 않았습니다."
+  "error.pair-code-mismatch": "코드가 일치하지 않았습니다.",
+  "trayDrop.title": "보낼 기기",
+  "trayDrop.hint": "기기에 놓으면 전송됩니다",
+  "trayDrop.staged": "{n}개 선택됨 — 기기를 고르세요",
+  "trayDrop.empty": "온라인 기기가 없습니다",
+  "trayDrop.sending": "{name}(으)로 보내는 중…",
+  "trayDrop.failed": "보내지 못했습니다: {message}",
+  "trayDrop.notifySent": "{alias}(으)로 보냈습니다",
+  "trayDrop.notifyFailed": "{alias}(으)로 보내지 못했습니다",
+  "trayDrop.notifyFiles": "파일 {n}개, {size}"
 }

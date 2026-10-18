@@ -916,3 +916,70 @@
     transform: rotate(360deg);
   }
 }
+
+/* macOS menu bar drop panel (panels/TrayDropPanel.tsx) */
+.tray-drop {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--modal);
+  padding: 14px 10px 10px;
+}
+.tray-drop-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 6px 10px;
+}
+.tray-drop-head span,
+.tray-drop-name span,
+.tray-drop-status {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.tray-drop-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tray-drop-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--card-border);
+  background: var(--card);
+}
+.tray-drop-list li.hover {
+  border-color: var(--accent);
+  background: var(--card-strong);
+}
+.tray-drop-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.tray-drop-name strong,
+.tray-drop-name span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tray-drop-status {
+  padding: 18px 6px;
+}
+.tray-drop-status.error {
+  color: var(--danger);
+}
+.tray-drop-list li.clickable {
+  cursor: pointer;
+}
+.tray-drop-list li.clickable:hover {
+  border-color: var(--card-border-strong);
+}

@@ -165,6 +165,7 @@
   "settings.closeToTray": "Beim Schließen des Fensters wird es in die Ablage gelegt",
   "settings.autoAcceptPaired": "Dateien von gekoppelten Geräten automatisch annehmen",
   "settings.notifications": "Systembenachrichtigungen",
+  "settings.menuBarDrop": "Dateien zum Senden auf das Menüleistensymbol ziehen",
   "settings.thumbCache": "Vorschaubilder-Cache",
   "settings.thumbCacheHint": "Vorschauen für Bilder und Album-Cover im Verlauf; begrenzt auf 200 MB, älteste werden zuerst entfernt.",
   "settings.historyLimit": "Aufbewahrte Einträge im Übertragungsverlauf",
@@ -217,5 +218,14 @@
   "error.pair-busy": "Das andere Gerät ist gerade mit einem anderen Koppeln beschäftigt.",
   "error.pair-unsupported": "Das andere Gerät unterstützt kein Koppeln (ist es das offizielle LocalSend?).",
   "error.pair-withdrawn": "Das andere Gerät hat das Koppeln zurückgezogen.",
-  "error.pair-code-mismatch": "Die Codes stimmen nicht überein."
+  "error.pair-code-mismatch": "Die Codes stimmen nicht überein.",
+  "trayDrop.title": "Senden an",
+  "trayDrop.hint": "Zum Senden auf ein Gerät ziehen",
+  "trayDrop.staged": "{n} Objekt(e) bereit – Gerät wählen",
+  "trayDrop.empty": "Keine Geräte online",
+  "trayDrop.sending": "Wird an {name} gesendet …",
+  "trayDrop.failed": "Senden fehlgeschlagen: {message}",
+  "trayDrop.notifySent": "An {alias} gesendet",
+  "trayDrop.notifyFailed": "Senden an {alias} fehlgeschlagen",
+  "trayDrop.notifyFiles": "{n} Datei(en), {size}"
 }

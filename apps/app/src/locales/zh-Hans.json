@@ -165,6 +165,7 @@
   "settings.closeToTray": "关闭窗口时缩到托盘",
   "settings.autoAcceptPaired": "自动接收已配对设备的文件",
   "settings.notifications": "系统通知",
+  "settings.menuBarDrop": "把文件拖到菜单栏图标上发送",
   "settings.thumbCache": "缩略图缓存",
   "settings.thumbCacheHint": "历史里的图片与音乐封面预览，最多 200 MB，超出自动清理。",
   "settings.historyLimit": "传输历史保留条数",
@@ -217,5 +218,14 @@
   "error.pair-busy": "对方正在和别的设备配对。",
   "error.pair-unsupported": "对方不支持配对（是官方 LocalSend 吗？）。",
   "error.pair-withdrawn": "对方取消了配对。",
-  "error.pair-code-mismatch": "两边的配对码不一致。"
+  "error.pair-code-mismatch": "两边的配对码不一致。",
+  "trayDrop.title": "发送到",
+  "trayDrop.hint": "拖到设备上即可发送",
+  "trayDrop.staged": "已选 {n} 项，点选设备发送",
+  "trayDrop.empty": "没有在线设备",
+  "trayDrop.sending": "正在发送给 {name}…",
+  "trayDrop.failed": "发送失败：{message}",
+  "trayDrop.notifySent": "已发送给 {alias}",
+  "trayDrop.notifyFailed": "没能发送给 {alias}",
+  "trayDrop.notifyFiles": "{n} 个文件，{size}"
 }

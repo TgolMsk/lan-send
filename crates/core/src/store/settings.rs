@@ -83,8 +83,12 @@ pub struct AppSettings {
     pub theme: Theme,
     /// Accept transfers from paired devices without asking.
     pub auto_accept_paired: bool,
-    /// Show a system notification for received files and clipboard items.
+    /// Show system notifications (results of transfers started from the
+    /// macOS menu bar panel; received files and clipboard items later).
     pub notifications: bool,
+    /// macOS: dragging files onto the menu bar icon opens a device panel
+    /// under it (ADR-0022).
+    pub menu_bar_drop: bool,
     /// Interface language: a BCP 47 tag the app ships (`en`, `zh-Hans`,
     /// `zh-Hant`, `ja`, `ko`, `de`, `fr`, `es`) or `system`.
     pub language: String,
@@ -107,6 +111,7 @@ impl Default for AppSettings {
             theme: Theme::Dark,
             auto_accept_paired: false,
             notifications: true,
+            menu_bar_drop: true,
             language: "system".to_string(),
         }
     }
@@ -244,5 +249,14 @@ mod tests {
         assert_eq!(settings.port, 1234);
         assert_eq!(settings.on_conflict, ConflictPolicy::Ask);
         assert_eq!(settings.history_limit, 200);
+    }
+
+    #[test]
+    fn settings_written_before_menu_bar_drop_keep_it_on() {
+        let settings: Settings =
+            serde_json::from_str(r#"{"app": {"closeToTray": false, "notifications": false}}"#)
+                .unwrap();
+        assert!(!settings.app.close_to_tray);
+        assert!(settings.app.menu_bar_drop);
     }
 }

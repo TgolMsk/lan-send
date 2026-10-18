@@ -165,6 +165,7 @@
   "settings.closeToTray": "Cerrar la ventana la oculta en la bandeja",
   "settings.autoAcceptPaired": "Aceptar automáticamente archivos de dispositivos emparejados",
   "settings.notifications": "Notificaciones del sistema",
+  "settings.menuBarDrop": "Arrastrar archivos al icono de la barra de menús para enviarlos",
   "settings.thumbCache": "Caché de miniaturas",
   "settings.thumbCacheHint": "Vistas previas de imágenes y carátulas de álbumes en el historial; límite de 200 MB, se elimina primero lo más antiguo.",
   "settings.historyLimit": "Elementos conservados en el historial de transferencias",
@@ -217,5 +218,14 @@
   "error.pair-busy": "El otro dispositivo está ocupado con otro emparejamiento.",
   "error.pair-unsupported": "El otro dispositivo no admite el emparejamiento (¿es el LocalSend oficial?).",
   "error.pair-withdrawn": "El otro dispositivo canceló el emparejamiento.",
-  "error.pair-code-mismatch": "Los códigos no coinciden."
+  "error.pair-code-mismatch": "Los códigos no coinciden.",
+  "trayDrop.title": "Enviar a",
+  "trayDrop.hint": "Suelta sobre un dispositivo para enviar",
+  "trayDrop.staged": "{n} elemento(s) listo(s): elige un dispositivo",
+  "trayDrop.empty": "No hay dispositivos en línea",
+  "trayDrop.sending": "Enviando a {name}…",
+  "trayDrop.failed": "No se pudo enviar: {message}",
+  "trayDrop.notifySent": "Enviado a {alias}",
+  "trayDrop.notifyFailed": "No se pudo enviar a {alias}",
+  "trayDrop.notifyFiles": "{n} archivo(s), {size}"
 }

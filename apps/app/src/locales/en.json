@@ -165,6 +165,7 @@
   "settings.closeToTray": "Closing the window hides it to the tray",
   "settings.autoAcceptPaired": "Accept files from paired devices automatically",
   "settings.notifications": "System notifications",
+  "settings.menuBarDrop": "Drag files onto the menu bar icon to send",
   "settings.thumbCache": "Thumbnail cache",
   "settings.thumbCacheHint": "Previews for pictures and album art in the history; capped at 200 MB, oldest pruned first.",
   "settings.historyLimit": "Transfer history entries kept",
@@ -217,5 +218,14 @@
   "error.pair-busy": "The other device is busy with another pairing.",
   "error.pair-unsupported": "The other device does not support pairing (is it the official LocalSend?).",
   "error.pair-withdrawn": "The other device withdrew the pairing.",
-  "error.pair-code-mismatch": "The codes did not match."
+  "error.pair-code-mismatch": "The codes did not match.",
+  "trayDrop.title": "Send to",
+  "trayDrop.hint": "Drop on a device to send",
+  "trayDrop.staged": "{n} item(s) ready — choose a device",
+  "trayDrop.empty": "No devices online",
+  "trayDrop.sending": "Sending to {name}…",
+  "trayDrop.failed": "Could not send: {message}",
+  "trayDrop.notifySent": "Sent to {alias}",
+  "trayDrop.notifyFailed": "Could not send to {alias}",
+  "trayDrop.notifyFiles": "{n} file(s), {size}"
 }
