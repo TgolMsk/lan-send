@@ -27,6 +27,32 @@ function useThumbSrc(thumbnail: string | null | undefined): string | null {
   return src;
 }
 
+export type FileKind = "image" | "video" | "audio" | "doc";
+
+/** Upper-case extension of a short suffix (`HEIC`), or "" when there is none. */
+export function extension(name: string): string {
+  const dot = name.lastIndexOf(".");
+  return dot > 0 && name.length - dot <= 5 ? name.slice(dot + 1).toUpperCase() : "";
+}
+
+/** By MIME type, falling back to the extension: peers often send
+ *  `application/octet-stream` for photos and videos. */
+export function fileKind(mime: string, name: string): FileKind {
+  const ext = extension(name).toLowerCase();
+  if (mime.startsWith("image/") || ["heic", "heif", "jpg", "jpeg", "png", "gif", "webp", "tif", "tiff", "dng"].includes(ext)) return "image";
+  if (mime.startsWith("video/") || ["mov", "mp4", "m4v", "avi", "mkv", "webm"].includes(ext)) return "video";
+  if (mime.startsWith("audio/") || ["mp3", "m4a", "aac", "wav", "flac", "ogg", "aiff"].includes(ext)) return "audio";
+  return "doc";
+}
+
+/** Stands in for a file that has no thumbnail (yet): a glyph for media, the
+ *  extension for documents. Fills its container. */
+export function KindMark({ mime, name, iconSize = 24 }: { mime: string; name: string; iconSize?: number }) {
+  const kind = fileKind(mime, name);
+  const glyph: Record<FileKind, IconName> = { image: "image", video: "play", audio: "audio", doc: "file" };
+  return <span className={`kind ${kind}`}>{kind === "doc" && extension(name) ? extension(name) : <Icon name={glyph[kind]} size={iconSize} />}</span>;
+}
+
 export function iconForMime(mime: string, fallback: IconName = "file"): IconName {
   if (mime.startsWith("image/")) return "image";
   if (mime.startsWith("audio/")) return "audio";
@@ -42,7 +68,8 @@ export function FileThumb({
   path: string | null | undefined;
   mime: string;
   fallback?: IconName;
-  size?: "sm" | "md";
+  /** `lg` fills its container (iOS file tiles). */
+  size?: "sm" | "md" | "lg";
 }) {
   const media = useStore((s) => (path ? s.media[path] : undefined));
   const wantsPreview = !!path && (mime.startsWith("image/") || mime.startsWith("audio/"));
@@ -50,9 +77,9 @@ export function FileThumb({
     if (wantsPreview && path) loadMedia(path);
   }, [wantsPreview, path]);
   const src = useThumbSrc(media?.thumbnail);
-  const iconSize = size === "sm" ? 14 : 18;
+  const iconSize = size === "sm" ? 14 : size === "lg" ? 28 : 18;
   return (
-    <div className={`thumb ${size === "sm" ? "thumb-sm" : ""}`}>
+    <div className={`thumb ${size === "sm" ? "thumb-sm" : size === "lg" ? "thumb-lg" : ""}`}>
       {src ? <img src={src} alt="" loading="lazy" /> : <Icon name={iconForMime(mime, fallback)} size={iconSize} />}
     </div>
   );

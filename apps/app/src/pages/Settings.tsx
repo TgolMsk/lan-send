@@ -4,11 +4,17 @@ import { Button, Card, Field, Select, TextInput, Toggle } from "../components/ui
 import { formatBytes } from "../format";
 import { LOCALES, LOCALE_NAMES, t, type LanguageSetting } from "../i18n";
 import { mediaCacheClear, mediaCacheSize, pickFolder, saveSettings, switchLanguage, useStore } from "../store";
+import { SettingsList } from "../mobile/SettingsList";
 import type { Settings } from "../types";
 
 const MB = 1024 * 1024;
 
 export function SettingsPage() {
+  const mobile = useStore((s) => s.platform.mobile);
+  return mobile ? <SettingsList /> : <SettingsForm />;
+}
+
+function SettingsForm() {
   const stored = useStore((s) => s.settings);
   const identity = useStore((s) => s.identity);
   const platform = useStore((s) => s.platform);

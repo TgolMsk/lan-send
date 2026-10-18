@@ -5,6 +5,7 @@ import TrayDropPanel from "./panels/TrayDropPanel";
 import "./styles/tokens.css";
 import "./styles/base.css";
 import "./styles/app.css";
+import "./styles/ios.css";
 
 const root = document.getElementById("root");
 if (root) {

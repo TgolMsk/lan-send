@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState } from "react";
 import { DeviceIcon } from "../components/ui";
 import { formatBytes } from "../format";
-import { ipc, type RuntimeEvent } from "../ipc";
+import { ipc, isTauri, type RuntimeEvent } from "../ipc";
 import { setLanguage, t, type Locale } from "../i18n";
 import { errorText } from "../store";
 import type { DeviceView, Settings, TransferView } from "../types";
@@ -68,6 +68,17 @@ export default function TrayDropPanel() {
   const sendRef = useRef<(fingerprint: string, paths: string[]) => Promise<void>>(async () => {});
 
   useEffect(() => {
+    // Browser preview with the mock: ?panel=tray-drop&hover=<index>
+    if (!isTauri) {
+      void (async () => {
+        applyAppearance(await ipc.app.settingsGet());
+        const list = sortOnline(await ipc.devices.list());
+        setDevices(list);
+        const index = new URLSearchParams(window.location.search).get("hover");
+        if (index !== null) setHover(list[Number(index)]?.fingerprint ?? null);
+      })();
+      return;
+    }
     let disposed = false;
     let hideTimer: number | null = null;
     let notifications = true;

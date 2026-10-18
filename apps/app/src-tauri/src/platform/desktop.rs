@@ -43,16 +43,32 @@ pub async fn apply_language_from_settings(app: &AppHandle) {
     }
 }
 
-pub fn setup(app: &AppHandle) -> anyhow::Result<()> {
-    // The settings are not loaded yet: start with the system language and
-    // switch once the runtime is up (`apply_language_from_settings`).
-    let menu = tray_menu(app, Locale::system())?;
+/// The macOS menu bar takes a monochrome template image that the system tints
+/// for light and dark menu bars (ADR-0024); the Windows tray keeps the colour
+/// app icon.
+#[cfg(target_os = "macos")]
+fn tray_icon(_app: &AppHandle) -> anyhow::Result<(tauri::image::Image<'_>, bool)> {
+    let icon = tauri::image::Image::from_bytes(include_bytes!("../../icons/tray-template.png"))?;
+    Ok((icon, true))
+}
+
+#[cfg(not(target_os = "macos"))]
+fn tray_icon(app: &AppHandle) -> anyhow::Result<(tauri::image::Image<'_>, bool)> {
     let icon = app
         .default_window_icon()
         .cloned()
         .ok_or_else(|| anyhow::anyhow!("the bundle has no icon"))?;
+    Ok((icon, false))
+}
+
+pub fn setup(app: &AppHandle) -> anyhow::Result<()> {
+    // The settings are not loaded yet: start with the system language and
+    // switch once the runtime is up (`apply_language_from_settings`).
+    let menu = tray_menu(app, Locale::system())?;
+    let (icon, template) = tray_icon(app)?;
     TrayIconBuilder::with_id(TRAY_ID)
         .icon(icon)
+        .icon_as_template(template)
         .tooltip("LanSend")
         .menu(&menu)
         .show_menu_on_left_click(false)

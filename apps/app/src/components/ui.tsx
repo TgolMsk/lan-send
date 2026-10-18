@@ -36,6 +36,38 @@ export function IconButton({
   );
 }
 
+/** A round glass toolbar button, as in the iOS 26 navigation bar. */
+export function GlassButton({ label, icon, className = "", ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { label: string; icon: IconName }) {
+  return (
+    <button className={`glass-btn ${className}`} type="button" title={label} aria-label={label} {...rest}>
+      <Icon name={icon} size={20} />
+    </button>
+  );
+}
+
+/** Circular progress, `value` 0–1; colours come from CSS (`.ring`). */
+export function Ring({ value, size, stroke, children }: { value: number; size: number; stroke: number; children?: ReactNode }) {
+  const radius = (size - stroke) / 2;
+  const length = 2 * Math.PI * radius;
+  const shown = Math.max(0, Math.min(1, value)) * length;
+  return (
+    <div className="ring" style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden>
+        <circle className="ring-track" cx={size / 2} cy={size / 2} r={radius} strokeWidth={stroke} />
+        <circle
+          className="ring-value"
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          strokeWidth={stroke}
+          strokeDasharray={`${shown} ${length}`}
+        />
+      </svg>
+      {children && <div className="ring-inner">{children}</div>}
+    </div>
+  );
+}
+
 export function Card({
   solid = false,
   interactive = false,
@@ -50,7 +82,7 @@ export function Card({
   );
 }
 
-export function Badge({ tone = "muted", children }: { tone?: "mint" | "muted" | "danger" | "indigo"; children: ReactNode }) {
+export function Badge({ tone = "muted", children }: { tone?: "success" | "muted" | "danger" | "accent"; children: ReactNode }) {
   return <span className={`badge ${tone}`}>{children}</span>;
 }
 
@@ -145,7 +177,7 @@ export function Progress({ value, failed = false }: { value: number; failed?: bo
   );
 }
 
-/** Single-colour smooth line in the reference's chart style. */
+/** Single-colour smooth line; the colour comes from CSS (`color`). */
 export function Sparkline({ values }: { values: number[] }) {
   const width = 160;
   const height = 46;
@@ -165,8 +197,8 @@ export function Sparkline({ values }: { values: number[] }) {
     <svg className="sparkline" viewBox={`0 0 ${width} ${height}`} aria-hidden>
       <defs>
         <linearGradient id="spark-fill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#4444a3" stopOpacity="0.35" />
-          <stop offset="1" stopColor="#4444a3" stopOpacity="0" />
+          <stop offset="0" stopColor="currentColor" stopOpacity="0.28" />
+          <stop offset="1" stopColor="currentColor" stopOpacity="0" />
         </linearGradient>
       </defs>
       <path className="area" d={`${d} L${width},${height} L0,${height} Z`} />
@@ -176,12 +208,26 @@ export function Sparkline({ values }: { values: number[] }) {
   );
 }
 
-export function DeviceIcon({ type, model }: { type: string | null; model: string | null }) {
+export function DeviceIcon({
+  type,
+  model,
+  online,
+  className = "",
+}: {
+  type: string | null;
+  model: string | null;
+  /** Draws the green presence dot (iOS tiles); omit to show none. */
+  online?: boolean;
+  className?: string;
+}) {
   const name: IconName =
     type === "mobile" ? "phone" : type === "server" || type === "headless" ? "server" : type === "web" ? "globe" : model?.toLowerCase().includes("mac") ? "laptop" : "desktop";
+  // Tinted by kind (ADR-0024): phones blue, computers graphite, the rest teal.
+  const kind = name === "phone" ? "phone" : name === "laptop" || name === "desktop" ? "computer" : "other";
   return (
-    <div className="device-icon">
+    <div className={`device-icon ${kind} ${className}`}>
       <Icon name={name} size={22} />
+      {online && <span className="presence" />}
     </div>
   );
 }

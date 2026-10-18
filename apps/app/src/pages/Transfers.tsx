@@ -4,19 +4,25 @@ import { Icon } from "../components/icons";
 import { Badge, Button, Card, EmptyState, Progress, Sparkline, Stat } from "../components/ui";
 import { formatBytes, formatDuration, formatPercent, formatSpeed } from "../format";
 import { t } from "../i18n";
+import { TransferTiles } from "../mobile/TransferTiles";
 import { cancelTransfer, dismissTransfer, navigate, revealPath, useStore, errorText } from "../store";
 import type { TransferView } from "../types";
 
 const finalStates = ["finished", "failed", "cancelled", "declined"];
 
-function stateTone(state: TransferView["state"]): "mint" | "muted" | "danger" | "indigo" {
-  if (state === "finished") return "mint";
+function stateTone(state: TransferView["state"]): "success" | "muted" | "danger" | "accent" {
+  if (state === "finished") return "success";
   if (state === "failed") return "danger";
-  if (state === "active") return "indigo";
+  if (state === "active") return "accent";
   return "muted";
 }
 
 export function TransfersPage() {
+  const mobile = useStore((s) => s.platform.mobile);
+  return mobile ? <TransferTiles /> : <TransferCards />;
+}
+
+function TransferCards() {
   const transfers = useStore((s) => s.transfers);
   const speeds = useStore((s) => s.speeds);
   const platform = useStore((s) => s.platform);
@@ -108,7 +114,7 @@ function HeroTransfer({ transfer, speeds }: { transfer: TransferView; speeds: nu
             <span style={{ fontWeight: 600 }}>
               {t(`transfers.direction.${transfer.direction}`)} {transfer.peerAlias}
             </span>
-            <Badge tone={waiting ? "muted" : "mint"}>{t(`transfers.state.${transfer.state}`)}</Badge>
+            <Badge tone={waiting ? "muted" : "accent"}>{t(`transfers.state.${transfer.state}`)}</Badge>
           </div>
           <div className="big-number mono">
             {formatPercent(transfer.doneSize, transfer.totalSize)}

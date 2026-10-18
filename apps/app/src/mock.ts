@@ -81,6 +81,26 @@ const devices: DeviceView[] = [
   },
 ];
 
+// On the phone the Mac above is a peer, not this device: list it too.
+if (new URLSearchParams(location.search).get("platform") === "ios") {
+  devices.splice(1, 0, {
+    fingerprint: "5C4B3A29180716F5E4D3C2B1A09F8E7D5C4B3A29180716F5E4D3C2B1A09F8E7D",
+    alias: "MacBook Pro",
+    customAlias: null,
+    displayName: "MacBook Pro",
+    deviceType: "desktop",
+    deviceModel: "macOS",
+    version: "2.1",
+    host: "192.168.1.12",
+    port: 53317,
+    online: true,
+    favorite: false,
+    paired: false,
+    features: ["pairing", "resume", "clipboard"],
+    lastSeen: Date.now() / 1000,
+  });
+}
+
 const settings: Settings = {
   alias: null,
   port: 53317,
@@ -107,7 +127,7 @@ const settings: Settings = {
   app: {
     globalShortcut: "CmdOrCtrl+Shift+V",
     closeToTray: true,
-    theme: "dark",
+    theme: (new URLSearchParams(location.search).get("theme") as "dark" | "light" | null) ?? "dark",
     autoAcceptPaired: false,
     notifications: true,
     menuBarDrop: true,
@@ -183,10 +203,13 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       transfers.unshift(transfer);
       emit({ type: "transfer-updated", transfer });
       let tick = 0;
+      // Uneven steps so the speed line has some shape in screenshots.
+      const steps = [0.6, 0.9, 1.3, 1.1, 1.5, 1.2, 0.8, 1.4, 1.6, 1.0, 1.2, 0.9, 1.1, 1.3, 1.0, 0.8, 1.2, 1.0, 0.9, 1.0];
+      const progressAt = (n: number) => steps.slice(0, n).reduce((a, b) => a + b, 0) / steps.reduce((a, b) => a + b, 0);
       const timer = setInterval(() => {
         tick += 1;
         for (const file of transfer.files) {
-          file.done = Math.min(file.size, Math.round((file.size * tick) / 20));
+          file.done = Math.min(file.size, Math.round(file.size * progressAt(tick)));
           file.state = file.done >= file.size ? "finished" : "active";
         }
         transfer.doneSize = transfer.files.reduce((sum, file) => sum + file.done, 0);
@@ -209,7 +232,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
           transfer.finishedAt = Date.now() / 1000;
           emit({ type: "transfer-completed", transfer });
         }
-      }, 150);
+      }, 280);
       return id as T;
     }
     case "cmd_transfer_list":
@@ -509,7 +532,7 @@ export function mockPairConfirm(fingerprint: string, matches: boolean) {
   );
 }
 
-// ?demo=incoming|transfer|pair|clipboard&delay=ms — for screenshots.
+// ?demo=incoming|transfer|pair|clipboard|conflict&delay=ms — for screenshots.
 {
   const params = new URLSearchParams(location.search);
   const demo = params.get("demo");
@@ -518,6 +541,7 @@ export function mockPairConfirm(fingerprint: string, matches: boolean) {
       if (demo === "incoming") window.lanSendDemo?.incoming();
       else if (demo === "pair") window.lanSendDemo?.pairRequest();
       else if (demo === "clipboard") window.lanSendDemo?.clipboard();
+      else if (demo === "conflict") window.lanSendDemo?.conflict();
       else if (demo === "transfer") {
         void mockInvoke("cmd_transfer_send", { request: { device: devices[0]?.fingerprint, paths: ["/Users/me/Pictures/IMG_2041.HEIC", "/Users/me/Documents/Q3 report.pdf", "/Users/me/Movies/clip.mov"] } });
       }

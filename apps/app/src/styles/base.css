@@ -9,16 +9,15 @@ body,
 }
 body {
   font-family: var(--font);
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.45;
   color: var(--text);
-  background: var(--bg);
-  background-attachment: fixed;
+  background: var(--window);
   -webkit-font-smoothing: antialiased;
   user-select: none;
   -webkit-user-select: none;
   overflow: hidden;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.003em;
 }
 button,
 input,
@@ -31,14 +30,19 @@ a {
   color: var(--accent);
 }
 ::selection {
-  background: rgba(27, 238, 121, 0.35);
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+/* A translucent halo hugging the control, like the macOS focus ring. */
+:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 0;
 }
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(159, 161, 212, 0.25);
+  background: var(--fill-strong);
   border-radius: 8px;
   border: 3px solid transparent;
   background-clip: padding-box;

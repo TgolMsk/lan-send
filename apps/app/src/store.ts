@@ -159,6 +159,18 @@ function sortDevices(devices: DeviceView[]): DeviceView[] {
   );
 }
 
+/** Search over name, original alias, address and fingerprint prefix. */
+export function matchDevice(device: DeviceView, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  return (
+    !q ||
+    device.displayName.toLowerCase().includes(q) ||
+    device.alias.toLowerCase().includes(q) ||
+    (device.host ?? "").includes(q) ||
+    device.fingerprint.toLowerCase().startsWith(q)
+  );
+}
+
 function upsertDevice(devices: DeviceView[], device: DeviceView): DeviceView[] {
   const others = devices.filter((d) => d.fingerprint !== device.fingerprint);
   return sortDevices([...others, device]);
@@ -357,7 +369,11 @@ export async function bootstrap() {
   });
   if (isTauri) wireDragDrop();
   try {
-    set({ platform: await ipc.app.platform() });
+    const platform = await ipc.app.platform();
+    // iOS has its own surface colours and layout rules (ADR-0025).
+    document.documentElement.dataset.platform = platform.os;
+    if (platform.os === "ios") trackKeyboard();
+    set({ platform });
   } catch {
     // mock or unavailable
   }
@@ -380,6 +396,21 @@ async function revealWindow() {
   } catch (err) {
     console.warn("could not show the window", err);
   }
+}
+
+/** The iOS keyboard slides over the web view without resizing it, hiding
+ *  the bottom sheets. Publishes the covered height as `--keyboard` so they
+ *  can sit above it (ios.css). */
+function trackKeyboard() {
+  const viewport = window.visualViewport;
+  if (!viewport) return;
+  const publish = () => {
+    const covered = Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop));
+    document.documentElement.style.setProperty("--keyboard", `${covered}px`);
+  };
+  viewport.addEventListener("resize", publish);
+  viewport.addEventListener("scroll", publish);
+  publish();
 }
 
 async function wireDragDrop() {
@@ -595,18 +626,22 @@ export async function forgetDevice(device: DeviceView) {
   }
 }
 
-export async function saveSettings(settings: Settings) {
+/** `quiet` skips the "saved" toast: the iOS settings save on every change
+ *  (ADR-0025), so only a runtime restart is worth announcing. */
+export async function saveSettings(settings: Settings, { quiet = false }: { quiet?: boolean } = {}): Promise<boolean> {
   try {
     const restarted = await ipc.app.settingsUpdate(settings);
     applyTheme(settings);
     applyLanguage(settings);
     set({ settings });
-    toast("success", restarted ? t("settings.restarted") : t("settings.saved"));
+    if (restarted || !quiet) toast("success", restarted ? t("settings.restarted") : t("settings.saved"));
     if (restarted) {
       set({ identity: await ipc.app.identity() });
     }
+    return true;
   } catch (err) {
     toast("error", describeError(err));
+    return false;
   }
 }
 

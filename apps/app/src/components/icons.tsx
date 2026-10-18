@@ -41,17 +41,23 @@ const paths: Record<string, string> = {
   text: "M5 6h14M12 6v14M8 20h8",
   pause: "M8 5v14M16 5v14",
   open: "M14 4h6v6M20 4l-9 9M19 14v6H5V6h6",
+  lock: "M7.5 11V8a4.5 4.5 0 0 1 9 0v3M5.5 11h13v9h-13z",
+  moon: "M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z",
+  language: "M4 6h9M8.5 4v2M6 6c0 4 3 7 6 8M11 6c0 3-3 7-7 9M13 20l4-9 4 9M14.5 17h5",
+  calendar: "M5 6h14v14H5zM5 10h14M9 4v4M15 4v4",
+  hash: "M5 9h14M5 15h14M10 4L8 20M16 4l-2 16",
+  play: "M8 5.5v13l10.5-6.5z",
 };
 
 export type IconName = keyof typeof paths;
 
-export function Icon({ name, size = 18, ...rest }: { name: IconName; size?: number } & SVGProps<SVGSVGElement>) {
+export function Icon({ name, size = 18, fill, ...rest }: { name: IconName; size?: number } & SVGProps<SVGSVGElement>) {
   return (
     <svg
       width={size}
       height={size}
       viewBox="0 0 24 24"
-      fill={name === "star" && rest.fill ? rest.fill : "none"}
+      fill={name === "star" && fill ? fill : "none"}
       stroke="currentColor"
       strokeWidth={1.8}
       strokeLinecap="round"

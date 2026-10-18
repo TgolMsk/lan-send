@@ -114,7 +114,7 @@ export function ClipboardPage() {
                     </div>
                   )}
                   <div className="secondary">
-                    <Badge tone={item.fromSelf ? "indigo" : "mint"}>{item.fromSelf ? t("clipboard.fromSelf") : item.originAlias ?? item.origin.slice(0, 8)}</Badge>{" "}
+                    <Badge tone={item.fromSelf ? "accent" : "success"}>{item.fromSelf ? t("clipboard.fromSelf") : item.originAlias ?? item.origin.slice(0, 8)}</Badge>{" "}
                     {formatAgo(item.createdAt / 1000)} · {formatBytes(item.size)}
                   </div>
                 </div>

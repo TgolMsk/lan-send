@@ -1,69 +1,86 @@
+/* Native style (ADR-0024): system type, a floating glass sidebar and tab
+   bar, capsule controls, white surfaces with a faint lift. Colours come from
+   tokens.css only. */
+
 /* Layout ------------------------------------------------------------------ */
 .shell {
   display: grid;
-  grid-template-columns: 244px 1fr;
+  grid-template-columns: 232px 1fr;
   height: 100%;
 }
+/* The sidebar floats inside the window; on macOS the traffic lights sit on
+   it, as in the system apps. The glass is CSS only: a transparent window
+   needs Tauri's private macOS API, which the Mac App Store rejects. */
 .sidebar {
   display: flex;
   flex-direction: column;
-  padding: 18px 14px 18px;
-  gap: 8px;
-  background: var(--sidebar);
-  border-right: 1px solid var(--card-border);
+  margin: 8px 0 8px 8px;
+  padding: 12px 10px 10px;
+  gap: 1px;
+  border-radius: 18px;
+  background: var(--glass);
+  backdrop-filter: blur(40px) saturate(1.8);
+  -webkit-backdrop-filter: blur(40px) saturate(1.8);
+  box-shadow: inset 0 0 0 0.5px var(--glass-edge), var(--float);
+  min-height: 0;
 }
+/* Clears the traffic lights (tauri.conf.json moves them to 22,24 so they
+   sit inside the floating sidebar). */
 .sidebar .titlebar-space {
-  height: 22px;
+  height: 32px;
 }
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 6px 8px 14px;
+  gap: 9px;
+  padding: 2px 8px 14px;
 }
 .brand-mark {
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
-  box-shadow: 0 8px 20px rgba(5, 5, 23, 0.35);
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
 }
 .brand-name {
+  font-family: var(--display);
   font-weight: 600;
-  font-size: 16px;
-  letter-spacing: -0.02em;
+  font-size: 15px;
+  letter-spacing: -0.01em;
 }
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border-radius: 12px;
+  gap: 9px;
+  padding: 6px 9px;
+  border-radius: 9px;
   border: 0;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text);
   cursor: pointer;
   text-align: left;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.15s;
+}
+.nav-item svg {
+  color: var(--accent);
+  flex: none;
 }
 .nav-item:hover {
-  background: var(--card);
-  color: var(--text);
+  background: var(--fill);
 }
 .nav-item.active {
-  background: var(--card-strong);
-  color: var(--text);
+  background: var(--fill-strong);
+  font-weight: 600;
 }
 .nav-item .badge-count {
   margin-left: auto;
+  background: var(--fill-strong);
+  color: var(--text-muted);
 }
 .sidebar-foot {
   margin-top: auto;
 }
 .me-card {
-  padding: 12px;
-  border-radius: var(--radius-md);
-  background: var(--card);
-  border: 1px solid var(--card-border);
+  padding: 8px;
   display: flex;
   gap: 10px;
   align-items: center;
@@ -84,7 +101,7 @@
   overflow-x: hidden;
   min-height: 0;
   min-width: 0;
-  padding: 0 32px 40px;
+  padding: 0 40px 44px;
 }
 .content-inner {
   max-width: 1100px;
@@ -95,17 +112,18 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
-  padding: 38px 0 22px;
+  padding: 40px 0 20px;
 }
 .page-title {
   margin: 0;
-  font-size: 30px;
-  font-weight: 600;
-  letter-spacing: -0.03em;
+  font-family: var(--display);
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.022em;
   line-height: 1.1;
 }
 .page-subtitle {
-  margin: 6px 0 0;
+  margin: 4px 0 0;
   color: var(--text-muted);
 }
 .page-actions {
@@ -114,31 +132,42 @@
   align-items: center;
   flex-wrap: wrap;
 }
+.page-actions .input {
+  border-radius: var(--radius-pill);
+  padding-left: 14px;
+}
 
+/* iOS: a floating glass tab bar. */
 .tabbar {
   display: none;
   justify-content: space-around;
-  padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
-  background: var(--sidebar);
-  border-top: 1px solid var(--card-border);
-  backdrop-filter: blur(20px);
+  margin: 0 18px calc(4px + env(safe-area-inset-bottom));
+  padding: 5px;
+  border-radius: var(--radius-pill);
+  background: var(--glass);
+  backdrop-filter: blur(30px) saturate(1.8);
+  -webkit-backdrop-filter: blur(30px) saturate(1.8);
+  box-shadow: inset 0 0 0 0.5px var(--glass-edge), var(--float);
 }
 .tab-item {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 3px;
   padding: 6px 0;
-  min-height: 48px;
+  min-height: 50px;
   border: 0;
   background: transparent;
-  color: var(--text-muted);
-  font-size: 11px;
-  border-radius: 12px;
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 500;
+  border-radius: var(--radius-pill);
 }
 .tab-item.active {
   color: var(--accent);
+  background: var(--fill);
 }
 
 /* Mobile ------------------------------------------------------------------ */
@@ -153,15 +182,16 @@
   /* The top inset lives on the scroll container, so whatever comes first —
      the page header or the runtime banner — clears the status bar. */
   .content {
-    padding: env(safe-area-inset-top) 16px calc(24px + env(safe-area-inset-bottom));
+    padding: env(safe-area-inset-top) 16px 24px;
   }
   .page-head {
-    padding: 18px 0 14px;
+    padding: 20px 0 14px;
     flex-direction: column;
     align-items: stretch;
   }
   .page-title {
-    font-size: 26px;
+    font-size: 34px;
+    letter-spacing: -0.025em;
   }
   .tabbar {
     display: flex;
@@ -170,34 +200,22 @@
 /* Cards ------------------------------------------------------------------- */
 .card {
   min-width: 0;
-  background: var(--card);
-  border: 1px solid var(--card-border);
+  background: var(--surface);
   border-radius: var(--radius-lg);
   padding: 18px 20px;
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  box-shadow: var(--lift);
 }
+/* `solid` marks the one card a page is about (the running transfer, the
+   clipboard sync switch); in this style it only gets more room. */
 .card.solid {
-  background: var(--card-solid);
-  color: var(--card-solid-text);
-  border-color: transparent;
-  box-shadow: var(--shadow);
-}
-.card.solid .muted {
-  color: #7a7f93;
+  padding: 22px 24px;
 }
 .card.interactive {
   cursor: pointer;
-  transition: transform 0.15s, border-color 0.15s, background 0.15s;
-}
-.card.interactive:hover {
-  border-color: rgba(255, 255, 255, 0.24);
-  background: var(--card-strong);
+  transition: box-shadow 0.15s;
 }
 .card.drop-target {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 4px rgba(27, 238, 121, 0.18);
+  box-shadow: 0 0 0 2.5px var(--accent), var(--lift);
 }
 .muted {
   color: var(--text-muted);
@@ -213,10 +231,10 @@
 }
 .grid {
   display: grid;
-  gap: 16px;
+  gap: 14px;
 }
 .grid.devices {
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
 }
 .grid.two {
   grid-template-columns: 1.4fr 1fr;
@@ -246,146 +264,121 @@
   flex: 1;
 }
 .section-title {
-  margin: 26px 0 12px;
+  margin: 30px 0 8px 14px;
   font-size: 13px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
 }
 
-/* Buttons ----------------------------------------------------------------- */
+/* Buttons: capsules ------------------------------------------------------- */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 0 18px;
-  height: 40px;
+  gap: 6px;
+  padding: 0 14px;
+  height: 30px;
   border-radius: var(--radius-pill);
-  border: 1px solid transparent;
+  border: 0;
   background: var(--accent);
   color: var(--accent-text);
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
   transition: transform 0.12s, filter 0.12s, background 0.12s;
 }
 .btn:hover {
-  filter: brightness(1.05);
+  filter: brightness(1.06);
 }
 .btn:active {
   transform: scale(0.98);
 }
 .btn:disabled {
-  opacity: 0.5;
+  opacity: 0.38;
   cursor: default;
   transform: none;
+  filter: none;
 }
 .btn.sm {
-  height: 32px;
-  padding: 0 13px;
-  font-size: 13px;
+  height: 26px;
+  padding: 0 11px;
+  font-size: 12px;
+}
+.btn.outline {
+  background: var(--fill);
+  color: var(--text);
 }
 .btn.ghost {
   background: transparent;
-  color: var(--text);
+  color: var(--accent);
 }
+.btn.outline:hover,
 .btn.ghost:hover {
-  background: var(--card);
-}
-.btn.outline {
-  background: transparent;
-  color: var(--text);
-  border-color: var(--card-border-strong);
-}
-.btn.outline:hover {
-  background: var(--card);
+  background: var(--fill-strong);
+  filter: none;
 }
 .btn.danger {
-  background: transparent;
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
   color: var(--danger);
-  border-color: rgba(255, 107, 107, 0.4);
 }
 .btn.danger:hover {
-  background: rgba(255, 107, 107, 0.12);
-}
-.card.solid .btn.ghost,
-.card.solid .btn.outline {
-  color: var(--card-solid-text);
-  border-color: rgba(61, 67, 77, 0.2);
-}
-.card.solid .btn.ghost:hover,
-.card.solid .btn.outline:hover {
-  background: rgba(61, 67, 77, 0.08);
+  background: color-mix(in srgb, var(--danger) 18%, transparent);
+  filter: none;
 }
 .icon-btn {
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   padding: 0;
-  border-radius: 10px;
+  border-radius: 50%;
   border: 0;
   background: transparent;
   color: var(--text-muted);
   display: inline-grid;
   place-items: center;
   cursor: pointer;
+  flex: none;
 }
 .icon-btn:hover {
-  background: var(--card);
+  background: var(--fill);
   color: var(--text);
 }
 .icon-btn.on {
-  color: var(--accent);
-}
-.card.solid .icon-btn:hover {
-  background: rgba(61, 67, 77, 0.08);
-  color: var(--card-solid-text);
+  color: var(--favorite);
 }
 
-/* Badges, pills ----------------------------------------------------------- */
+/* Badges, dots ------------------------------------------------------------ */
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 2px 9px;
+  padding: 2px 8px;
   border-radius: var(--radius-pill);
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  background: var(--card-strong);
+  font-weight: 500;
+  background: var(--fill);
   color: var(--text-muted);
 }
-.badge.mint {
-  background: rgba(27, 238, 121, 0.16);
+.badge.success {
+  background: color-mix(in srgb, var(--success) 16%, transparent);
+  color: color-mix(in srgb, var(--success) 70%, var(--text));
+}
+.badge.accent {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
   color: var(--accent);
 }
-.badge.indigo {
-  background: rgba(68, 68, 163, 0.35);
-  color: #c7c8ff;
-}
 .badge.danger {
-  background: rgba(255, 107, 107, 0.16);
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
   color: var(--danger);
 }
-.card.solid .badge {
-  background: rgba(61, 67, 77, 0.08);
-  color: #5d6270;
-}
-.card.solid .badge.mint {
-  background: rgba(27, 238, 121, 0.2);
-  color: #0d8a45;
-}
 .dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: var(--text-muted);
+  background: var(--text-faint);
   display: inline-block;
+  flex: none;
 }
 .dot.on {
-  background: var(--accent);
-  box-shadow: 0 0 0 4px rgba(27, 238, 121, 0.18);
+  background: var(--success);
 }
 .badge-count {
   min-width: 20px;
@@ -395,37 +388,72 @@
   background: var(--accent);
   color: var(--accent-text);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   display: inline-grid;
   place-items: center;
 }
 
-/* Device card -------------------------------------------------------------- */
+/* Devices: tiles like a share sheet --------------------------------------- */
 .device-card {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  min-height: 168px;
-}
-.device-card.offline {
-  opacity: 0.62;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  padding: 26px 16px 16px;
 }
 .device-head {
   display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 12px;
-  align-items: flex-start;
+  width: 100%;
 }
+.device-head > div:not(.device-icon) {
+  width: 100%;
+  min-width: 0;
+}
+.device-head .icon-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+/* Tinted by kind; the tray panel uses the same circles. */
 .device-icon {
-  width: 46px;
-  height: 46px;
-  border-radius: 14px;
-  background: var(--card-strong);
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
   display: grid;
   place-items: center;
-  color: var(--text);
+  color: #fff;
   flex: none;
+  background: linear-gradient(180deg, #8f98a8, #5f6776);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 4px 12px rgba(60, 70, 90, 0.25);
+}
+.device-icon svg {
+  width: 30px;
+  height: 30px;
+  stroke-width: 1.6;
+}
+.device-icon.phone {
+  background: linear-gradient(180deg, #5aa9ff, #0a6cff);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 4px 12px rgba(10, 108, 255, 0.3);
+}
+.device-icon.other {
+  background: linear-gradient(180deg, #5fd4e2, #12a0b6);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 4px 12px rgba(18, 160, 182, 0.28);
+}
+.device-card.offline .device-icon {
+  background: var(--fill-strong);
+  color: var(--text-muted);
+  box-shadow: none;
+}
+.device-card.offline .device-name {
+  color: var(--text-muted);
 }
 .device-name {
+  font-family: var(--display);
   font-weight: 600;
   font-size: 15px;
   overflow: hidden;
@@ -437,32 +465,90 @@
   font-size: 12px;
   margin-top: 2px;
 }
+.device-card > .row.wrap {
+  justify-content: center;
+  gap: 6px;
+}
 .device-foot {
+  width: 100%;
   margin-top: auto;
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  gap: 4px;
+  padding-top: 4px;
+}
+.device-foot .spacer {
+  flex: 0 0 4px;
+}
+.device-foot .icon-btn {
+  width: 26px;
+  height: 26px;
+}
+@media (max-width: 839px) {
+  .grid.devices {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .device-card {
+    align-items: stretch;
+    text-align: left;
+    padding: 14px 14px 12px;
+  }
+  .device-head {
+    flex-direction: row;
+  }
+  .device-head > div:not(.device-icon) {
+    flex: 1;
+    width: auto;
+  }
+  .device-head .icon-btn {
+    position: static;
+  }
+  .device-icon {
+    width: 46px;
+    height: 46px;
+  }
+  .device-icon svg {
+    width: 22px;
+    height: 22px;
+  }
+  .device-card > .row.wrap {
+    justify-content: flex-start;
+    padding-left: 58px;
+  }
+  .device-foot {
+    justify-content: flex-start;
+    padding: 10px 0 0 58px;
+    border-top: 0.5px solid var(--sep);
+  }
+  .device-foot .spacer {
+    flex: 1;
+  }
 }
 
 /* Transfers ---------------------------------------------------------------- */
 .transfer-hero {
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 18px;
+  grid-template-columns: 1fr 260px;
+  gap: 28px;
   align-items: center;
 }
 .big-number {
-  font-size: 44px;
+  font-family: var(--display);
+  font-size: 64px;
   font-weight: 600;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.035em;
   line-height: 1;
+  margin: 4px 0;
 }
 .big-number small {
-  font-size: 18px;
+  font-family: var(--font);
+  font-size: 15px;
   font-weight: 500;
-  color: inherit;
-  opacity: 0.6;
-  margin-left: 4px;
+  letter-spacing: 0;
+  color: var(--text-muted);
+  margin-left: 10px;
 }
 .stat {
   display: flex;
@@ -471,28 +557,24 @@
 }
 .stat .label {
   font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  opacity: 0.6;
+  color: var(--text-muted);
 }
 .stat .value {
+  font-family: var(--display);
   font-weight: 600;
-  font-size: 15px;
+  font-size: 17px;
 }
 .progress {
   height: 6px;
-  border-radius: 6px;
-  background: rgba(159, 161, 212, 0.22);
+  border-radius: 3px;
+  background: var(--fill);
   overflow: hidden;
-}
-.card.solid .progress {
-  background: rgba(68, 68, 163, 0.12);
 }
 .progress > i {
   display: block;
   height: 100%;
-  background: linear-gradient(90deg, var(--indigo-500), var(--mint));
-  border-radius: 6px;
+  background: var(--accent);
+  border-radius: 3px;
   transition: width 0.2s linear;
 }
 .progress.failed > i {
@@ -503,12 +585,9 @@
   grid-template-columns: 24px 1fr auto;
   gap: 10px;
   align-items: center;
-  padding: 8px 0;
-  border-top: 1px solid var(--card-border);
+  padding: 10px 0;
+  border-top: 0.5px solid var(--sep);
   font-size: 13px;
-}
-.card.solid .file-row {
-  border-top-color: rgba(61, 67, 77, 0.1);
 }
 .file-row .name {
   overflow: hidden;
@@ -520,22 +599,39 @@
   height: 4px;
 }
 .sparkline {
-  width: 160px;
-  height: 46px;
+  width: 260px;
+  height: 92px;
+  color: var(--accent);
 }
 .sparkline path {
   fill: none;
-  stroke: var(--indigo-500);
-  stroke-width: 2.5;
+  stroke: currentColor;
+  stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
 }
 .sparkline .area {
   fill: url(#spark-fill);
   stroke: none;
 }
 .sparkline circle {
-  fill: var(--mint);
+  fill: currentColor;
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+@media (max-width: 839px) {
+  .transfer-hero {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .big-number {
+    font-size: 56px;
+  }
+  .sparkline {
+    width: 100%;
+    height: auto;
+  }
 }
 
 /* Lists --------------------------------------------------------------------- */
@@ -549,7 +645,7 @@
   gap: 14px;
   align-items: center;
   padding: 12px 4px;
-  border-top: 1px solid var(--card-border);
+  border-top: 0.5px solid var(--sep);
 }
 .list-row:first-child {
   border-top: 0;
@@ -586,8 +682,8 @@
 .thumb {
   width: 40px;
   height: 40px;
-  border-radius: 10px;
-  background: var(--card-strong);
+  border-radius: 9px;
+  background: var(--fill);
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -601,7 +697,7 @@
 .thumb.thumb-sm {
   width: 28px;
   height: 28px;
-  border-radius: 8px;
+  border-radius: 7px;
   flex: none;
 }
 .clip-text {
@@ -630,36 +726,40 @@
 }
 .input,
 .select {
-  height: 40px;
-  padding: 0 14px;
-  border-radius: 12px;
-  border: 1px solid var(--card-border-strong);
-  background: var(--input);
+  height: 30px;
+  padding: 0 11px;
+  border-radius: var(--radius-sm);
+  border: 0;
+  background-color: var(--fill);
   color: var(--text);
   outline: none;
   width: 100%;
   min-width: 0;
 }
+.input::placeholder {
+  color: var(--text-muted);
+}
 .input:focus,
 .select:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(27, 238, 121, 0.18);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 40%, transparent);
 }
 .input.code {
+  font-family: var(--display);
   font-size: 28px;
   letter-spacing: 0.3em;
   text-align: center;
   height: 56px;
+  border-radius: var(--radius-md);
   font-variant-numeric: tabular-nums;
 }
 .select {
   appearance: none;
   -webkit-appearance: none;
   background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%), linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
-  background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%;
+  background-position: calc(100% - 16px) 52%, calc(100% - 11px) 52%;
   background-size: 5px 5px, 5px 5px;
   background-repeat: no-repeat;
-  padding-right: 34px;
+  padding-right: 30px;
 }
 .select option {
   color: #111;
@@ -672,10 +772,10 @@
   min-height: 32px;
 }
 .toggle .track {
-  width: 42px;
+  width: 40px;
   height: 24px;
   border-radius: 12px;
-  background: rgba(159, 161, 212, 0.3);
+  background: var(--fill-strong);
   position: relative;
   transition: background 0.15s;
   flex: none;
@@ -683,19 +783,20 @@
 .toggle .track::after {
   content: "";
   position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 18px;
-  height: 18px;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
   transition: transform 0.15s;
 }
 .toggle.on .track {
-  background: var(--accent);
+  background: var(--success);
 }
 .toggle.on .track::after {
-  transform: translateX(18px);
+  transform: translateX(16px);
 }
 .settings-grid {
   display: grid;
@@ -709,7 +810,8 @@
 }
 .settings-card h3 {
   margin: 0;
-  font-size: 16px;
+  font-family: var(--display);
+  font-size: 15px;
   font-weight: 600;
 }
 .check-row {
@@ -722,9 +824,7 @@
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(5, 5, 23, 0.55);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(0, 0, 0, 0.22);
   display: grid;
   place-items: center;
   padding: 20px;
@@ -735,18 +835,18 @@
   width: min(520px, 100%);
   max-height: calc(100% - 40px);
   overflow: auto;
-  background: var(--modal);
+  background: var(--raised);
   color: var(--text);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-lg);
-  padding: 24px;
+  border-radius: 22px;
+  padding: 22px 22px 18px;
   box-shadow: var(--shadow);
   animation: rise 0.18s ease-out;
 }
 .modal h2 {
   margin: 0 0 6px;
-  font-size: 20px;
-  letter-spacing: -0.02em;
+  font-family: var(--display);
+  font-size: 17px;
+  font-weight: 600;
 }
 .modal .modal-body {
   margin: 14px 0 20px;
@@ -757,17 +857,21 @@
   gap: 10px;
   flex-wrap: wrap;
 }
+.modal .modal-foot .btn {
+  height: 32px;
+  min-width: 90px;
+}
 .code-display {
+  font-family: var(--display);
   font-size: 40px;
   font-weight: 600;
-  letter-spacing: 0.32em;
+  letter-spacing: 0.24em;
   text-align: center;
-  padding: 18px 0 12px 0.32em;
-  color: var(--accent);
+  padding: 18px 0 12px 0.24em;
   font-variant-numeric: tabular-nums;
 }
 .drop-zone {
-  border: 1.5px dashed var(--card-border-strong);
+  border: 1.5px dashed var(--fill-strong);
   border-radius: var(--radius-md);
   padding: 22px;
   text-align: center;
@@ -775,6 +879,7 @@
 }
 .drop-zone.active {
   border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
   color: var(--text);
 }
 .path-list {
@@ -790,7 +895,7 @@
   gap: 8px;
   align-items: center;
   padding: 6px 0;
-  border-top: 1px solid var(--card-border);
+  border-top: 0.5px solid var(--sep);
 }
 .path-list li span {
   overflow: hidden;
@@ -818,20 +923,21 @@
   cursor: pointer;
   padding: 12px 16px;
   border-radius: 14px;
-  background: var(--modal);
-  border: 1px solid var(--card-border);
-  box-shadow: var(--shadow);
+  background: var(--glass);
+  backdrop-filter: blur(30px) saturate(1.8);
+  -webkit-backdrop-filter: blur(30px) saturate(1.8);
+  box-shadow: inset 0 0 0 0.5px var(--glass-edge), var(--shadow);
   display: flex;
   gap: 10px;
   align-items: center;
   animation: rise 0.18s ease-out;
   font-size: 13px;
 }
-.toast.success {
-  border-color: rgba(27, 238, 121, 0.5);
+.toast.success svg {
+  color: var(--success);
 }
-.toast.error {
-  border-color: rgba(255, 107, 107, 0.6);
+.toast.error svg {
+  color: var(--danger);
 }
 /* Must come after the base rule above, not with the other mobile overrides
    further up the file: same specificity, so source order decides and an
@@ -840,11 +946,10 @@
   .toasts {
     right: 12px;
     left: 12px;
-    /* Clear the tab bar by its measured height (Layout.tsx publishes it): a
-       guessed constant breaks as soon as a translated label wraps and the bar
-       grows. The measurement already covers the home indicator inset, so no
-       env() on top of it. */
-    bottom: calc(var(--tabbar-height, 64px) + 12px);
+    /* Clear the floating tab bar: its measured height (Layout.tsx publishes
+       it; a guessed constant breaks when a translated label wraps) plus its
+       bottom margin, which carries the home indicator inset. */
+    bottom: calc(var(--tabbar-height, 60px) + 16px + env(safe-area-inset-bottom));
     max-width: none;
   }
 }
@@ -856,6 +961,7 @@
 .empty h3 {
   margin: 12px 0 6px;
   color: var(--text);
+  font-family: var(--display);
   font-weight: 600;
 }
 .empty p {
@@ -868,8 +974,7 @@
   gap: 12px;
   padding: 12px 16px;
   border-radius: var(--radius-md);
-  background: rgba(255, 107, 107, 0.14);
-  border: 1px solid rgba(255, 107, 107, 0.4);
+  background: color-mix(in srgb, var(--danger) 10%, var(--surface));
   margin: 16px 0 0;
 }
 .avatar {
@@ -879,26 +984,26 @@
   display: grid;
   place-items: center;
   font-size: 12px;
-  font-weight: 700;
-  background: var(--indigo-500);
+  font-weight: 600;
+  background: linear-gradient(180deg, #a5adbb, #848b97);
   color: #fff;
   flex: none;
 }
 .spinner {
   width: 18px;
   height: 18px;
-  border: 2px solid rgba(159, 161, 212, 0.3);
+  border: 2px solid var(--fill-strong);
   border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
 .kbd {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 12px;
+  font-size: 11px;
   padding: 2px 7px;
   border-radius: 6px;
-  background: var(--card-strong);
-  border: 1px solid var(--card-border);
+  background: var(--fill);
+  color: var(--text-muted);
 }
 @keyframes fade {
   from {
@@ -916,20 +1021,32 @@
     transform: rotate(360deg);
   }
 }
+@media (prefers-reduced-motion: reduce) {
+  .modal-backdrop,
+  .modal,
+  .toast {
+    animation: none;
+  }
+}
 
-/* macOS menu bar drop panel (panels/TrayDropPanel.tsx) */
+/* macOS menu bar drop panel (panels/TrayDropPanel.tsx). The panel window is
+   opaque, so the glass is drawn over the window colour from base.css. */
 .tray-drop {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--modal);
-  padding: 14px 10px 10px;
+  background: var(--glass);
+  padding: 12px 8px 8px;
 }
 .tray-drop-head {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 0 6px 10px;
+  padding: 0 8px 10px;
+}
+.tray-drop-head strong {
+  font-family: var(--display);
+  font-size: 14px;
 }
 .tray-drop-head span,
 .tray-drop-name span,
@@ -944,21 +1061,34 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 2px;
 }
 .tray-drop-list li {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 52px;
-  padding: 6px 10px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--card-border);
-  background: var(--card);
+  min-height: 50px;
+  padding: 6px 8px;
+  border-radius: 10px;
+}
+.tray-drop-list li .device-icon {
+  width: 34px;
+  height: 34px;
+}
+.tray-drop-list li .device-icon svg {
+  width: 18px;
+  height: 18px;
 }
 .tray-drop-list li.hover {
-  border-color: var(--accent);
-  background: var(--card-strong);
+  background: var(--accent);
+  color: var(--accent-text);
+}
+.tray-drop-list li.hover .tray-drop-name span {
+  color: rgba(255, 255, 255, 0.8);
+}
+.tray-drop-list li.hover .device-icon {
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow: none;
 }
 .tray-drop-name {
   display: flex;
@@ -972,7 +1102,7 @@
   white-space: nowrap;
 }
 .tray-drop-status {
-  padding: 18px 6px;
+  padding: 18px 8px;
 }
 .tray-drop-status.error {
   color: var(--danger);
@@ -980,6 +1110,6 @@
 .tray-drop-list li.clickable {
   cursor: pointer;
 }
-.tray-drop-list li.clickable:hover {
-  border-color: var(--card-border-strong);
+.tray-drop-list li.clickable:hover:not(.hover) {
+  background: var(--fill);
 }

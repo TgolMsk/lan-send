@@ -1,23 +1,21 @@
 import { useState } from "react";
 import { PageHead } from "../components/Layout";
-import { Badge, Button, Card, DeviceIcon, EmptyState, Field, IconButton, Modal, TextInput } from "../components/ui";
+import { Icon } from "../components/icons";
+import { Badge, Button, Card, DeviceIcon, EmptyState, IconButton, TextInput } from "../components/ui";
 import { ConfirmDialog } from "../dialogs/ConfirmDialog";
+import { RenameDialog } from "../dialogs/RenameDialog";
 import { formatAgo } from "../format";
 import { t } from "../i18n";
-import {
-  forgetDevice,
-  openSend,
-  refreshDevices,
-  renameDevice,
-  setFavorite,
-  startPair,
-  unpair,
-  updateSendDraft,
-  useStore,
-} from "../store";
+import { DeviceTiles } from "../mobile/DeviceTiles";
+import { forgetDevice, matchDevice, openSend, refreshDevices, setFavorite, startPair, unpair, updateSendDraft, useStore } from "../store";
 import type { DeviceView } from "../types";
 
 export function DevicesPage() {
+  const mobile = useStore((s) => s.platform.mobile);
+  return mobile ? <DeviceTiles /> : <DeviceCards />;
+}
+
+function DeviceCards() {
   const devices = useStore((s) => s.devices);
   const dragging = useStore((s) => s.dragging);
   const identity = useStore((s) => s.identity);
@@ -25,14 +23,10 @@ export function DevicesPage() {
   const [address, setAddress] = useState("");
   const [renaming, setRenaming] = useState<DeviceView | null>(null);
   const [forgetting, setForgetting] = useState<DeviceView | null>(null);
-  const [alias, setAlias] = useState("");
   const [refreshing, setRefreshing] = useState(false);
 
   const online = devices.filter((d) => d.online).length;
-  const shown = devices.filter((d) => {
-    const q = query.trim().toLowerCase();
-    return !q || d.displayName.toLowerCase().includes(q) || d.alias.toLowerCase().includes(q) || (d.host ?? "").includes(q) || d.fingerprint.toLowerCase().startsWith(q);
-  });
+  const shown = devices.filter((d) => matchDevice(d, query));
 
   const refresh = async () => {
     setRefreshing(true);
@@ -47,7 +41,7 @@ export function DevicesPage() {
         subtitle={t("devices.subtitle")}
         actions={
           <>
-            <Badge tone={online > 0 ? "mint" : "muted"}>
+            <Badge tone={online > 0 ? "success" : "muted"}>
               <span className={`dot ${online > 0 ? "on" : ""}`} /> {online} {t("devices.onlineCount")}
             </Badge>
             <TextInput placeholder={t("app.search")} value={query} onChange={(e) => setQuery(e.target.value)} style={{ width: 180 }} />
@@ -103,12 +97,12 @@ export function DevicesPage() {
                 />
               </div>
               <div className="row wrap">
-                <Badge tone={device.online ? "mint" : "muted"}>
+                <Badge tone={device.online ? "success" : "muted"}>
                   <span className={`dot ${device.online ? "on" : ""}`} /> {device.online ? t("app.online") : `${t("devices.lastSeen")} ${formatAgo(device.lastSeen)}`}
                 </Badge>
                 {device.paired && (
-                  <Badge tone="indigo">
-                    <span>🔗</span> {t("devices.paired")}
+                  <Badge tone="accent">
+                    <Icon name="link" size={12} /> {t("devices.paired")}
                   </Badge>
                 )}
               </div>
@@ -126,14 +120,7 @@ export function DevicesPage() {
                   </Button>
                 )}
                 <span className="spacer" />
-                <IconButton
-                  label={t("devices.rename")}
-                  icon="pencil"
-                  onClick={() => {
-                    setAlias(device.customAlias ?? "");
-                    setRenaming(device);
-                  }}
-                />
+                <IconButton label={t("devices.rename")} icon="pencil" onClick={() => setRenaming(device)} />
                 <IconButton label={t("devices.forget")} icon="trash" onClick={() => setForgetting(device)} />
               </div>
             </Card>
@@ -163,30 +150,7 @@ export function DevicesPage() {
         </form>
       </Card>
 
-      <Modal
-        open={renaming !== null}
-        title={t("devices.renameTitle")}
-        onClose={() => setRenaming(null)}
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setRenaming(null)}>
-              {t("app.cancel")}
-            </Button>
-            <Button
-              onClick={() => {
-                if (renaming) void renameDevice(renaming, alias.trim() || null);
-                setRenaming(null);
-              }}
-            >
-              {t("app.save")}
-            </Button>
-          </>
-        }
-      >
-        <Field label={renaming?.alias ?? ""} hint={t("devices.renameHint")}>
-          <TextInput autoFocus value={alias} onChange={(e) => setAlias(e.target.value)} placeholder={renaming?.alias} />
-        </Field>
-      </Modal>
+      <RenameDialog device={renaming} onClose={() => setRenaming(null)} />
 
       <ConfirmDialog
         open={forgetting !== null}
