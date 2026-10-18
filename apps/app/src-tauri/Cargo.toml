@@ -18,9 +18,10 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-lan-send-core = { path = "../../../crates/core", version = "0.5.0" }
-# 2.11 for `data-tauri-drag-region="deep"` (the window has no title bar on macOS).
-tauri = { version = "2.11", features = ["protocol-asset", "tray-icon"] }
+lan-send-core = { path = "../../../crates/core", version = "0.5.1" }
+# 2.12.1 pulls in tao 0.37's single-scene lifecycle and retained scene config
+# fixes, required for startup on iOS 27 when building with the iOS 27 SDK.
+tauri = { version = "2.12.1", features = ["protocol-asset", "tray-icon"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-opener = "2"
 # System language for the tray menu and dialogs (MIT OR Apache-2.0).
@@ -38,7 +39,12 @@ tauri-plugin-global-shortcut = "2"
 [target.'cfg(target_os = "macos")'.dependencies]
 # Security-scoped bookmarks for the receive folder inside the App Sandbox (ADR-0014).
 objc2 = "0.6"
-objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSURL", "NSData", "NSError", "NSString", "NSArray", "NSDictionary", "NSObject"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSURL", "NSData", "NSError", "NSString", "NSArray", "NSDictionary", "NSObject", "NSGeometry"] }
+# Result notifications for transfers started from the menu bar (ADR-0022).
+tauri-plugin-notification = "2"
+# Drop target on the menu bar icon (macos_tray_drop.rs).
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "block2", "NSDragging", "NSEvent", "NSPasteboard", "NSPasteboardItem", "NSWindow", "NSResponder", "NSScreen", "NSStatusItem", "NSStatusBarButton", "NSButton", "NSControl", "NSView", "NSGraphics"] }
+block2 = "0.6"
 
 [lints]
 workspace = true

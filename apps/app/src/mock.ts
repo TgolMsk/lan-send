@@ -110,6 +110,7 @@ const settings: Settings = {
     theme: "dark",
     autoAcceptPaired: false,
     notifications: true,
+    menuBarDrop: true,
     language: "system",
   },
 };
@@ -394,6 +395,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
     case "cmd_clipboard_sync_set":
     case "cmd_app_open_path":
     case "cmd_app_reveal_path":
+    case "cmd_app_notify":
     case "cmd_app_restart":
       return undefined as T;
     case "cmd_clipboard_push":

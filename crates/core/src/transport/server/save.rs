@@ -285,11 +285,11 @@ async fn write_stream(
             .map(|byte| format!("{byte:02x}"))
             .collect::<String>()
     });
-    if let (Some(actual), Some(expected)) = (&digest, options.expected_sha256) {
-        if !actual.eq_ignore_ascii_case(expected.trim()) {
-            tracing::warn!("checksum mismatch: expected {expected}, got {actual}");
-            return SaveOutcome::HashMismatch;
-        }
+    if let (Some(actual), Some(expected)) = (&digest, options.expected_sha256)
+        && !actual.eq_ignore_ascii_case(expected.trim())
+    {
+        tracing::warn!("checksum mismatch: expected {expected}, got {actual}");
+        return SaveOutcome::HashMismatch;
     }
     match (options.defer_checksum, digest) {
         (true, Some(sha256)) => SaveOutcome::Held { sha256 },

@@ -22,6 +22,8 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init());
     #[cfg(desktop)]
     let builder = builder.plugin(tauri_plugin_global_shortcut::Builder::new().build());
+    #[cfg(target_os = "macos")]
+    let builder = builder.plugin(tauri_plugin_notification::init());
     let result = builder
         .manage(AppState::default())
         .setup(|app| {
@@ -48,6 +50,7 @@ pub fn run() {
             commands::app::cmd_app_pick_folder,
             commands::app::cmd_app_open_path,
             commands::app::cmd_app_reveal_path,
+            commands::app::cmd_app_notify,
             commands::devices::cmd_devices_list,
             commands::devices::cmd_devices_refresh,
             commands::devices::cmd_devices_set_favorite,

@@ -30,10 +30,10 @@ pub fn sniff_mime_bytes(head: &[u8], path: Option<&Path>) -> String {
             return kind.mime_type().to_string();
         }
     }
-    if let Some(path) = path {
-        if let Some(guess) = mime_guess::from_path(path).first() {
-            return guess.essence_str().to_string();
-        }
+    if let Some(path) = path
+        && let Some(guess) = mime_guess::from_path(path).first()
+    {
+        return guess.essence_str().to_string();
     }
     GENERIC.to_string()
 }

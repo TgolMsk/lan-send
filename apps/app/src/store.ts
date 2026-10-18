@@ -286,6 +286,9 @@ function handleEvent(event: RuntimeEvent) {
     }
     case "transfer-needs-pin":
       set((s) => ({ pinRequests: [...s.pinRequests.filter((p) => p.transferId !== event.transferId), { transferId: event.transferId, message: event.message }] }));
+      // The PIN dialog lives here; a send from the menu bar panel (ADR-0022)
+      // may have started while this window was hidden.
+      void revealWindow();
       break;
     case "pair-request":
       set({ pair: { kind: "incoming", fingerprint: event.fingerprint, alias: event.alias, code: event.code, stage: "confirm" } });
@@ -346,7 +349,9 @@ export async function bootstrap() {
   }
   void listen("runtime-state", (payload) => {
     const runtime = payload as RuntimeStateView;
-    set({ runtime });
+    // Runtime restarts invalidate the decision channels behind these dialogs.
+    // In particular, iOS now restarts its listeners on foreground recovery.
+    set({ runtime, incoming: [], pinRequests: [], conflicts: [], pair: null });
     if (runtime.running) void loadAll();
     else toast("error", runtime.message ?? t("app.runtimeStopped"));
   });
@@ -365,6 +370,18 @@ export async function bootstrap() {
   }
 }
 
+async function revealWindow() {
+  if (!isTauri) return;
+  try {
+    const { getCurrentWindow } = await import("@tauri-apps/api/window");
+    const window = getCurrentWindow();
+    await window.show();
+    await window.setFocus();
+  } catch (err) {
+    console.warn("could not show the window", err);
+  }
+}
+
 async function wireDragDrop() {
   try {
     const { getCurrentWebview } = await import("@tauri-apps/api/webview");
@@ -376,7 +393,9 @@ async function wireDragDrop() {
         set({ dragging: false });
       } else if (payload.type === "drop") {
         set({ dragging: false });
-        const ratio = window.devicePixelRatio || 1;
+        // wry reports macOS drag positions in points (Windows: pixels),
+        // although Tauri types them as physical pixels.
+        const ratio = state.platform.os === "macos" ? 1 : window.devicePixelRatio || 1;
         const target = document
           .elementFromPoint(payload.position.x / ratio, payload.position.y / ratio)
           ?.closest<HTMLElement>("[data-device]");

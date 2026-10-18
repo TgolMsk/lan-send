@@ -62,6 +62,8 @@
 
 ### 1.4 Info.plist / 隐私清单
 
+- **iOS 组播签名**：上传前必须运行 `python3 scripts/check-ios-networking.py --ipa <signed.ipa>`，同时确认成品签名与 `embedded.mobileprovision` 含 `com.apple.developer.networking.multicast=true`。2026-10-05 发现源码权利文件为空，即使 App ID 能力已获批也不能据此认定签名成品正确；XcodeGen 模板也必须保存该声明。
+
 - **出口合规**：`plutil -p apps/app/src-tauri/Info.plist apps/app/src-tauri/Info.ios.plist | grep ITSAppUsesNonExemptEncryption` 均为 `false`；ASC 就不会再问加密问题。
 - **用途说明**：macOS `NSLocalNetworkUsageDescription`、`NSDownloadsFolderUsageDescription`；iOS `NSLocalNetworkUsageDescription`、`NSPhotoLibraryUsageDescription`。缺一个补一个。每条都要“用途 + 具体例子”，只写用途会按 5.1.1(ii) 被拒。
 - **版权**：`grep -n copyright apps/app/src-tauri/tauri.conf.json` 无结果则在 `bundle` 下加 `NSHumanReadableCopyright` = `© 2026 Wang Sheng`（已加在 `apps/app/src-tauri/Info.plist` 与 `Info.ios.plist`），和 ASC 的版权字段一字不差。

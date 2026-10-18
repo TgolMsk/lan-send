@@ -158,6 +158,9 @@ export function SettingsPage() {
                 <TextInput value={draft.app.globalShortcut} onChange={(e) => patch((s) => ({ ...s, app: { ...s.app, globalShortcut: e.target.value } }))} placeholder="CmdOrCtrl+Shift+V" />
               </Field>
               <Toggle checked={draft.app.closeToTray} onChange={(v) => patch((s) => ({ ...s, app: { ...s.app, closeToTray: v } }))} label={t("settings.closeToTray")} />
+              {platform.os === "macos" && (
+                <Toggle checked={draft.app.menuBarDrop} onChange={(v) => patch((s) => ({ ...s, app: { ...s.app, menuBarDrop: v } }))} label={t("settings.menuBarDrop")} />
+              )}
             </>
           )}
           <Toggle checked={draft.app.autoAcceptPaired} onChange={(v) => patch((s) => ({ ...s, app: { ...s.app, autoAcceptPaired: v } }))} label={t("settings.autoAcceptPaired")} />

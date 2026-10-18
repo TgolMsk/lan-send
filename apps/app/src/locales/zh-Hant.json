@@ -165,6 +165,7 @@
   "settings.closeToTray": "關閉視窗時縮到系統列",
   "settings.autoAcceptPaired": "自動接受已配對裝置的檔案",
   "settings.notifications": "系統通知",
+  "settings.menuBarDrop": "把檔案拖到選單列圖示上傳送",
   "settings.thumbCache": "縮圖快取",
   "settings.thumbCacheHint": "歷史記錄中的圖片與專輯封面預覽，最多 200 MB，超過時自動清理。",
   "settings.historyLimit": "傳輸歷史保留筆數",
@@ -217,5 +218,14 @@
   "error.pair-busy": "對方正在與其他裝置配對。",
   "error.pair-unsupported": "對方不支援配對（是官方 LocalSend 嗎？）。",
   "error.pair-withdrawn": "對方取消了配對。",
-  "error.pair-code-mismatch": "兩邊的配對碼不一致。"
+  "error.pair-code-mismatch": "兩邊的配對碼不一致。",
+  "trayDrop.title": "傳送到",
+  "trayDrop.hint": "拖到裝置上即可傳送",
+  "trayDrop.staged": "已選 {n} 項，點選裝置傳送",
+  "trayDrop.empty": "沒有在線裝置",
+  "trayDrop.sending": "正在傳送給 {name}…",
+  "trayDrop.failed": "傳送失敗：{message}",
+  "trayDrop.notifySent": "已傳送給 {alias}",
+  "trayDrop.notifyFailed": "未能傳送給 {alias}",
+  "trayDrop.notifyFiles": "{n} 個檔案，{size}"
 }

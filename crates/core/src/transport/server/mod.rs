@@ -455,10 +455,18 @@ async fn serve_connection(
     router: axum::Router,
     cancel: CancellationToken,
 ) {
-    let tls_stream = match acceptor.accept(stream).await {
-        Ok(tls_stream) => tls_stream,
-        Err(err) => {
+    let handshake = tokio::select! {
+        _ = cancel.cancelled() => return,
+        result = tokio::time::timeout(Duration::from_secs(10), acceptor.accept(stream)) => result,
+    };
+    let tls_stream = match handshake {
+        Ok(Ok(tls_stream)) => tls_stream,
+        Ok(Err(err)) => {
             tracing::debug!("TLS handshake with {addr} failed: {err}");
+            return;
+        }
+        Err(_) => {
+            tracing::debug!("TLS handshake with {addr} timed out");
             return;
         }
     };
@@ -478,5 +486,63 @@ async fn serve_connection(
             }
         }
         _ = cancel.cancelled() => {}
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::protocol::{DeviceType, PROTOCOL_VERSION};
+
+    #[tokio::test]
+    async fn stop_cancels_an_unfinished_tls_handshake() {
+        let identity = Arc::new(Identity::generate().unwrap());
+        let (events, _rx) = mpsc::channel(16);
+        let server = start(ServerConfig {
+            port: 0,
+            device: DeviceInfo {
+                alias: "ios-receiver".into(),
+                version: PROTOCOL_VERSION.into(),
+                device_model: None,
+                device_type: Some(DeviceType::Mobile),
+                fingerprint: identity.fingerprint().to_string(),
+                port: 0,
+                protocol: crate::protocol::ProtocolType::Https,
+                download: false,
+                ext: None,
+            },
+            identity,
+            client_cert_policy: ClientCertPolicy::Required,
+            pin: None,
+            verify_checksums: true,
+            upload_idle_timeout: DEFAULT_UPLOAD_IDLE_TIMEOUT,
+            ipv6: false,
+            paired: HashSet::new(),
+            clipboard_limits: Default::default(),
+            events,
+        })
+        .await
+        .unwrap();
+        let port = server.port();
+        // Keep TCP open without sending a TLS ClientHello, as can happen
+        // when the app is suspended or a probing peer disappears.
+        let _stream = TcpStream::connect((Ipv4Addr::LOCALHOST, port))
+            .await
+            .unwrap();
+        tokio::time::timeout(Duration::from_secs(2), async {
+            // One tracked task reaps sessions; the second is the handshake.
+            while server.connections.len() < 2 {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap();
+        tokio::time::timeout(Duration::from_secs(1), server.stop())
+            .await
+            .expect("network recovery must not wait for a stalled TLS peer");
+        // The receive port is immediately available for the new listener.
+        let _listener = TcpListener::bind((Ipv4Addr::UNSPECIFIED, port))
+            .await
+            .unwrap();
     }
 }

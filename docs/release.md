@@ -2,6 +2,10 @@
 
 打 `v<版本>` 标签即触发 `.github/workflows/release.yml`：三端构建安装包并发布到 GitHub Releases。`Actions › Release › Run workflow` 可手动跑一次构建（勾选 publish 才发布）。
 
+仅更新 iOS 时可手动指定 `ios_only=true`、`publish=false`、`store_action=build`，只签名并上传 iOS，其他安装包任务跳过。`store_action=inspect` 在 runner 内使用已有 App Store Connect secrets 读取 iOS 版本和构建状态，私钥及令牌不写入日志或产物。
+
+上传处理完成后，`store_action=prepare` 为当前 Cargo 版本创建 iOS 版本，核对继承的八语言描述、关键词、支持网址和截图，更新 `docs/store/ios-<版本>.json` 中的新增内容及审核备注。`store_action=submit` 加上确切的 `build_number` 会再核对版本、iOS 平台、构建有效性和出口合规，关联该构建并送审；不接触 macOS 审核项目或其他版本的提交。上述动作均需要明确的商店发布授权，不能在普通构建验证时调用 `submit`。
+
 ## 产物
 
 | 平台 | 文件 | 说明 |
@@ -67,6 +71,8 @@ git push origin v0.1.0
 局域网发现依赖 UDP 组播；iOS 14 起组播需要向 Apple 申请 `com.apple.developer.networking.multicast` 权限（[申请入口](https://developer.apple.com/contact/request/networking-multicast)，需登录开发者账号，填 App 名称、App Store Connect 的 Apple ID、类别、应用用途与为什么需要组播）。2026-09-08 提交申请（Request ID `HTFYV6DZUK`），**2026-09-13 获批**。状态在 developer.apple.com › Identifiers › `com.wangsheng.lansend` › **Capability Requests** 标签查看（Multicast Networking 一行）。没有这个权限时 iOS 端和沙盒版 macOS 都只能靠子网扫描和已知地址发现设备（仍可用，只是慢一些）。
 
 获批后的启用步骤（**三步均已于 2026-09-13 完成**：App ID 已勾选 Multicast Networking，`Lan-Send Mac App Store` 描述文件已重建并更新 `MAS_PROVISIONING_PROFILE`，本地副本在 `~/Downloads/lan-send-mas/LanSend_Mac_App_Store.provisionprofile`；entitlements 已于 2026-09-13 加上 `com.apple.developer.networking.multicast`：iOS 在 `apps/app/src-tauri/gen/apple/lan-send-app_iOS/lan-send-app_iOS.entitlements`，沙盒版 macOS 在 `apps/app/src-tauri/entitlements/mas.plist`）：
+
+2026-10-05 复查发现 iOS 权利文件已变为空字典，与上述历史记录不符。0.5.1 恢复了声明，并同步写入 XcodeGen 模板；发布上传前由 `scripts/check-ios-networking.py --ipa` 校验实际签名和描述文件，不能只凭 App ID 获批或源码声明认定成品已具备组播权限。
 
 1. developer.apple.com › Identifiers › `com.wangsheng.lansend` › Capabilities 勾选 **Multicast Networking** › Save（获批后该项才会出现）。App ID 的能力变了，旧的描述文件全部失效。
 2. iOS：不用做别的，Release 的云端自动签名会重新生成带该能力的描述文件。

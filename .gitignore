@@ -30,6 +30,7 @@ Thumbs.db
 
 # Python virtualenv of the interop tests
 /tests/interop/.venv/
+__pycache__/
 
 # 静态站点构建产物（scripts/build-site.mjs）
 /site/

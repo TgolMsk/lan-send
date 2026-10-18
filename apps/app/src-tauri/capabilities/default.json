@@ -1,8 +1,8 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "The main window may call the app's own commands and listen to its events. File dialogs and opening files go through Rust commands.",
-  "windows": ["main"],
+  "description": "The main window and the macOS menu bar drop panel (tray-drop) may call the app's own commands and listen to its events. File dialogs and opening files go through Rust commands.",
+  "windows": ["main", "tray-drop"],
   "permissions": [
     "core:default",
     "core:window:allow-show",

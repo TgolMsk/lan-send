@@ -79,6 +79,7 @@ export const ipc = {
     pickFolder: () => invoke<string | null>("cmd_app_pick_folder"),
     openPath: (path: string) => invoke<void>("cmd_app_open_path", { path }),
     revealPath: (path: string) => invoke<void>("cmd_app_reveal_path", { path }),
+    notify: (title: string, body: string) => invoke<void>("cmd_app_notify", { title, body }),
   },
   devices: {
     list: () => invoke<DeviceView[]>("cmd_devices_list"),

@@ -165,6 +165,7 @@
   "settings.closeToTray": "ウィンドウを閉じるとトレイに格納",
   "settings.autoAcceptPaired": "ペアリング済みデバイスからのファイルを自動受信",
   "settings.notifications": "システム通知",
+  "settings.menuBarDrop": "メニューバーのアイコンにファイルをドラッグして送信",
   "settings.thumbCache": "サムネイルキャッシュ",
   "settings.thumbCacheHint": "履歴に表示する画像やアルバムアートのプレビュー。上限 200 MB、古いものから自動削除されます。",
   "settings.historyLimit": "保存する転送履歴の件数",
@@ -217,5 +218,14 @@
   "error.pair-busy": "相手のデバイスは別のペアリング中です。",
   "error.pair-unsupported": "相手のデバイスはペアリングに対応していません（公式 LocalSend ですか？）。",
   "error.pair-withdrawn": "相手のデバイスがペアリングを取り消しました。",
-  "error.pair-code-mismatch": "コードが一致しませんでした。"
+  "error.pair-code-mismatch": "コードが一致しませんでした。",
+  "trayDrop.title": "送信先",
+  "trayDrop.hint": "デバイスにドロップして送信",
+  "trayDrop.staged": "{n} 件を選択済み。送信先をクリック",
+  "trayDrop.empty": "オンラインのデバイスがありません",
+  "trayDrop.sending": "{name} に送信中…",
+  "trayDrop.failed": "送信できませんでした：{message}",
+  "trayDrop.notifySent": "{alias} に送信しました",
+  "trayDrop.notifyFailed": "{alias} に送信できませんでした",
+  "trayDrop.notifyFiles": "{n} 件のファイル、{size}"
 }

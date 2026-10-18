@@ -165,6 +165,7 @@
   "settings.closeToTray": "La fermeture de la fenêtre la réduit dans la barre système",
   "settings.autoAcceptPaired": "Accepter automatiquement les fichiers des appareils jumelés",
   "settings.notifications": "Notifications système",
+  "settings.menuBarDrop": "Glisser des fichiers sur l’icône de la barre des menus pour les envoyer",
   "settings.thumbCache": "Cache des miniatures",
   "settings.thumbCacheHint": "Aperçus des images et pochettes d’album dans l’historique ; limité à 200 Mo, les plus anciens supprimés en premier.",
   "settings.historyLimit": "Éléments d’historique des transferts conservés",
@@ -217,5 +218,14 @@
   "error.pair-busy": "L’autre appareil est occupé par un autre jumelage.",
   "error.pair-unsupported": "L’autre appareil ne prend pas en charge le jumelage (est-ce le LocalSend officiel ?).",
   "error.pair-withdrawn": "L’autre appareil a annulé le jumelage.",
-  "error.pair-code-mismatch": "Les codes ne correspondent pas."
+  "error.pair-code-mismatch": "Les codes ne correspondent pas.",
+  "trayDrop.title": "Envoyer à",
+  "trayDrop.hint": "Déposez sur un appareil pour l’envoyer",
+  "trayDrop.staged": "{n} élément(s) prêt(s) — choisissez un appareil",
+  "trayDrop.empty": "Aucun appareil en ligne",
+  "trayDrop.sending": "Envoi vers {name}…",
+  "trayDrop.failed": "Échec de l’envoi : {message}",
+  "trayDrop.notifySent": "Envoyé à {alias}",
+  "trayDrop.notifyFailed": "Échec de l’envoi à {alias}",
+  "trayDrop.notifyFiles": "{n} fichier(s), {size}"
 }
