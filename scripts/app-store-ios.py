@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import time
 import urllib.error
 import urllib.parse
@@ -246,13 +247,14 @@ class AppStore:
         if "reviewNotes" in notes:
             attrs["notes"] = notes["reviewNotes"]
         else:
-            # Keep the standing notes (e.g. the sandbox entitlement explanations)
-            # and put this release's changes in front of them.
-            attrs["notes"] = (notes.get("reviewNotesPrefix", "") + "\n\n" +
-                              (old_review["attributes"].get("notes") or "")).strip()
+            # Keep the standing notes (e.g. the sandbox entitlement explanations) and
+            # swap only their "UPDATE <version>: ..." paragraph for this release's.
+            standing = old_review["attributes"].get("notes") or ""
+            paragraph = re.compile(r"^UPDATE [^\n]*(?:\n(?!\n)[^\n]*)*", re.MULTILINE)
+            if not paragraph.search(standing):
+                raise RuntimeError("Standing review notes have no UPDATE paragraph to replace")
+            attrs["notes"] = paragraph.sub(lambda _: notes["reviewNotesUpdate"], standing, count=1)
         if len(attrs["notes"]) > 4000:
-            print(f"Standing notes ({len(old_review['attributes'].get('notes') or '')} chars):\n"
-                  f"{old_review['attributes'].get('notes')}")
             raise RuntimeError("Review notes exceed App Store Connect's 4000 character limit")
         if new_review:
             rid = new_review["data"]["id"]
