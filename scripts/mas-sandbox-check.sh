@@ -1,7 +1,7 @@
 #!/bin/sh
 # Runs the CLI inside an ad-hoc signed, App-Sandboxed bundle with the same
-# entitlements as the Mac App Store build (minus the two Apple-restricted
-# identifiers an ad-hoc signature cannot carry) and prints where it would put
+# entitlements as the Mac App Store build (minus the Apple-restricted
+# entitlements an ad-hoc signature cannot carry) and prints where it would put
 # received files. Use it before every Mac App Store submission: the sandbox
 # redirects $HOME into the container, so a naive lookup yields a container
 # path (it works only through a sandbox-created symlink), and App Review's
@@ -29,6 +29,9 @@ PLIST
 cp apps/app/src-tauri/entitlements/mas.plist "$work/entitlements.plist"
 /usr/libexec/PlistBuddy -c 'Delete :com.apple.application-identifier' "$work/entitlements.plist"
 /usr/libexec/PlistBuddy -c 'Delete :com.apple.developer.team-identifier' "$work/entitlements.plist"
+# Restricted too: AMFI SIGKILLs an ad-hoc binary that claims it without a provisioning
+# profile (exit 137, no output). The probe only needs the sandbox and file entitlements.
+/usr/libexec/PlistBuddy -c 'Delete :com.apple.developer.networking.multicast' "$work/entitlements.plist"
 codesign --force --sign - --entitlements "$work/entitlements.plist" "$work/Probe.app" >/dev/null 2>&1
 echo "sandboxed identity:"
 "$work/Probe.app/Contents/MacOS/Probe" identity | sed 's/^/  /'
