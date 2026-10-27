@@ -30,12 +30,16 @@ on:
       store_action:
         description: "iOS build/upload or App Store Connect metadata operation"
         type: choice
-        options: [build, inspect, prepare, submit]
+        options: [build, inspect, prepare, screenshots, submit]
         default: build
       build_number:
         description: "Uploaded build number (required only for submit)"
         type: string
         default: ''
+      apply_screenshots:
+        description: "store_action=screenshots: really replace the version's screenshots (otherwise only list them)"
+        type: boolean
+        default: false
       store_platform:
         description: "App Store Connect platform for store_action inspect/prepare/submit"
         type: choice
@@ -387,6 +391,7 @@ jobs:
       STORE_ACTION: ${{ inputs.store_action }}
       BUILD_NUMBER: ${{ inputs.build_number }}
       STORE_PLATFORM: ${{ inputs.store_platform }}
+      APPLY_SCREENSHOTS: ${{ inputs.apply_screenshots }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
@@ -403,6 +408,7 @@ jobs:
             args+=(--version "$store_version")
           fi
           if [ "$STORE_ACTION" == submit ]; then args+=(--build "$BUILD_NUMBER"); fi
+          if [ "$STORE_ACTION" == screenshots ] && [ "$APPLY_SCREENSHOTS" == true ]; then args+=(--apply); fi
           python scripts/app-store-ios.py "${args[@]}"
 
   app-mas:

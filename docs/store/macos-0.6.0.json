@@ -1,0 +1,14 @@
+{
+  "version": "0.6.0",
+  "whatsNew": {
+    "en-US": "• Drag files onto the menu bar icon, pick a device, and they are sent right away\n• A fresh look: new app icon and a cleaner interface in the style of macOS\n• Fixed: dragging files onto a device card could miss the target on Retina displays",
+    "zh-Hans": "• 把文件拖到菜单栏图标上，选好设备即可直接发送\n• 全新外观：新图标，界面更简洁、更贴近 macOS 自带应用\n• 修复：Retina 屏上把文件拖到设备卡片时可能投不中",
+    "zh-Hant": "• 把檔案拖到選單列圖示上，選好裝置即可直接傳送\n• 全新外觀：新圖示，介面更簡潔、更貼近 macOS 內建 App\n• 修正：Retina 螢幕上把檔案拖到裝置卡片時可能投不中",
+    "ja": "• ファイルをメニューバーのアイコンにドラッグしてデバイスを選ぶだけで、すぐに送信できます\n• 新しいデザイン：アイコンを刷新し、macOS 標準アプリに近いすっきりした見た目になりました\n• 修正：Retina ディスプレイでファイルをデバイスのカードにドロップしても反応しないことがある問題",
+    "ko": "• 파일을 메뉴 막대 아이콘으로 끌어다 놓고 기기를 고르면 바로 전송됩니다\n• 새로운 디자인: 앱 아이콘이 바뀌고 macOS 기본 앱처럼 깔끔해졌습니다\n• 수정: Retina 디스플레이에서 파일을 기기 카드로 끌어다 놓아도 인식되지 않을 수 있던 문제",
+    "de-DE": "• Dateien auf das Menüleistensymbol ziehen, Gerät wählen – und sie werden sofort gesendet\n• Neues Design: neues App-Symbol und eine klarere Oberfläche im Stil von macOS\n• Behoben: Beim Ziehen von Dateien auf eine Gerätekarte wurde das Ziel auf Retina-Displays teils verfehlt",
+    "fr-FR": "• Faites glisser des fichiers sur l'icône de la barre des menus, choisissez un appareil : l'envoi démarre aussitôt\n• Nouveau look : nouvelle icône et interface plus sobre, dans l'esprit de macOS\n• Correction : le glisser-déposer sur la carte d'un appareil pouvait manquer sa cible sur les écrans Retina",
+    "es-ES": "• Arrastra archivos al icono de la barra de menús, elige un dispositivo y se envían al instante\n• Nuevo diseño: nuevo icono y una interfaz más limpia, en el estilo de macOS\n• Corregido: al arrastrar archivos a la tarjeta de un dispositivo se podía fallar el objetivo en pantallas Retina"
+  },
+  "reviewNotesPrefix": "Version 0.6.0 changes (no new entitlements or permissions; the sandbox entitlements explained below are unchanged):\n- New interface style and app icon.\n- New optional shortcut: files dragged from Finder onto the LanSend menu bar icon open a small panel listing nearby devices; dropping them on a device sends them with the existing LAN transfer. It can be turned off in Settings > App. After a send started from the menu bar, LanSend posts a local notification with the result (local notifications only; macOS asks for permission the first time).\n- Fixed: dropping files onto a device card in the main window could miss the target on Retina displays."
+}

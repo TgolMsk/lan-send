@@ -62,5 +62,23 @@ class ReleaseGuards(unittest.TestCase):
                 store.validate_build({"attributes": {**valid, field: value}}, "26")
 
 
+class LocalScreenshots(unittest.TestCase):
+    def test_refreshed_screenshots_replace_only_the_matching_display_type(self):
+        fixture = InheritedListing(None)
+        existing = {"APP_IPHONE_67": [("old.png", "x", 1)], "APP_IPAD_PRO_3GEN_129": [("old.png", "y", 2)],
+                    "APP_IPHONE_40": [("keep.png", "z", 3)]}
+        result = fixture.local_screenshots(existing)
+        self.assertEqual(result["APP_IPHONE_40"], existing["APP_IPHONE_40"])
+        self.assertEqual([n for n, _, _ in result["APP_IPHONE_67"]],
+                         sorted(p.name for p in (ROOT / "apps/app/store/screenshots/iphone-6.5").glob("*.png")))
+        self.assertTrue(all(len(c) == 32 for _, c, _ in result["APP_IPHONE_67"]))
+
+    def test_macos_listing_uses_the_desktop_display_type(self):
+        fixture = InheritedListing(None)
+        fixture.platform = "MAC_OS"
+        result = fixture.local_screenshots({"APP_DESKTOP": [("old.png", "x", 1)]})
+        self.assertEqual(len(result["APP_DESKTOP"]), 4)
+
+
 if __name__ == "__main__":
     unittest.main()
