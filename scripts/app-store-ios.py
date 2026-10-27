@@ -326,7 +326,9 @@ class AppStore:
             "relationships": {"app": relation("apps", APP_ID)},
         }})["data"]
         sid = submission["id"]
-        items = self.collection(f"/v1/reviewSubmissions/{sid}/items")
+        # The linkage to the version is only returned for relationships that are included.
+        item_query = {"include": "appStoreVersion", "limit": 50}
+        items = self.collection(f"/v1/reviewSubmissions/{sid}/items", item_query)
         if not items:
             self.request("POST", "/v1/reviewSubmissionItems", data={"data": {
                 "type": "reviewSubmissionItems", "relationships": {
@@ -334,8 +336,9 @@ class AppStore:
                     "appStoreVersion": relation("appStoreVersions", target["id"]),
                 },
             }})
-            items = self.collection(f"/v1/reviewSubmissions/{sid}/items")
-        if len(items) != 1 or items[0]["relationships"]["appStoreVersion"]["data"]["id"] != target["id"]:
+            items = self.collection(f"/v1/reviewSubmissions/{sid}/items", item_query)
+        linked = (((items[0].get("relationships") or {}).get("appStoreVersion") or {}).get("data") or {}) if items else {}
+        if len(items) != 1 or linked.get("id") != target["id"]:
             raise RuntimeError("Review submission contains unrelated items")
         self.request("PATCH", f"/v1/reviewSubmissions/{sid}", data={"data": {
             "type": "reviewSubmissions", "id": sid, "attributes": {"submitted": True},
