@@ -130,6 +130,9 @@ class AppStore:
             locale = loc["attributes"]["locale"]
             sets = {s["attributes"]["screenshotDisplayType"]: s for s in
                     self.collection(f"/v1/appStoreVersionLocalizations/{loc['id']}/appScreenshotSets")}
+            if not sets:
+                print(f"{locale}: no screenshots of its own (shows the primary language's)", flush=True)
+                continue
             for folder, candidates in SHOT_DIRS[self.platform].items():
                 kind = next((c for c in candidates if c in sets), None)
                 files = sorted((ROOT / "apps/app/store/screenshots" / folder).glob("*.png"))
