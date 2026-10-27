@@ -286,7 +286,13 @@ class AppStore:
         return target
 
     def submit(self, version, build_number):
-        target = self.prepare(version)
+        existing = [v for v in self.ios_versions() if v["attributes"]["versionString"] == version]
+        if len(existing) == 1 and version_state(existing[0]) == "READY_FOR_REVIEW":
+            # An earlier attempt prepared the version and queued it in a review
+            # submission but stopped before submitting; nothing left to prepare.
+            target = existing[0]
+        else:
+            target = self.prepare(version)
         deadline = time.monotonic() + 600
         last_state = None
         while True:
