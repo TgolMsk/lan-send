@@ -33,9 +33,14 @@ on:
         options: [build, inspect, prepare, submit]
         default: build
       build_number:
-        description: "Uploaded iOS build number (required only for submit)"
+        description: "Uploaded build number (required only for submit)"
         type: string
         default: ''
+      store_platform:
+        description: "App Store Connect platform for store_action inspect/prepare/submit"
+        type: choice
+        options: [IOS, MAC_OS]
+        default: IOS
 
 permissions:
   contents: write
@@ -381,6 +386,7 @@ jobs:
       APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
       STORE_ACTION: ${{ inputs.store_action }}
       BUILD_NUMBER: ${{ inputs.build_number }}
+      STORE_PLATFORM: ${{ inputs.store_platform }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
@@ -391,7 +397,7 @@ jobs:
       - name: Manage iOS version
         shell: bash
         run: |
-          args=("$STORE_ACTION")
+          args=("$STORE_ACTION" --platform "$STORE_PLATFORM")
           if [ "$STORE_ACTION" != inspect ]; then
             store_version=$(python -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["workspace"]["package"]["version"])')
             args+=(--version "$store_version")

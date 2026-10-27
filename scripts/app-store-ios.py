@@ -15,6 +15,8 @@ BASE = "https://api.appstoreconnect.apple.com"
 
 
 class AppStore:
+    platform = "IOS"  # or "MAC_OS"; the macOS listing lives in the same App Store Connect app
+
     def request(self, method, path, *, query=None, data=None, missing_ok=False):
         import jwt
 
@@ -60,12 +62,12 @@ class AppStore:
         if app["attributes"]["bundleId"] != BUNDLE_ID:
             raise RuntimeError("App ID does not match the LanSend bundle identifier")
         versions = self.collection(f"/v1/apps/{APP_ID}/appStoreVersions",
-                                   {"filter[platform]": "IOS", "limit": 200})
+                                   {"filter[platform]": self.platform, "limit": 200})
         builds = self.request("GET", "/v1/builds", query={
-            "filter[app]": APP_ID, "filter[preReleaseVersion.platform]": "IOS",
+            "filter[app]": APP_ID, "filter[preReleaseVersion.platform]": self.platform,
             "sort": "-uploadedDate", "limit": 10, "include": "preReleaseVersion",
         })["data"]
-        print(json.dumps({"app": APP_ID, "versions": [
+        print(json.dumps({"app": APP_ID, "platform": self.platform, "versions": [
             {"id": v["id"], **v["attributes"]} for v in versions
         ], "builds": [{"id": b["id"], **{k: b["attributes"].get(k) for k in
             ("version", "uploadedDate", "processingState", "usesNonExemptEncryption")}}
@@ -77,7 +79,7 @@ class AppStore:
         if app["attributes"]["bundleId"] != BUNDLE_ID:
             raise RuntimeError("Unexpected bundle identifier")
         return self.collection(f"/v1/apps/{APP_ID}/appStoreVersions",
-                               {"filter[platform]": "IOS", "limit": 200})
+                               {"filter[platform]": self.platform, "limit": 200})
 
     def screenshots(self, localization_id):
         sets = self.collection(f"/v1/appStoreVersionLocalizations/{localization_id}/appScreenshotSets")
@@ -263,8 +265,10 @@ def main():
     parser.add_argument("action", choices=["inspect", "prepare", "submit"])
     parser.add_argument("--version")
     parser.add_argument("--build")
+    parser.add_argument("--platform", choices=["IOS", "MAC_OS"], default="IOS")
     args = parser.parse_args()
     store = AppStore()
+    store.platform = args.platform
     if args.action == "inspect":
         store.inspect()
     else:
