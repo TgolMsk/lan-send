@@ -19,7 +19,7 @@
 ### 1.2 Mac App Store 沙盒（★ 2.4.5 两次中招）
 
 - **★ 沙盒探针必须 OK**
-  - 检查：`sh scripts/mas-sandbox-check.sh`，期望输出 `Receive dir: /Users/<你>/Downloads` 和 `OK`。
+  - 检查：`sh scripts/mas-sandbox-check.sh`，期望输出 `Receive dir: /Users/<你>/Downloads` 和 `OK`。没有任何输出、退出码 137 说明探针被 AMFI 杀了：临时签名不能带受限权利（`application-identifier`、`team-identifier`、`networking.multicast`），脚本已一并删掉。
   - 修：脚本只比对字符串，把它改成测行为：在打印的接收目录里写探针文件，断言 `realpath` 落在 `$(dscl . -read /Users/$USER NFSHomeDirectory | awk '{print $2}')/Downloads` 下，然后删除。
 - **★ 真实沙盒 bundle 里完整收一次文件**
   - 检查：用 CI 产物或本地 `codesign --force --sign - --entitlements apps/app/src-tauri/entitlements/mas.plist`（先用 PlistBuddy 删掉 `com.apple.application-identifier` 和 `com.apple.developer.team-identifier`）签一个 `LanSend.app`，从 Finder 双击启动；另一台设备（LanSend 或官方 LocalSend）发一个文件；确认文件出现在 `~/Downloads`，设置页"接收目录"占位符显示 `/Users/<你>/Downloads`，历史页"打开"和"在文件夹中显示"都能弹出预览 / Finder。

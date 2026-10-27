@@ -323,6 +323,27 @@ App Store Connect › App › 左侧“App 信息 / 版本信息”右上角语�
   > • Nuevo nombre e icono
   > • Descubrimiento de dispositivos más rápido en iPhone
 
+### 0.6.0 提交记录（2026-10-27）
+
+用户说「走上架流程」：版本号早已是 0.6.0（2026-10-18 起 iOS 0.6.0 构建 32 在 TestFlight），这次收 CHANGELOG、打 `v0.6.0` 标签、iOS 与 Mac App Store 同时送审。整条流程第一次完全不用 Chrome 点 App Store Connect：凭据只在 CI runner 上，经 `Release` 工作流手动运行 `scripts/app-store-ios.py`（`store_action` 与 `store_platform` 两个输入，说明见 `docs/release.md`）。
+
+顺序：
+
+1. 分支 `release/0.6.0`（PR #20）：CHANGELOG 收成 0.6.0；`docs/store/ios-0.6.0.json`、`docs/store/macos-0.6.0.json` 写八种语言的「新功能」和审核备注；脚本补 macOS 平台与截图上传。
+2. 在分支上手动运行 `prepare`（iOS、macOS 各一次）建版本记录并写文案，再运行 `screenshots`（先不加 `apply_screenshots` 看计划，再加上真正替换）。
+3. PR 合入 main（`d308c25`），在合并提交上打 `v0.6.0`：一次运行构建全部安装包，iOS 构建 51 上传 TestFlight，Mac App Store 构建 51 上传 App Store Connect，GitHub Release 发布 14 个资产。
+4. 从 CI 产物取 `LanSend-0.6.0-mac-app-store.pkg`，展开后换一个隔离的包名、去掉受限权利、临时签名，在沙盒里启动：进程正常、监听 TCP/UDP 53317、没有沙盒拒绝记录、没有崩溃报告。**菜单栏拖放在沙盒里仍未实测**（只测了启动）。
+5. 运行 `submit`（`build_number=51`，iOS、macOS 各一次）：两端版本与审核提交都是 `WAITING_FOR_REVIEW`，发布方式「审核通过后自动发布」。
+
+这次的几个决定与坑：
+
+- **截图**：仓库里 2026-10-18 重拍的新界面截图从未传到 App Store Connect，线上仍是旧的深蓝界面。演示数据里有一台 “Pixel 8 / Android”，会触发 2.3.10，换成 “iPad Air” 后三端重拍。只有主语言（zh-Hans）自带截图集（iPhone 5 张、iPad 3 张、Mac 4 张），其余七种语言沿用它，所以只传这一种语言；截图里仍是中文界面。
+- **macOS 备注**：线上备注里每条沙盒权限的说明都要保留（2.4.5 被拒过），所以只替换 `UPDATE …` 那一段（`reviewNotesUpdate`），总长不能超过 4000 字符，脚本会拦。
+- **macOS 宣传文本**：新建的 macOS 版本不会自带上一版的 `promotionalText`，prepare 从线上版本复制。
+- **脚本送审路径是第一次真正跑通**，修了两处：审核项列表要带 `include=appStoreVersion` 才有关联版本；版本进入 `READY_FOR_REVIEW`（已挂进待提交的审核项）后要能续做，不能再走 prepare。
+- **沙盒探针** `scripts/mas-sandbox-check.sh` 自 2026-09-13 加了组播权利后一直静默失败（临时签名带受限权利会被系统直接杀掉，退出码 137、无输出），已修。
+- 没做：官网 `lansend_web` 的版本号跟到 0.6.0；公安联网备案；多语言截图。
+
 ### 0.5.0 提交记录（2026-09-17）
 
 用户要求不等 macOS 0.4.1 出审核结果，直接两端一起送审。顺序很重要——**先撤回 macOS，再改 App 级字段，最后提交**，因为任一版本在审核中都会锁住整个「App 信息」：

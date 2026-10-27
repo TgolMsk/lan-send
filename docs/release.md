@@ -4,6 +4,8 @@
 
 仅更新 iOS 时可手动指定 `ios_only=true`、`publish=false`、`store_action=build`，只签名并上传 iOS，其他安装包任务跳过。`store_action=inspect` 在 runner 内使用已有 App Store Connect secrets 读取 iOS 版本和构建状态，私钥及令牌不写入日志或产物。
 
+`store_platform` 选 `IOS`（默认）或 `MAC_OS`，同一套动作也用于 Mac App Store：版本文案在 `docs/store/macos-<版本>.json`，审核备注用 `reviewNotesUpdate` 只替换线上备注里 `UPDATE …` 那一段（保留沙盒权限说明，总长不得超过 4000 字符）。`store_action=screenshots` 把 `apps/app/store/screenshots/` 里的图替换到新版本的截图集，默认只列出计划，勾选 `apply_screenshots` 才真正替换；只有自己带截图集的语言会被替换，其余语言沿用主语言。2026-10-27 的 0.6.0 两端都是这样送审的，过程见 `docs/store-listing.md`。
+
 上传处理完成后，`store_action=prepare` 为当前 Cargo 版本创建 iOS 版本，核对继承的八语言描述、关键词、支持网址和截图，更新 `docs/store/ios-<版本>.json` 中的新增内容及审核备注。`store_action=submit` 加上确切的 `build_number` 会再核对版本、iOS 平台、构建有效性和出口合规，关联该构建并送审；不接触 macOS 审核项目或其他版本的提交。上述动作均需要明确的商店发布授权，不能在普通构建验证时调用 `submit`。
 
 ## 产物
