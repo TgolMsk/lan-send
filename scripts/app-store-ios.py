@@ -251,6 +251,8 @@ class AppStore:
             attrs["notes"] = (notes.get("reviewNotesPrefix", "") + "\n\n" +
                               (old_review["attributes"].get("notes") or "")).strip()
         if len(attrs["notes"]) > 4000:
+            print(f"Standing notes ({len(old_review['attributes'].get('notes') or '')} chars):\n"
+                  f"{old_review['attributes'].get('notes')}")
             raise RuntimeError("Review notes exceed App Store Connect's 4000 character limit")
         if new_review:
             rid = new_review["data"]["id"]
