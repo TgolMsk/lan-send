@@ -214,7 +214,11 @@ class AppStore:
             new = new_by_locale[locale]
             for field in ("description", "keywords", "supportUrl", "marketingUrl", "promotionalText"):
                 if old["attributes"].get(field) != new["attributes"].get(field):
-                    raise RuntimeError(f"Inherited {locale} {field} differs from the published version")
+                    def brief(value):
+                        return None if value is None else f"{len(value)} chars: {value[:60]!r}"
+                    raise RuntimeError(
+                        f"Inherited {locale} {field} differs from the published version "
+                        f"(published {brief(old['attributes'].get(field))}; new {brief(new['attributes'].get(field))})")
             inherited, current = self.screenshots(old["id"]), self.screenshots(new["id"])
             # Either untouched, or exactly the repo's refreshed screenshots.
             if inherited != current and current != self.local_screenshots(inherited):
