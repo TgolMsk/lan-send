@@ -210,9 +210,16 @@ class AppStore:
         new_by_locale = {v["attributes"]["locale"]: v for v in new_localizations}
         if set(old_by_locale) != set(new_by_locale) or set(new_by_locale) != set(notes["whatsNew"]):
             raise RuntimeError("Inherited listing locales do not match the release notes")
+        copy_promotional = {}
         for locale, old in old_by_locale.items():
             new = new_by_locale[locale]
             for field in ("description", "keywords", "supportUrl", "marketingUrl", "promotionalText"):
+                if (field == "promotionalText" and old["attributes"].get(field)
+                        and not new["attributes"].get(field)):
+                    # The macOS listing does not carry the promotional text over to a
+                    # new version on its own; copying it is what "inherit" means here.
+                    copy_promotional[new["id"]] = old["attributes"][field]
+                    continue
                 if old["attributes"].get(field) != new["attributes"].get(field):
                     def brief(value):
                         return None if value is None else f"{len(value)} chars: {value[:60]!r}"
@@ -224,9 +231,12 @@ class AppStore:
             if inherited != current and current != self.local_screenshots(inherited):
                 raise RuntimeError(f"Inherited screenshots differ for {locale}")
         for locale, new in new_by_locale.items():
+            attributes = {"whatsNew": notes["whatsNew"][locale]}
+            if new["id"] in copy_promotional:
+                attributes["promotionalText"] = copy_promotional[new["id"]]
             self.request("PATCH", f"/v1/appStoreVersionLocalizations/{new['id']}", data={"data": {
                 "type": "appStoreVersionLocalizations", "id": new["id"],
-                "attributes": {"whatsNew": notes["whatsNew"][locale]},
+                "attributes": attributes,
             }})
         old_review = self.request("GET", f"/v1/appStoreVersions/{previous['id']}/appStoreReviewDetail")["data"]
         new_review = self.request("GET", f"/v1/appStoreVersions/{target['id']}/appStoreReviewDetail", missing_ok=True)
