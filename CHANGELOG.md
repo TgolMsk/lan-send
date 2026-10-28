@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- `scripts/app-store-ios.py` 的 `submit` 第一次对真实 App Store Connect 跑通：审核项列表要带 `include=appStoreVersion` 才有关联版本；版本已挂进待提交的审核项（`READY_FOR_REVIEW`）时直接续做送审，不再走 prepare。
+- 商店记录：`docs/store-listing.md` 新增 0.6.0 提交记录，`docs/release.md`、`docs/store-checklist.md` 补 macOS 平台、截图动作与沙盒探针被杀的说明。
+
 ## [0.6.0] - 2026-10-27
 
 界面整体换新（原生风格 + 新图标，iPhone 改磁贴布局），macOS 新增菜单栏拖放发送。iOS 与 Mac App Store 同时送审。

@@ -286,7 +286,13 @@ class AppStore:
         return target
 
     def submit(self, version, build_number):
-        target = self.prepare(version)
+        existing = [v for v in self.ios_versions() if v["attributes"]["versionString"] == version]
+        if len(existing) == 1 and version_state(existing[0]) == "READY_FOR_REVIEW":
+            # An earlier attempt prepared the version and queued it in a review
+            # submission but stopped before submitting; nothing left to prepare.
+            target = existing[0]
+        else:
+            target = self.prepare(version)
         deadline = time.monotonic() + 600
         last_state = None
         while True:
@@ -326,7 +332,9 @@ class AppStore:
             "relationships": {"app": relation("apps", APP_ID)},
         }})["data"]
         sid = submission["id"]
-        items = self.collection(f"/v1/reviewSubmissions/{sid}/items")
+        # The linkage to the version is only returned for relationships that are included.
+        item_query = {"include": "appStoreVersion", "limit": 50}
+        items = self.collection(f"/v1/reviewSubmissions/{sid}/items", item_query)
         if not items:
             self.request("POST", "/v1/reviewSubmissionItems", data={"data": {
                 "type": "reviewSubmissionItems", "relationships": {
@@ -334,8 +342,9 @@ class AppStore:
                     "appStoreVersion": relation("appStoreVersions", target["id"]),
                 },
             }})
-            items = self.collection(f"/v1/reviewSubmissions/{sid}/items")
-        if len(items) != 1 or items[0]["relationships"]["appStoreVersion"]["data"]["id"] != target["id"]:
+            items = self.collection(f"/v1/reviewSubmissions/{sid}/items", item_query)
+        linked = (((items[0].get("relationships") or {}).get("appStoreVersion") or {}).get("data") or {}) if items else {}
+        if len(items) != 1 or linked.get("id") != target["id"]:
             raise RuntimeError("Review submission contains unrelated items")
         self.request("PATCH", f"/v1/reviewSubmissions/{sid}", data={"data": {
             "type": "reviewSubmissions", "id": sid, "attributes": {"submitted": True},
